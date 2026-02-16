@@ -25,6 +25,11 @@ chdir($projectDir);
 
 echo "📁 Project directory: $projectDir\n";
 
+// Stash any local changes first
+echo "\n🔄 Stashing local changes...\n";
+$stashOutput = shell_exec('git stash 2>&1');
+echo $stashOutput;
+
 // Execute git pull
 echo "\n📥 Pulling latest code from GitHub...\n";
 $output = shell_exec('git pull origin main 2>&1');
