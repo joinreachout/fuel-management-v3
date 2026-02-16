@@ -8,9 +8,11 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
 dist-ssr
 *.local
+
+# Uncomment to exclude dist from Git (for CI/CD builds)
+# dist
 
 # Editor directories and files
 .vscode/*
