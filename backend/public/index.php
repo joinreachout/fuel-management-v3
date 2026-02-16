@@ -31,6 +31,11 @@ require_once __DIR__ . '/../src/Models/Supplier.php';
 require_once __DIR__ . '/../src/Models/Order.php';
 require_once __DIR__ . '/../src/Models/Transfer.php';
 
+// Load Services
+require_once __DIR__ . '/../src/Services/ForecastService.php';
+require_once __DIR__ . '/../src/Services/AlertService.php';
+require_once __DIR__ . '/../src/Services/ReportService.php';
+
 // Load Controllers
 require_once __DIR__ . '/../src/Controllers/StationController.php';
 require_once __DIR__ . '/../src/Controllers/DepotController.php';
@@ -38,6 +43,8 @@ require_once __DIR__ . '/../src/Controllers/FuelTypeController.php';
 require_once __DIR__ . '/../src/Controllers/SupplierController.php';
 require_once __DIR__ . '/../src/Controllers/OrderController.php';
 require_once __DIR__ . '/../src/Controllers/TransferController.php';
+require_once __DIR__ . '/../src/Controllers/DashboardController.php';
+require_once __DIR__ . '/../src/Controllers/ReportController.php';
 
 use App\Core\Response;
 use App\Controllers\StationController;
@@ -46,6 +53,8 @@ use App\Controllers\FuelTypeController;
 use App\Controllers\SupplierController;
 use App\Controllers\OrderController;
 use App\Controllers\TransferController;
+use App\Controllers\DashboardController;
+use App\Controllers\ReportController;
 
 // Simple router
 try {
@@ -67,6 +76,8 @@ try {
     $supplierController = new SupplierController();
     $orderController = new OrderController();
     $transferController = new TransferController();
+    $dashboardController = new DashboardController();
+    $reportController = new ReportController();
 
     // ==================== STATIONS ====================
     if ($requestMethod === 'GET' && $path === '/api/stations') {
@@ -148,6 +159,35 @@ try {
 
     } elseif ($requestMethod === 'GET' && preg_match('#^/api/transfers/(\d+)$#', $path, $matches)) {
         $transferController->show((int) $matches[1]);
+
+    // ==================== DASHBOARD ====================
+    } elseif ($requestMethod === 'GET' && $path === '/api/dashboard/summary') {
+        $dashboardController->summary();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/dashboard/alerts') {
+        $dashboardController->alerts();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/dashboard/alerts/summary') {
+        $dashboardController->alertSummary();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/dashboard/critical-tanks') {
+        $dashboardController->criticalTanks();
+
+    // ==================== REPORTS ====================
+    } elseif ($requestMethod === 'GET' && $path === '/api/reports/daily-stock') {
+        $reportController->dailyStock();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/reports/inventory-summary') {
+        $reportController->inventorySummary();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/reports/station-performance') {
+        $reportController->stationPerformance();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/reports/low-stock') {
+        $reportController->lowStock();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/reports/capacity-utilization') {
+        $reportController->capacityUtilization();
 
     } else {
         // 404 Not Found

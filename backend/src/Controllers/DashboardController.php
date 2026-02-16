@@ -1,0 +1,101 @@
+<?php
+
+namespace App\Controllers;
+
+use App\Core\Response;
+use App\Services\ReportService;
+use App\Services\AlertService;
+use App\Services\ForecastService;
+
+/**
+ * Dashboard Controller
+ * Provides aggregated data for dashboard views
+ */
+class DashboardController
+{
+    /**
+     * GET /api/dashboard/summary
+     * Get dashboard summary with key metrics
+     */
+    public function summary(): void
+    {
+        try {
+            $summary = ReportService::getDashboardSummary();
+
+            Response::json([
+                'success' => true,
+                'data' => $summary
+            ]);
+        } catch (\Exception $e) {
+            Response::json([
+                'success' => false,
+                'error' => 'Failed to fetch dashboard summary: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/dashboard/alerts
+     * Get all active alerts
+     */
+    public function alerts(): void
+    {
+        try {
+            $alerts = AlertService::getActiveAlerts();
+
+            Response::json([
+                'success' => true,
+                'data' => $alerts,
+                'count' => count($alerts)
+            ]);
+        } catch (\Exception $e) {
+            Response::json([
+                'success' => false,
+                'error' => 'Failed to fetch alerts: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/dashboard/alerts/summary
+     * Get alert summary (counts by severity)
+     */
+    public function alertSummary(): void
+    {
+        try {
+            $summary = AlertService::getAlertSummary();
+
+            Response::json([
+                'success' => true,
+                'data' => $summary
+            ]);
+        } catch (\Exception $e) {
+            Response::json([
+                'success' => false,
+                'error' => 'Failed to fetch alert summary: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/dashboard/critical-tanks
+     * Get tanks requiring urgent attention
+     */
+    public function criticalTanks(): void
+    {
+        try {
+            $tanks = ForecastService::getCriticalTanks();
+
+            Response::json([
+                'success' => true,
+                'data' => $tanks,
+                'count' => count($tanks)
+            ]);
+        } catch (\Exception $e) {
+            Response::json([
+                'success' => false,
+                'error' => 'Failed to fetch critical tanks: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+}
