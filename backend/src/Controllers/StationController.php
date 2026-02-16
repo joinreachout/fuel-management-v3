@@ -16,8 +16,8 @@ class StationController
 
     public function __construct()
     {
-        $db = Database::getInstance();
-        $this->stationModel = new Station($db->getConnection());
+        $pdo = Database::getConnection();
+        $this->stationModel = new Station($pdo);
     }
 
     /**
