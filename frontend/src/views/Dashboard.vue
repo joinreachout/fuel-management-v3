@@ -216,6 +216,9 @@
       </div>
     </div>
 
+    <!-- Optimus AI Assistant (Floating) -->
+    <OptimusAI />
+
   </div>
 </template>
 
@@ -224,6 +227,7 @@ import { ref, onMounted, computed } from 'vue';
 import { dashboardApi } from '../services/api';
 import Chart from 'chart.js/auto';
 import StationFillLevels from '../components/StationFillLevels.vue';
+import OptimusAI from '../components/OptimusAI.vue';
 
 const loading = ref(true);
 const error = ref(null);
