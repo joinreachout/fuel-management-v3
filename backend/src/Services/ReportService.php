@@ -130,6 +130,7 @@ class ReportService
 
     /**
      * Get low stock report (tanks below minimum)
+     * Uses stock_policies thresholds and sales_params consumption
      *
      * @return array Low stock report
      */
@@ -148,16 +149,21 @@ class ReportService
                 dt.capacity_liters,
                 dt.current_stock_liters,
                 ROUND((dt.current_stock_liters / dt.capacity_liters * 100), 1) as fill_percentage,
-                sp.min_stock_days,
-                sp.daily_consumption_liters,
-                ROUND(dt.current_stock_liters / sp.daily_consumption_liters, 1) as days_until_empty
+                pol.min_level_liters,
+                pol.critical_level_liters,
+                sp.liters_per_day as daily_consumption_liters,
+                ROUND(dt.current_stock_liters / sp.liters_per_day, 1) as days_until_empty
             FROM depot_tanks dt
             LEFT JOIN depots d ON dt.depot_id = d.id
             LEFT JOIN stations s ON d.station_id = s.id
             LEFT JOIN fuel_types ft ON dt.fuel_type_id = ft.id
-            LEFT JOIN stock_policies sp ON dt.depot_id = sp.depot_id AND dt.fuel_type_id = sp.fuel_type_id
-            WHERE sp.daily_consumption_liters > 0
-            AND (dt.current_stock_liters / sp.daily_consumption_liters) < sp.min_stock_days
+            LEFT JOIN stock_policies pol ON dt.depot_id = pol.depot_id AND dt.fuel_type_id = pol.fuel_type_id
+            LEFT JOIN sales_params sp ON dt.depot_id = sp.depot_id
+                AND dt.fuel_type_id = sp.fuel_type_id
+                AND (sp.effective_to IS NULL OR sp.effective_to >= CURDATE())
+            WHERE sp.liters_per_day > 0
+            AND pol.min_level_liters IS NOT NULL
+            AND dt.current_stock_liters <= pol.min_level_liters
             ORDER BY days_until_empty ASC
         ");
 
