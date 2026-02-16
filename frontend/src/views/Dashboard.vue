@@ -31,7 +31,7 @@
       <!-- Truck Background Image - Right Side with Gradient Fade -->
       <div class="absolute inset-0 overflow-hidden pointer-events-none">
         <div class="absolute right-0 top-0 bottom-0 w-2/3" style="
-          background-image: linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 15%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0) 60%), url('/truck_header.jpg');
+          background-image: linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 15%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0) 60%), url('/rev3/frontend/dist/truck_header.jpg');
           background-size: auto 100%;
           background-position: center right;
           background-repeat: no-repeat;
