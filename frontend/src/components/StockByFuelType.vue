@@ -183,10 +183,10 @@ const loadData = async () => {
 
     if (fuelTypesRes.data.success) {
       const allFuels = fuelTypesRes.data.data || [];
-      // Filter to main fuel types
+      // Filter to main fuel types (Diesel and Petrol variants)
       fuelTypes.value = allFuels.filter(f =>
         f.name.includes('Diesel') || f.name.includes('Petrol')
-      ).slice(0, 5);
+      );
 
       if (fuelTypes.value.length > 0) {
         activeFuelId.value = fuelTypes.value[0].id;
