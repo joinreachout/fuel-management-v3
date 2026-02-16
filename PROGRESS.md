@@ -53,11 +53,36 @@
   - check-sales-params.php (data inspection)
   - check-suppliers.php (data inspection)
 
+### Server Setup & Deployment
+- [x] SSH access configured (virt105026@kittykat.tech)
+- [x] SSH key authentication working
+- [x] Server directory restructured:
+  - `/fuel/REV20/` - archived old version
+  - `/fuel/rev3/` - new version
+- [x] GitHub repository made public
+- [x] Auto-deploy workflow: git push → git pull on server
+- [x] .env file configured on production server
+
+### API Development
+- [x] StationController created with 3 endpoints
+- [x] Routing refactored to Controller pattern
+- [x] API endpoints tested and working:
+  - ✅ GET /api/stations (returns 9 stations)
+  - ✅ GET /api/stations/{id}
+  - ✅ GET /api/stations/{id}/depots
+- [x] Production URL: https://fuel.kittykat.tech/rev3/backend/public/api/stations
+
 ## 📋 Next Steps
 
-### Immediate (Next Session)
-1. [ ] Create Response helper class
-2. [ ] Create Database wrapper class
+### Immediate (Current Session)
+1. [x] Create Response helper class ✅
+2. [x] Create Database wrapper class ✅
+3. [x] Create first Model (Station) ✅
+4. [x] Create first API endpoint (GET /api/stations) ✅
+5. [x] Test endpoint ✅
+6. [ ] Create more Models (Depot, FuelType, DepotTank)
+7. [ ] Create more Controllers
+8. [ ] Add more API endpoints
 3. [ ] Create first Model (Station)
 4. [ ] Create first API endpoint (GET /stations)
 5. [ ] Test endpoint
