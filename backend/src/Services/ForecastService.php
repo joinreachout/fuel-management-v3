@@ -283,4 +283,145 @@ class ForecastService
             'should_order_now' => $totalStock <= $minLevel
         ];
     }
+
+    /**
+     * Get station-level fuel forecast for chart
+     * Generates time series data showing projected fuel levels
+     *
+     * @param string $level 'station' or 'region'
+     * @param string|null $region Region filter
+     * @param int|null $stationId Station filter
+     * @param int|null $fuelTypeId Fuel type filter
+     * @param int $days Forecast horizon (30, 60, or 90 days)
+     * @return array Time series forecast data
+     */
+    public static function getStationForecast(
+        string $level,
+        ?string $region,
+        ?int $stationId,
+        ?int $fuelTypeId,
+        int $days
+    ): array {
+        // Build SQL query based on filters
+        $sql = "
+            SELECT
+                s.id as station_id,
+                s.name as station_name,
+                s.code as station_code,
+                s.region_name,
+                dt.id as tank_id,
+                dt.fuel_type_id,
+                ft.name as fuel_type_name,
+                dt.current_stock_liters,
+                sp.liters_per_day as daily_consumption_liters
+            FROM stations s
+            LEFT JOIN depots d ON s.id = d.station_id
+            LEFT JOIN depot_tanks dt ON d.id = dt.depot_id
+            LEFT JOIN fuel_types ft ON dt.fuel_type_id = ft.id
+            LEFT JOIN sales_params sp ON dt.depot_id = sp.depot_id
+                AND dt.fuel_type_id = sp.fuel_type_id
+                AND (sp.effective_to IS NULL OR sp.effective_to >= CURDATE())
+            WHERE 1=1
+        ";
+
+        $params = [];
+
+        if ($region) {
+            $sql .= " AND s.region_name = ?";
+            $params[] = $region;
+        }
+
+        if ($stationId) {
+            $sql .= " AND s.id = ?";
+            $params[] = $stationId;
+        }
+
+        if ($fuelTypeId) {
+            $sql .= " AND dt.fuel_type_id = ?";
+            $params[] = $fuelTypeId;
+        }
+
+        $sql .= " AND sp.liters_per_day > 0 ORDER BY s.name, ft.name";
+
+        $tanks = Database::fetchAll($sql, $params);
+
+        if (empty($tanks)) {
+            return [
+                'labels' => [],
+                'datasets' => [],
+                'message' => 'No data available for selected filters'
+            ];
+        }
+
+        // Generate date labels
+        $labels = [];
+        for ($i = 0; $i <= $days; $i++) {
+            $date = date('M d', strtotime("+{$i} days"));
+            $labels[] = $date;
+        }
+
+        // Group tanks by fuel type or station
+        $groupedData = [];
+        foreach ($tanks as $tank) {
+            if ($level === 'station') {
+                $key = $tank['station_name'] . ' - ' . $tank['fuel_type_name'];
+            } else {
+                // Region level - group by fuel type
+                $key = $tank['fuel_type_name'];
+            }
+
+            if (!isset($groupedData[$key])) {
+                $groupedData[$key] = [
+                    'current_stock' => 0,
+                    'daily_consumption' => 0,
+                    'fuel_type' => $tank['fuel_type_name']
+                ];
+            }
+
+            $groupedData[$key]['current_stock'] += (float)$tank['current_stock_liters'];
+            $groupedData[$key]['daily_consumption'] += (float)$tank['daily_consumption_liters'];
+        }
+
+        // Generate datasets with forecast projection
+        $datasets = [];
+        $colors = [
+            'Diesel' => '#3b82f6',
+            'Petrol 95' => '#10b981',
+            'Petrol 98' => '#f59e0b',
+            'Petrol' => '#8b5cf6',
+            'Kerosene' => '#ec4899'
+        ];
+        $colorIndex = 0;
+        $defaultColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f43f5e'];
+
+        foreach ($groupedData as $label => $data) {
+            $stockData = [];
+            $currentStock = $data['current_stock'] / 1000; // Convert to tons
+            $dailyConsumption = $data['daily_consumption'] / 1000; // Convert to tons
+
+            // Generate forecast points
+            for ($i = 0; $i <= $days; $i++) {
+                $projectedStock = $currentStock - ($dailyConsumption * $i);
+                $stockData[] = max(0, round($projectedStock, 2));
+            }
+
+            // Get color for this fuel type
+            $color = $colors[$data['fuel_type']] ?? $defaultColors[$colorIndex % count($defaultColors)];
+            $colorIndex++;
+
+            $datasets[] = [
+                'label' => $label,
+                'data' => $stockData,
+                'borderColor' => $color,
+                'backgroundColor' => $color . '20',
+                'tension' => 0.4,
+                'fill' => true
+            ];
+        }
+
+        return [
+            'labels' => $labels,
+            'datasets' => $datasets
+        ];
+    }
 }

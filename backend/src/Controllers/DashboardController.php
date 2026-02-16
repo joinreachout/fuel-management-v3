@@ -98,4 +98,32 @@ class DashboardController
             ], 500);
         }
     }
+
+    /**
+     * GET /api/dashboard/forecast
+     * Get fuel level forecast by station/region
+     * Params: level, region, station_id, fuel_type_id, days
+     */
+    public function forecast(): void
+    {
+        try {
+            $level = $_GET['level'] ?? 'station';
+            $region = $_GET['region'] ?? null;
+            $stationId = isset($_GET['station_id']) ? (int)$_GET['station_id'] : null;
+            $fuelTypeId = isset($_GET['fuel_type_id']) ? (int)$_GET['fuel_type_id'] : null;
+            $days = isset($_GET['days']) ? (int)$_GET['days'] : 30;
+
+            $forecast = ForecastService::getStationForecast($level, $region, $stationId, $fuelTypeId, $days);
+
+            Response::json([
+                'success' => true,
+                'data' => $forecast
+            ]);
+        } catch (\Exception $e) {
+            Response::json([
+                'success' => false,
+                'error' => 'Failed to fetch forecast: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

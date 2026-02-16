@@ -173,6 +173,9 @@ try {
     } elseif ($requestMethod === 'GET' && $path === '/api/dashboard/critical-tanks') {
         $dashboardController->criticalTanks();
 
+    } elseif ($requestMethod === 'GET' && $path === '/api/dashboard/forecast') {
+        $dashboardController->forecast();
+
     // ==================== REPORTS ====================
     } elseif ($requestMethod === 'GET' && $path === '/api/reports/daily-stock') {
         $reportController->dailyStock();

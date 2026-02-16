@@ -327,7 +327,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { dashboardApi, stationsApi, fuelTypesApi } from '../services/api';
 import Chart from 'chart.js/auto';
 import StationFillLevels from '../components/StationFillLevels.vue';
@@ -432,33 +432,52 @@ const loadDashboard = async () => {
   }
 };
 
-const createForecastChart = () => {
+let forecastChartInstance = null;
+
+const loadForecastData = async () => {
+  try {
+    const params = {
+      level: chartFilters.value.level,
+      days: parseInt(chartFilters.value.days)
+    };
+
+    if (chartFilters.value.region) {
+      params.region = chartFilters.value.region;
+    }
+
+    if (chartFilters.value.station) {
+      params.station_id = chartFilters.value.station;
+    }
+
+    if (chartFilters.value.fuelType) {
+      params.fuel_type_id = chartFilters.value.fuelType;
+    }
+
+    const response = await dashboardApi.getForecast(params);
+
+    if (response.data.success && response.data.data) {
+      updateForecastChart(response.data.data);
+    }
+  } catch (err) {
+    console.error('Forecast load error:', err);
+  }
+};
+
+const updateForecastChart = (forecastData) => {
   const ctx = document.getElementById('forecastChart');
   if (!ctx) return;
 
-  new Chart(ctx, {
+  // Destroy existing chart
+  if (forecastChartInstance) {
+    forecastChartInstance.destroy();
+  }
+
+  // Create new chart with API data
+  forecastChartInstance = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'],
-      datasets: [{
-        label: 'Diesel',
-        data: [120, 115, 110, 105, 100, 95, 90],
-        borderColor: '#3b82f6',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-        tension: 0.4,
-      }, {
-        label: 'Petrol 95',
-        data: [100, 95, 90, 85, 80, 75, 70],
-        borderColor: '#10b981',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        tension: 0.4,
-      }, {
-        label: 'Petrol 98',
-        data: [80, 77, 74, 71, 68, 65, 62],
-        borderColor: '#f59e0b',
-        backgroundColor: 'rgba(245, 158, 11, 0.1)',
-        tension: 0.4,
-      }]
+      labels: forecastData.labels || [],
+      datasets: forecastData.datasets || []
     },
     options: {
       responsive: true,
@@ -482,10 +501,15 @@ const createForecastChart = () => {
   });
 };
 
+// Watch for filter changes and reload forecast
+watch(chartFilters, () => {
+  loadForecastData();
+}, { deep: true });
+
 onMounted(() => {
   loadDashboard();
   loadFilterData();
-  createForecastChart();
+  loadForecastData();
 
   // Update time every minute
   setInterval(() => {
