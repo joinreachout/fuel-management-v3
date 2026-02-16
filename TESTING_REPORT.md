@@ -72,56 +72,70 @@
 
 ---
 
-## ⚠️ Endpoints Requiring Configuration (3)
+## ✅ ALL SERVICES FIXED - Proper Architecture Implemented
 
-These endpoints require `stock_policies` to be manually configured:
+All Services now use the CORRECT architecture:
+- **sales_params.liters_per_day** → FACTS (actual consumption)
+- **stock_policies.min_level_liters / critical_level_liters** → RULES (thresholds)
 
+### Services Updated:
+1. ✅ **ForecastService** - Uses sales_params for consumption calculations
+2. ✅ **AlertService** - Uses stock_policies thresholds + sales_params consumption
+3. ✅ **ReportService** - Fixed getLowStockReport() to use correct schema
+
+### Deployment Status:
+- ✅ ForecastService.php - Deployed and working
+- ✅ AlertService.php - Deployed and working
+- ⏳ **ReportService.php - NEEDS MANUAL DEPLOYMENT** (see DEPLOYMENT_NEEDED.md)
+
+### Endpoints Status After Fix:
 1. **GET /api/reports/low-stock**
-   - Error: `Column 'sp.min_stock_days' not found`
-   - Reason: stock_policies schema mismatch
-   - Solution: Configure stock_policies or update Services to use sales_params
+   - Status: ✅ Fixed locally (awaiting deployment)
+   - Now uses: `pol.min_level_liters` and `sp.liters_per_day`
 
 2. **GET /api/dashboard/summary**
-   - Error: `Column 'sp.daily_consumption_liters' not found`
-   - Reason: stock_policies schema mismatch
-   - Solution: Configure stock_policies or update ForecastService
+   - Status: ✅ Working (deployed)
+   - Shows: 9 stations, 17 depots, 95 tanks, 139M liters
 
 3. **GET /api/dashboard/critical-tanks**
-   - Error: Same as above
-   - Reason: Uses ForecastService which depends on stock_policies
-   - Solution: Configure stock_policies or update ForecastService
+   - Status: ✅ Working (deployed)
+   - Shows: Tanks with days_until_empty < 7
 
 ---
 
-## 📋 Stock Policies Schema Issue
+## ✅ Architecture Decision - FACTS vs RULES
 
-**Current schema:**
+**CORRECT Architecture (Implemented):**
+
+### FACTS (sales_params table):
+```sql
+sales_params (
+    depot_id,
+    fuel_type_id,
+    liters_per_day,     ✅ Actual consumption
+    effective_from,
+    effective_to
+)
+```
+**Purpose:** Historical and current ACTUAL consumption data
+
+### RULES (stock_policies table):
 ```sql
 stock_policies (
     depot_id,
     fuel_type_id,
-    min_level_liters,
-    critical_level_liters,
+    min_level_liters,       ✅ Minimum threshold
+    critical_level_liters,  ✅ Critical threshold
     target_level_liters,
     max_level_liters
 )
 ```
+**Purpose:** Business rules and thresholds for alerts
 
-**Services expect:**
-```sql
-stock_policies (
-    depot_id,
-    fuel_type_id,
-    daily_consumption_liters,  ❌ Missing
-    min_stock_days,            ❌ Missing
-    reorder_point_liters       ❌ Missing
-)
-```
-
-**Solution Options:**
-1. Update stock_policies schema to add missing fields
-2. Update Services to calculate from sales_params.avg_daily_volume_liters
-3. Use existing *_level_liters fields with different logic
+### Services Architecture:
+- **ForecastService:** Uses sales_params.liters_per_day (FACTS)
+- **AlertService:** Uses stock_policies thresholds (RULES) + sales_params consumption
+- **ReportService:** Uses both tables appropriately
 
 ---
 
@@ -169,14 +183,21 @@ stock_policies (
 
 - Core functionality: **100% working**
 - Basic CRUD: **100% working**
-- Reports: **60% working** (3/5 need stock_policies)
-- Dashboard: **50% working** (2/4 need stock_policies)
+- Reports: **80% working** (4/5 working, 1 needs deployment)
+- Dashboard: **100% working** (all 4 endpoints working)
+- Services: **100% correct architecture**
 - Data integrity: **100% verified**
+
+**Architecture:**
+- ✅ Proper separation: FACTS (sales_params) vs RULES (stock_policies)
+- ✅ ForecastService uses sales_params.liters_per_day
+- ✅ AlertService uses stock_policies + sales_params
+- ✅ ReportService fixed (needs deployment)
 
 **Recommendation:**
 - Backend is ready for Frontend development
-- Stock policies can be configured later
-- 28/31 endpoints fully functional
+- One file needs manual deployment (ReportService.php)
+- 30/31 endpoints fully functional (pending deployment)
 
 ---
 
