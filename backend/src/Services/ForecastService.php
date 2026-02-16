@@ -7,7 +7,7 @@ use App\Core\Database;
 /**
  * Forecast Service
  * Calculates fuel consumption predictions and days until empty
- * Based on stock_policies and historical consumption data
+ * Uses sales_params.liters_per_day for actual consumption data
  */
 class ForecastService
 {
@@ -44,60 +44,73 @@ class ForecastService
 
         $tank = $tank[0];
 
-        // Get stock policy for this depot and fuel type
-        $policy = Database::fetchAll("
-            SELECT
-                daily_consumption_liters,
-                min_stock_days,
-                max_stock_days,
-                reorder_point_liters
-            FROM stock_policies
+        // Get consumption rate from sales_params (ACTUAL data)
+        $salesParam = Database::fetchAll("
+            SELECT liters_per_day
+            FROM sales_params
             WHERE depot_id = ? AND fuel_type_id = ?
+            AND (effective_to IS NULL OR effective_to >= CURDATE())
+            ORDER BY effective_from DESC
+            LIMIT 1
         ", [$tank['depot_id'], $tank['fuel_type_id']]);
 
-        if (empty($policy)) {
-            // No policy configured - estimate from sales_params
-            $salesParam = Database::fetchAll("
-                SELECT avg_daily_volume_liters
-                FROM sales_params
-                WHERE depot_id = ? AND fuel_type_id = ?
-            ", [$tank['depot_id'], $tank['fuel_type_id']]);
-
-            $dailyConsumption = !empty($salesParam) ? (float)$salesParam[0]['avg_daily_volume_liters'] : 1000.0;
-
+        if (empty($salesParam)) {
             return [
                 'tank_id' => $tankId,
                 'depot_name' => $tank['depot_name'],
                 'fuel_type_name' => $tank['fuel_type_name'],
                 'current_stock_liters' => (float)$tank['current_stock_liters'],
                 'capacity_liters' => (float)$tank['capacity_liters'],
-                'daily_consumption_liters' => $dailyConsumption,
-                'days_until_empty' => $dailyConsumption > 0 ? round((float)$tank['current_stock_liters'] / $dailyConsumption, 1) : null,
-                'estimated' => true,
-                'warning' => 'No stock policy configured - using sales_params estimate'
+                'daily_consumption_liters' => null,
+                'days_until_empty' => null,
+                'warning' => 'No sales_params configured for this depot/fuel type'
             ];
         }
 
-        $policy = $policy[0];
-        $dailyConsumption = (float)$policy['daily_consumption_liters'];
+        $dailyConsumption = (float)$salesParam[0]['liters_per_day'];
         $currentStock = (float)$tank['current_stock_liters'];
 
         $daysUntilEmpty = $dailyConsumption > 0 ? $currentStock / $dailyConsumption : null;
 
-        return [
+        // Get stock policy thresholds (if configured)
+        $policy = Database::fetchAll("
+            SELECT
+                min_level_liters,
+                critical_level_liters,
+                target_level_liters
+            FROM stock_policies
+            WHERE depot_id = ? AND fuel_type_id = ?
+        ", [$tank['depot_id'], $tank['fuel_type_id']]);
+
+        $result = [
             'tank_id' => $tankId,
             'depot_name' => $tank['depot_name'],
             'fuel_type_name' => $tank['fuel_type_name'],
             'current_stock_liters' => $currentStock,
             'capacity_liters' => (float)$tank['capacity_liters'],
             'daily_consumption_liters' => $dailyConsumption,
-            'days_until_empty' => $daysUntilEmpty ? round($daysUntilEmpty, 1) : null,
-            'min_stock_days' => (int)$policy['min_stock_days'],
-            'max_stock_days' => (int)$policy['max_stock_days'],
-            'reorder_point_liters' => (float)$policy['reorder_point_liters'],
-            'below_reorder_point' => $currentStock < (float)$policy['reorder_point_liters'],
-            'estimated' => false
+            'days_until_empty' => $daysUntilEmpty ? round($daysUntilEmpty, 1) : null
         ];
+
+        // Add policy thresholds if available
+        if (!empty($policy)) {
+            $policy = $policy[0];
+            $result['min_level_liters'] = (float)$policy['min_level_liters'];
+            $result['critical_level_liters'] = (float)$policy['critical_level_liters'];
+            $result['below_minimum'] = $currentStock < (float)$policy['min_level_liters'];
+            $result['below_critical'] = $currentStock < (float)$policy['critical_level_liters'];
+
+            // Calculate days until minimum/critical
+            if ($dailyConsumption > 0) {
+                $daysUntilMin = ($currentStock - (float)$policy['min_level_liters']) / $dailyConsumption;
+                $daysUntilCritical = ($currentStock - (float)$policy['critical_level_liters']) / $dailyConsumption;
+
+                $result['days_until_minimum'] = $daysUntilMin > 0 ? round($daysUntilMin, 1) : 0;
+                $result['days_until_critical'] = $daysUntilCritical > 0 ? round($daysUntilCritical, 1) : 0;
+            }
+        }
+
+        return $result;
     }
 
     /**
@@ -117,7 +130,10 @@ class ForecastService
 
         $forecasts = [];
         foreach ($tanks as $tank) {
-            $forecasts[] = self::getDaysUntilEmpty($tank['id']);
+            $forecast = self::getDaysUntilEmpty($tank['id']);
+            if (!isset($forecast['error'])) {
+                $forecasts[] = $forecast;
+            }
         }
 
         return [
@@ -128,7 +144,7 @@ class ForecastService
     }
 
     /**
-     * Get critical tanks (below minimum stock days)
+     * Get critical tanks (below critical level or running out soon)
      *
      * @param int|null $depotId Optional depot ID filter
      * @return array List of tanks requiring urgent attention
@@ -143,15 +159,23 @@ class ForecastService
                 dt.fuel_type_id,
                 ft.name as fuel_type_name,
                 dt.current_stock_liters,
-                sp.daily_consumption_liters,
-                sp.min_stock_days,
-                ROUND(dt.current_stock_liters / sp.daily_consumption_liters, 1) as days_until_empty
+                sp.liters_per_day as daily_consumption_liters,
+                pol.critical_level_liters,
+                pol.min_level_liters,
+                ROUND(dt.current_stock_liters / sp.liters_per_day, 1) as days_until_empty
             FROM depot_tanks dt
             LEFT JOIN depots d ON dt.depot_id = d.id
             LEFT JOIN fuel_types ft ON dt.fuel_type_id = ft.id
-            LEFT JOIN stock_policies sp ON dt.depot_id = sp.depot_id AND dt.fuel_type_id = sp.fuel_type_id
-            WHERE sp.daily_consumption_liters > 0
-            AND (dt.current_stock_liters / sp.daily_consumption_liters) < sp.min_stock_days
+            LEFT JOIN sales_params sp ON dt.depot_id = sp.depot_id
+                AND dt.fuel_type_id = sp.fuel_type_id
+                AND (sp.effective_to IS NULL OR sp.effective_to >= CURDATE())
+            LEFT JOIN stock_policies pol ON dt.depot_id = pol.depot_id
+                AND dt.fuel_type_id = pol.fuel_type_id
+            WHERE sp.liters_per_day > 0
+            AND (
+                dt.current_stock_liters < pol.critical_level_liters
+                OR (dt.current_stock_liters / sp.liters_per_day) < 7
+            )
         ";
 
         $params = [];
@@ -166,7 +190,7 @@ class ForecastService
     }
 
     /**
-     * Predict when depot needs reorder
+     * Predict when depot needs reorder for specific fuel type
      *
      * @param int $depotId Depot ID
      * @param int $fuelTypeId Fuel type ID
@@ -184,35 +208,64 @@ class ForecastService
 
         $totalStock = !empty($stock) ? (float)$stock[0]['total_stock_liters'] : 0;
 
-        // Get stock policy
-        $policy = Database::fetchAll("
-            SELECT
-                daily_consumption_liters,
-                min_stock_days,
-                reorder_point_liters
-            FROM stock_policies
+        // Get consumption rate from sales_params
+        $salesParam = Database::fetchAll("
+            SELECT liters_per_day
+            FROM sales_params
             WHERE depot_id = ? AND fuel_type_id = ?
+            AND (effective_to IS NULL OR effective_to >= CURDATE())
+            ORDER BY effective_from DESC
+            LIMIT 1
         ", [$depotId, $fuelTypeId]);
 
-        if (empty($policy)) {
+        if (empty($salesParam)) {
             return [
-                'error' => 'No stock policy configured',
+                'error' => 'No sales_params configured',
                 'depot_id' => $depotId,
                 'fuel_type_id' => $fuelTypeId
             ];
         }
 
+        $dailyConsumption = (float)$salesParam[0]['liters_per_day'];
+
+        // Get stock policy thresholds
+        $policy = Database::fetchAll("
+            SELECT
+                min_level_liters,
+                critical_level_liters
+            FROM stock_policies
+            WHERE depot_id = ? AND fuel_type_id = ?
+        ", [$depotId, $fuelTypeId]);
+
+        if (empty($policy)) {
+            // No policy - use simple calculation (7 days as reorder point)
+            $daysUntilEmpty = $dailyConsumption > 0 ? $totalStock / $dailyConsumption : null;
+
+            return [
+                'depot_id' => $depotId,
+                'fuel_type_id' => $fuelTypeId,
+                'total_stock_liters' => $totalStock,
+                'daily_consumption_liters' => $dailyConsumption,
+                'days_until_empty' => $daysUntilEmpty ? round($daysUntilEmpty, 1) : null,
+                'urgency' => $daysUntilEmpty && $daysUntilEmpty < 7 ? 'MUST_ORDER' : 'NORMAL',
+                'warning' => 'No stock_policies configured - using 7 days threshold'
+            ];
+        }
+
         $policy = $policy[0];
-        $dailyConsumption = (float)$policy['daily_consumption_liters'];
-        $reorderPoint = (float)$policy['reorder_point_liters'];
-        $minStockDays = (int)$policy['min_stock_days'];
+        $minLevel = (float)$policy['min_level_liters'];
+        $criticalLevel = (float)$policy['critical_level_liters'];
 
-        $daysUntilReorder = $dailyConsumption > 0 ? ($totalStock - $reorderPoint) / $dailyConsumption : null;
+        $daysUntilMin = $dailyConsumption > 0 ? ($totalStock - $minLevel) / $dailyConsumption : null;
+        $daysUntilCritical = $dailyConsumption > 0 ? ($totalStock - $criticalLevel) / $dailyConsumption : null;
 
+        // Determine urgency
         $urgency = 'NORMAL';
-        if ($totalStock <= $reorderPoint) {
+        if ($totalStock <= $criticalLevel) {
+            $urgency = 'CATASTROPHE';
+        } elseif ($totalStock <= $minLevel) {
             $urgency = 'CRITICAL';
-        } elseif ($daysUntilReorder && $daysUntilReorder <= $minStockDays) {
+        } elseif ($daysUntilMin && $daysUntilMin <= 3) {
             $urgency = 'MUST_ORDER';
         }
 
@@ -221,11 +274,13 @@ class ForecastService
             'fuel_type_id' => $fuelTypeId,
             'total_stock_liters' => $totalStock,
             'daily_consumption_liters' => $dailyConsumption,
-            'reorder_point_liters' => $reorderPoint,
-            'days_until_reorder' => $daysUntilReorder ? round($daysUntilReorder, 1) : null,
-            'reorder_date' => $daysUntilReorder ? date('Y-m-d', strtotime("+{$daysUntilReorder} days")) : null,
+            'min_level_liters' => $minLevel,
+            'critical_level_liters' => $criticalLevel,
+            'days_until_minimum' => $daysUntilMin ? round($daysUntilMin, 1) : null,
+            'days_until_critical' => $daysUntilCritical ? round($daysUntilCritical, 1) : null,
+            'reorder_date' => $daysUntilMin ? date('Y-m-d', strtotime("+{$daysUntilMin} days")) : null,
             'urgency' => $urgency,
-            'should_order_now' => $totalStock <= $reorderPoint
+            'should_order_now' => $totalStock <= $minLevel
         ];
     }
 }

@@ -7,6 +7,7 @@ use App\Core\Database;
 /**
  * Alert Service
  * Generates alerts for low stock, critical situations, and anomalies
+ * Uses stock_policies for thresholds and sales_params for consumption
  */
 class AlertService
 {
@@ -19,53 +20,37 @@ class AlertService
     {
         $alerts = [];
 
-        // 1. Critical stock levels (below minimum days)
-        $criticalTanks = ForecastService::getCriticalTanks();
-        foreach ($criticalTanks as $tank) {
-            $daysLeft = (float)$tank['days_until_empty'];
-            $severity = $daysLeft <= 1 ? 'CATASTROPHE' :
-                       ($daysLeft <= 3 ? 'CRITICAL' :
-                       ($daysLeft <= 7 ? 'WARNING' : 'INFO'));
+        // 1. Critical stock levels (below critical_level_liters)
+        $criticalAlerts = self::getCriticalStockAlerts();
+        $alerts = array_merge($alerts, $criticalAlerts);
 
-            $alerts[] = [
-                'type' => 'LOW_STOCK',
-                'severity' => $severity,
-                'depot_id' => $tank['depot_id'],
-                'depot_name' => $tank['depot_name'],
-                'fuel_type_name' => $tank['fuel_type_name'],
-                'message' => "Low stock alert: {$tank['depot_name']} - {$tank['fuel_type_name']}",
-                'details' => [
-                    'current_stock_liters' => (float)$tank['current_stock_liters'],
-                    'days_until_empty' => $daysLeft,
-                    'daily_consumption' => (float)$tank['daily_consumption_liters']
-                ],
-                'created_at' => date('Y-m-d H:i:s')
-            ];
-        }
+        // 2. Low stock levels (below min_level_liters)
+        $lowStockAlerts = self::getLowStockAlerts();
+        $alerts = array_merge($alerts, $lowStockAlerts);
 
-        // 2. Tanks at or below reorder point
-        $reorderAlerts = self::getReorderAlerts();
-        $alerts = array_merge($alerts, $reorderAlerts);
+        // 3. Running out soon (< 7 days based on consumption)
+        $runningOutAlerts = self::getRunningOutSoonAlerts();
+        $alerts = array_merge($alerts, $runningOutAlerts);
 
-        // 3. Overfilled tanks (>95% capacity)
+        // 4. Overfilled tanks (>95% capacity)
         $overfillAlerts = self::getOverfillAlerts();
         $alerts = array_merge($alerts, $overfillAlerts);
 
         // Sort by severity
         usort($alerts, function($a, $b) {
-            $severityOrder = ['CATASTROPHE' => 1, 'CRITICAL' => 2, 'WARNING' => 3, 'INFO' => 4];
-            return $severityOrder[$a['severity']] <=> $severityOrder[$b['severity']];
+            $severityOrder = ['CATASTROPHE' => 1, 'CRITICAL' => 2, 'MUST_ORDER' => 3, 'WARNING' => 4, 'INFO' => 5];
+            return ($severityOrder[$a['severity']] ?? 99) <=> ($severityOrder[$b['severity']] ?? 99);
         });
 
         return $alerts;
     }
 
     /**
-     * Get reorder alerts (stock at or below reorder point)
+     * Get critical stock alerts (below critical_level_liters)
      *
-     * @return array Reorder alerts
+     * @return array Critical alerts
      */
-    public static function getReorderAlerts(): array
+    public static function getCriticalStockAlerts(): array
     {
         $results = Database::fetchAll("
             SELECT
@@ -74,30 +59,127 @@ class AlertService
                 dt.fuel_type_id,
                 ft.name as fuel_type_name,
                 SUM(dt.current_stock_liters) as total_stock_liters,
-                sp.reorder_point_liters,
-                sp.daily_consumption_liters
+                pol.critical_level_liters
             FROM depot_tanks dt
             LEFT JOIN depots d ON dt.depot_id = d.id
             LEFT JOIN fuel_types ft ON dt.fuel_type_id = ft.id
-            LEFT JOIN stock_policies sp ON dt.depot_id = sp.depot_id AND dt.fuel_type_id = sp.fuel_type_id
-            WHERE sp.reorder_point_liters IS NOT NULL
-            GROUP BY dt.depot_id, dt.fuel_type_id, d.name, ft.name, sp.reorder_point_liters, sp.daily_consumption_liters
-            HAVING total_stock_liters <= sp.reorder_point_liters
+            LEFT JOIN stock_policies pol ON dt.depot_id = pol.depot_id AND dt.fuel_type_id = pol.fuel_type_id
+            WHERE pol.critical_level_liters IS NOT NULL
+            GROUP BY dt.depot_id, dt.fuel_type_id, d.name, ft.name, pol.critical_level_liters
+            HAVING total_stock_liters <= pol.critical_level_liters
         ");
 
         $alerts = [];
         foreach ($results as $row) {
             $alerts[] = [
-                'type' => 'REORDER_NEEDED',
-                'severity' => 'MUST_ORDER',
+                'type' => 'CRITICAL_STOCK',
+                'severity' => 'CATASTROPHE',
                 'depot_id' => $row['depot_id'],
                 'depot_name' => $row['depot_name'],
                 'fuel_type_name' => $row['fuel_type_name'],
-                'message' => "Reorder required: {$row['depot_name']} - {$row['fuel_type_name']}",
+                'message' => "КРИТИЧЕСКИЙ уровень: {$row['depot_name']} - {$row['fuel_type_name']}",
                 'details' => [
                     'total_stock_liters' => (float)$row['total_stock_liters'],
-                    'reorder_point_liters' => (float)$row['reorder_point_liters'],
-                    'daily_consumption' => (float)$row['daily_consumption_liters']
+                    'critical_level_liters' => (float)$row['critical_level_liters']
+                ],
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+        }
+
+        return $alerts;
+    }
+
+    /**
+     * Get low stock alerts (below min_level_liters but above critical)
+     *
+     * @return array Low stock alerts
+     */
+    public static function getLowStockAlerts(): array
+    {
+        $results = Database::fetchAll("
+            SELECT
+                dt.depot_id,
+                d.name as depot_name,
+                dt.fuel_type_id,
+                ft.name as fuel_type_name,
+                SUM(dt.current_stock_liters) as total_stock_liters,
+                pol.min_level_liters,
+                pol.critical_level_liters
+            FROM depot_tanks dt
+            LEFT JOIN depots d ON dt.depot_id = d.id
+            LEFT JOIN fuel_types ft ON dt.fuel_type_id = ft.id
+            LEFT JOIN stock_policies pol ON dt.depot_id = pol.depot_id AND dt.fuel_type_id = pol.fuel_type_id
+            WHERE pol.min_level_liters IS NOT NULL
+            GROUP BY dt.depot_id, dt.fuel_type_id, d.name, ft.name, pol.min_level_liters, pol.critical_level_liters
+            HAVING total_stock_liters <= pol.min_level_liters
+            AND total_stock_liters > IFNULL(pol.critical_level_liters, 0)
+        ");
+
+        $alerts = [];
+        foreach ($results as $row) {
+            $alerts[] = [
+                'type' => 'LOW_STOCK',
+                'severity' => 'CRITICAL',
+                'depot_id' => $row['depot_id'],
+                'depot_name' => $row['depot_name'],
+                'fuel_type_name' => $row['fuel_type_name'],
+                'message' => "Низкий уровень запасов: {$row['depot_name']} - {$row['fuel_type_name']}",
+                'details' => [
+                    'total_stock_liters' => (float)$row['total_stock_liters'],
+                    'min_level_liters' => (float)$row['min_level_liters']
+                ],
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+        }
+
+        return $alerts;
+    }
+
+    /**
+     * Get alerts for tanks running out soon (< 7 days)
+     *
+     * @return array Running out soon alerts
+     */
+    public static function getRunningOutSoonAlerts(): array
+    {
+        $results = Database::fetchAll("
+            SELECT
+                dt.depot_id,
+                d.name as depot_name,
+                dt.fuel_type_id,
+                ft.name as fuel_type_name,
+                SUM(dt.current_stock_liters) as total_stock_liters,
+                sp.liters_per_day as daily_consumption,
+                ROUND(SUM(dt.current_stock_liters) / sp.liters_per_day, 1) as days_until_empty
+            FROM depot_tanks dt
+            LEFT JOIN depots d ON dt.depot_id = d.id
+            LEFT JOIN fuel_types ft ON dt.fuel_type_id = ft.id
+            LEFT JOIN sales_params sp ON dt.depot_id = sp.depot_id
+                AND dt.fuel_type_id = sp.fuel_type_id
+                AND (sp.effective_to IS NULL OR sp.effective_to >= CURDATE())
+            WHERE sp.liters_per_day > 0
+            GROUP BY dt.depot_id, dt.fuel_type_id, d.name, ft.name, sp.liters_per_day
+            HAVING days_until_empty < 7
+            AND days_until_empty > 0
+        ");
+
+        $alerts = [];
+        foreach ($results as $row) {
+            $daysLeft = (float)$row['days_until_empty'];
+            $severity = $daysLeft <= 2 ? 'CRITICAL' :
+                       ($daysLeft <= 5 ? 'MUST_ORDER' : 'WARNING');
+
+            $alerts[] = [
+                'type' => 'RUNNING_OUT_SOON',
+                'severity' => $severity,
+                'depot_id' => $row['depot_id'],
+                'depot_name' => $row['depot_name'],
+                'fuel_type_name' => $row['fuel_type_name'],
+                'message' => "Заканчивается через {$daysLeft} дней: {$row['depot_name']} - {$row['fuel_type_name']}",
+                'details' => [
+                    'total_stock_liters' => (float)$row['total_stock_liters'],
+                    'daily_consumption' => (float)$row['daily_consumption'],
+                    'days_until_empty' => $daysLeft
                 ],
                 'created_at' => date('Y-m-d H:i:s')
             ];
@@ -140,7 +222,7 @@ class AlertService
                 'depot_id' => $row['depot_id'],
                 'depot_name' => $row['depot_name'],
                 'fuel_type_name' => $row['fuel_type_name'],
-                'message' => "Tank near capacity: {$row['depot_name']} - {$row['tank_number']}",
+                'message' => "Резервуар почти полон ({$fillPercent}%): {$row['depot_name']} - {$row['tank_number']}",
                 'details' => [
                     'tank_id' => $row['tank_id'],
                     'tank_number' => $row['tank_number'],
@@ -174,7 +256,9 @@ class AlertService
         ];
 
         foreach ($alerts as $alert) {
-            $summary[$alert['severity']]++;
+            if (isset($summary[$alert['severity']])) {
+                $summary[$alert['severity']]++;
+            }
         }
 
         return $summary;
