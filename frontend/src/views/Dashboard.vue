@@ -393,6 +393,7 @@ const loadFilterData = async () => {
 
     if (fuelTypesRes.data.success) {
       fuelTypes.value = fuelTypesRes.data.data || [];
+      console.log('Loaded fuel types:', fuelTypes.value); // Debug
     }
   } catch (err) {
     console.error('Filter data load error:', err);
@@ -441,17 +442,19 @@ const loadForecastData = async () => {
       days: parseInt(chartFilters.value.days)
     };
 
-    if (chartFilters.value.region) {
+    if (chartFilters.value.region && chartFilters.value.region !== '') {
       params.region = chartFilters.value.region;
     }
 
-    if (chartFilters.value.station) {
-      params.station_id = chartFilters.value.station;
+    if (chartFilters.value.station && chartFilters.value.station !== '') {
+      params.station_id = parseInt(chartFilters.value.station);
     }
 
-    if (chartFilters.value.fuelType) {
-      params.fuel_type_id = chartFilters.value.fuelType;
+    if (chartFilters.value.fuelType && chartFilters.value.fuelType !== '') {
+      params.fuel_type_id = parseInt(chartFilters.value.fuelType);
     }
+
+    console.log('Forecast params:', params); // Debug log
 
     const response = await dashboardApi.getForecast(params);
 
