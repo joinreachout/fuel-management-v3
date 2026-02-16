@@ -215,6 +215,9 @@
                   v-model="chartFilters.region"
                   class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                   <option value="">All Regions</option>
+                  <option v-for="region in regions" :key="region.name" :value="region.name">
+                    {{ region.name }}
+                  </option>
                 </select>
               </div>
 
@@ -228,6 +231,9 @@
                   v-model="chartFilters.station"
                   class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                   <option value="">All Stations</option>
+                  <option v-for="station in stations" :key="station.id" :value="station.id">
+                    {{ station.name || station.code }}
+                  </option>
                 </select>
               </div>
 
@@ -241,6 +247,9 @@
                   v-model="chartFilters.fuelType"
                   class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                   <option value="">All Fuel Types</option>
+                  <option v-for="fuel in fuelTypes" :key="fuel.id" :value="fuel.id">
+                    {{ fuel.name }}
+                  </option>
                 </select>
               </div>
 
@@ -294,6 +303,20 @@
           <WorkingCapital />
         </div>
 
+        <!-- Risk Exposure + Inventory Turnover Grid -->
+        <div class="mt-6 grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <!-- WIDGET 5: Risk Exposure Overview -->
+          <RiskExposure />
+
+          <!-- WIDGET 6: Inventory Turnover Rate -->
+          <InventoryTurnover />
+        </div>
+
+        <!-- Top 3 Suppliers -->
+        <div class="mt-6">
+          <TopSuppliers />
+        </div>
+
       </div>
     </div>
 
@@ -305,12 +328,15 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { dashboardApi } from '../services/api';
+import { dashboardApi, stationsApi, fuelTypesApi } from '../services/api';
 import Chart from 'chart.js/auto';
 import StationFillLevels from '../components/StationFillLevels.vue';
 import StockByFuelType from '../components/StockByFuelType.vue';
 import ProcurementAdvisor from '../components/ProcurementAdvisor.vue';
 import WorkingCapital from '../components/WorkingCapital.vue';
+import RiskExposure from '../components/RiskExposure.vue';
+import InventoryTurnover from '../components/InventoryTurnover.vue';
+import TopSuppliers from '../components/TopSuppliers.vue';
 import OptimusAI from '../components/OptimusAI.vue';
 
 const loading = ref(true);
@@ -320,6 +346,11 @@ const alerts = ref([]);
 const criticalTanks = ref([]);
 const lastUpdated = ref('');
 const currentDateTime = ref('');
+
+// Filter data
+const regions = ref([]);
+const stations = ref([]);
+const fuelTypes = ref([]);
 
 const chartFilters = ref({
   level: 'station',
@@ -343,6 +374,29 @@ const formatDateTime = () => {
   const minutes = String(now.getMinutes()).padStart(2, '0');
 
   return `${day} ${month} ${year}, ${hours}:${minutes}`;
+};
+
+const loadFilterData = async () => {
+  try {
+    const [stationsRes, fuelTypesRes] = await Promise.all([
+      stationsApi.getAll(),
+      fuelTypesApi.getAll(),
+    ]);
+
+    if (stationsRes.data.success) {
+      stations.value = stationsRes.data.data || [];
+
+      // Extract unique regions from stations
+      const uniqueRegions = [...new Set(stations.value.map(s => s.region_name).filter(Boolean))];
+      regions.value = uniqueRegions.map(name => ({ name }));
+    }
+
+    if (fuelTypesRes.data.success) {
+      fuelTypes.value = fuelTypesRes.data.data || [];
+    }
+  } catch (err) {
+    console.error('Filter data load error:', err);
+  }
 };
 
 const loadDashboard = async () => {
@@ -430,6 +484,7 @@ const createForecastChart = () => {
 
 onMounted(() => {
   loadDashboard();
+  loadFilterData();
   createForecastChart();
 
   // Update time every minute
