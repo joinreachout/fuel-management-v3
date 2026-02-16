@@ -19,11 +19,10 @@ class Supplier
             SELECT
                 id,
                 name,
-                code,
-                contact_person,
-                phone,
-                email,
-                address,
+                departure_station,
+                priority,
+                auto_score,
+                avg_delivery_days,
                 is_active,
                 created_at
             FROM suppliers
@@ -40,11 +39,10 @@ class Supplier
             SELECT
                 id,
                 name,
-                code,
-                contact_person,
-                phone,
-                email,
-                address,
+                departure_station,
+                priority,
+                auto_score,
+                avg_delivery_days,
                 is_active,
                 created_at
             FROM suppliers
@@ -63,11 +61,10 @@ class Supplier
             SELECT
                 id,
                 name,
-                code,
-                contact_person,
-                phone,
-                email,
-                address,
+                departure_station,
+                priority,
+                auto_score,
+                avg_delivery_days,
                 created_at
             FROM suppliers
             WHERE is_active = 1
