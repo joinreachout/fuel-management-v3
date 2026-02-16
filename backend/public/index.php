@@ -21,16 +21,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../src/Core/Response.php';
 require_once __DIR__ . '/../src/Core/Database.php';
+
+// Load Models
 require_once __DIR__ . '/../src/Models/Station.php';
 require_once __DIR__ . '/../src/Models/Depot.php';
 require_once __DIR__ . '/../src/Models/FuelType.php';
 require_once __DIR__ . '/../src/Models/DepotTank.php';
+require_once __DIR__ . '/../src/Models/Supplier.php';
+require_once __DIR__ . '/../src/Models/Order.php';
+require_once __DIR__ . '/../src/Models/Transfer.php';
+require_once __DIR__ . '/../src/Models/Sale.php';
+require_once __DIR__ . '/../src/Models/User.php';
+
+// Load Controllers
 require_once __DIR__ . '/../src/Controllers/StationController.php';
 require_once __DIR__ . '/../src/Controllers/DepotController.php';
+require_once __DIR__ . '/../src/Controllers/FuelTypeController.php';
+require_once __DIR__ . '/../src/Controllers/SupplierController.php';
+require_once __DIR__ . '/../src/Controllers/OrderController.php';
+require_once __DIR__ . '/../src/Controllers/TransferController.php';
+require_once __DIR__ . '/../src/Controllers/SaleController.php';
+require_once __DIR__ . '/../src/Controllers/UserController.php';
 
 use App\Core\Response;
 use App\Controllers\StationController;
 use App\Controllers\DepotController;
+use App\Controllers\FuelTypeController;
+use App\Controllers\SupplierController;
+use App\Controllers\OrderController;
+use App\Controllers\TransferController;
+use App\Controllers\SaleController;
+use App\Controllers\UserController;
 
 // Simple router
 try {
@@ -48,51 +69,137 @@ try {
     // Initialize controllers
     $stationController = new StationController();
     $depotController = new DepotController();
+    $fuelTypeController = new FuelTypeController();
+    $supplierController = new SupplierController();
+    $orderController = new OrderController();
+    $transferController = new TransferController();
+    $saleController = new SaleController();
+    $userController = new UserController();
 
-    // Route matching
+    // ==================== STATIONS ====================
     if ($requestMethod === 'GET' && $path === '/api/stations') {
-        // GET /api/stations - Get all stations
         $stationController->index();
 
     } elseif ($requestMethod === 'GET' && preg_match('#^/api/stations/(\d+)$#', $path, $matches)) {
-        // GET /api/stations/{id} - Get single station
-        $stationId = (int) $matches[1];
-        $stationController->show($stationId);
+        $stationController->show((int) $matches[1]);
 
     } elseif ($requestMethod === 'GET' && preg_match('#^/api/stations/(\d+)/depots$#', $path, $matches)) {
-        // GET /api/stations/{id}/depots - Get depots for station
-        $stationId = (int) $matches[1];
-        $stationController->depots($stationId);
+        $stationController->depots((int) $matches[1]);
 
+    // ==================== DEPOTS ====================
     } elseif ($requestMethod === 'GET' && $path === '/api/depots') {
-        // GET /api/depots - Get all depots
         $depotController->index();
 
     } elseif ($requestMethod === 'GET' && preg_match('#^/api/depots/(\d+)$#', $path, $matches)) {
-        // GET /api/depots/{id} - Get single depot
-        $depotId = (int) $matches[1];
-        $depotController->show($depotId);
+        $depotController->show((int) $matches[1]);
 
     } elseif ($requestMethod === 'GET' && preg_match('#^/api/depots/(\d+)/tanks$#', $path, $matches)) {
-        // GET /api/depots/{id}/tanks - Get tanks for depot
-        $depotId = (int) $matches[1];
-        $depotController->tanks($depotId);
+        $depotController->tanks((int) $matches[1]);
 
     } elseif ($requestMethod === 'GET' && preg_match('#^/api/depots/(\d+)/stock$#', $path, $matches)) {
-        // GET /api/depots/{id}/stock - Get stock for depot
-        $depotId = (int) $matches[1];
-        $depotController->stock($depotId);
+        $depotController->stock((int) $matches[1]);
 
     } elseif ($requestMethod === 'GET' && preg_match('#^/api/depots/(\d+)/forecast$#', $path, $matches)) {
-        // GET /api/depots/{id}/forecast - Get forecast for depot
-        $depotId = (int) $matches[1];
-        $depotController->forecast($depotId);
+        $depotController->forecast((int) $matches[1]);
+
+    // ==================== FUEL TYPES ====================
+    } elseif ($requestMethod === 'GET' && $path === '/api/fuel-types') {
+        $fuelTypeController->index();
+
+    } elseif ($requestMethod === 'GET' && preg_match('#^/api/fuel-types/(\d+)$#', $path, $matches)) {
+        $fuelTypeController->show((int) $matches[1]);
+
+    } elseif ($requestMethod === 'GET' && preg_match('#^/api/fuel-types/(\d+)/stock$#', $path, $matches)) {
+        $fuelTypeController->stock((int) $matches[1]);
+
+    // ==================== SUPPLIERS ====================
+    } elseif ($requestMethod === 'GET' && $path === '/api/suppliers') {
+        $supplierController->index();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/suppliers/active') {
+        $supplierController->active();
+
+    } elseif ($requestMethod === 'GET' && preg_match('#^/api/suppliers/(\d+)$#', $path, $matches)) {
+        $supplierController->show((int) $matches[1]);
+
+    } elseif ($requestMethod === 'GET' && preg_match('#^/api/suppliers/(\d+)/orders$#', $path, $matches)) {
+        $supplierController->orders((int) $matches[1]);
+
+    } elseif ($requestMethod === 'GET' && preg_match('#^/api/suppliers/(\d+)/stats$#', $path, $matches)) {
+        $supplierController->stats((int) $matches[1]);
+
+    // ==================== ORDERS ====================
+    } elseif ($requestMethod === 'GET' && $path === '/api/orders') {
+        $orderController->index();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/orders/pending') {
+        $orderController->pending();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/orders/summary') {
+        $orderController->summary();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/orders/recent') {
+        $orderController->recent();
+
+    } elseif ($requestMethod === 'GET' && preg_match('#^/api/orders/(\d+)$#', $path, $matches)) {
+        $orderController->show((int) $matches[1]);
+
+    // ==================== TRANSFERS ====================
+    } elseif ($requestMethod === 'GET' && $path === '/api/transfers') {
+        $transferController->index();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/transfers/pending') {
+        $transferController->pending();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/transfers/recent') {
+        $transferController->recent();
+
+    } elseif ($requestMethod === 'GET' && preg_match('#^/api/transfers/(\d+)$#', $path, $matches)) {
+        $transferController->show((int) $matches[1]);
+
+    // ==================== SALES ====================
+    } elseif ($requestMethod === 'GET' && $path === '/api/sales') {
+        $saleController->index();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/sales/unpaid') {
+        $saleController->unpaid();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/sales/summary/fuel-type') {
+        $saleController->summaryByFuelType();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/sales/summary/depot') {
+        $saleController->summaryByDepot();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/sales/recent') {
+        $saleController->recent();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/sales/daily-report') {
+        $saleController->dailyReport();
+
+    } elseif ($requestMethod === 'GET' && preg_match('#^/api/sales/(\d+)$#', $path, $matches)) {
+        $saleController->show((int) $matches[1]);
+
+    // ==================== USERS ====================
+    } elseif ($requestMethod === 'GET' && $path === '/api/users') {
+        $userController->index();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/users/active') {
+        $userController->active();
+
+    } elseif ($requestMethod === 'GET' && preg_match('#^/api/users/(\d+)$#', $path, $matches)) {
+        $userController->show((int) $matches[1]);
+
+    // ==================== AUTH ====================
+    } elseif ($requestMethod === 'POST' && $path === '/api/auth/login') {
+        $userController->login();
 
     } else {
         // 404 Not Found
         Response::json([
             'success' => false,
-            'error' => 'Endpoint not found'
+            'error' => 'Endpoint not found',
+            'path' => $path,
+            'method' => $requestMethod
         ], 404);
     }
 
