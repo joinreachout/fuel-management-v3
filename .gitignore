@@ -23,3 +23,8 @@ backend/public/build/
 # Cache
 .cache/
 composer.lock
+
+# Migration and testing scripts (temporary)
+run-migration.php
+check-*.php
+test-*.php
