@@ -191,26 +191,27 @@
           </div>
         </div>
 
-        <!-- Grid: Station Fill Levels + Other Widgets -->
+        <!-- Grid: Station Fill Levels + Stock by Fuel Type -->
         <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
-          <!-- WIDGET 2: Station Fill Levels with TABS + VERTICAL BARS -->
+          <!-- WIDGET 2: Station Fill Levels -->
           <div class="lg:col-span-2">
             <StationFillLevels />
           </div>
 
-          <!-- WIDGET 3: Procurement Advisor (placeholder for now) -->
-          <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
-            <div class="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200 px-6 py-4">
-              <h3 class="text-lg font-bold text-gray-800">
-                <i class="fas fa-lightbulb text-blue-500 mr-2"></i>
-                Procurement Advisor
-              </h3>
-              <p class="text-xs text-gray-500 mt-1">AI-powered ordering recommendations</p>
-            </div>
-            <div class="p-6">
-              <p class="text-gray-500 text-center py-8">Coming soon...</p>
-            </div>
+          <!-- WIDGET 3: Stock by Fuel Type -->
+          <div class="lg:col-span-2">
+            <StockByFuelType />
           </div>
+
+          <!-- WIDGET 4: Procurement Advisor -->
+          <div class="xl:col-span-3 lg:col-span-2">
+            <ProcurementAdvisor />
+          </div>
+        </div>
+
+        <!-- Working Capital Optimization (Full Width) -->
+        <div class="mt-6">
+          <WorkingCapital />
         </div>
 
       </div>
@@ -227,6 +228,9 @@ import { ref, onMounted, computed } from 'vue';
 import { dashboardApi } from '../services/api';
 import Chart from 'chart.js/auto';
 import StationFillLevels from '../components/StationFillLevels.vue';
+import StockByFuelType from '../components/StockByFuelType.vue';
+import ProcurementAdvisor from '../components/ProcurementAdvisor.vue';
+import WorkingCapital from '../components/WorkingCapital.vue';
 import OptimusAI from '../components/OptimusAI.vue';
 
 const loading = ref(true);
