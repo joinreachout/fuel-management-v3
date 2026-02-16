@@ -12,14 +12,6 @@ use App\Models\Station;
  */
 class StationController
 {
-    private Station $stationModel;
-
-    public function __construct()
-    {
-        $pdo = Database::getConnection();
-        $this->stationModel = new Station($pdo);
-    }
-
     /**
      * GET /api/stations
      * Get all stations
@@ -27,7 +19,7 @@ class StationController
     public function index(): void
     {
         try {
-            $stations = $this->stationModel->getAll();
+            $stations = Station::all();
 
             Response::json([
                 'success' => true,
@@ -49,7 +41,7 @@ class StationController
     public function show(int $id): void
     {
         try {
-            $station = $this->stationModel->find($id);
+            $station = Station::find($id);
 
             if (!$station) {
                 Response::json([
@@ -78,7 +70,7 @@ class StationController
     public function depots(int $id): void
     {
         try {
-            $depots = $this->stationModel->getDepots($id);
+            $depots = Station::getDepots($id);
 
             Response::json([
                 'success' => true,
