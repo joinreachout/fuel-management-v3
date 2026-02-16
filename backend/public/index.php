@@ -30,8 +30,6 @@ require_once __DIR__ . '/../src/Models/DepotTank.php';
 require_once __DIR__ . '/../src/Models/Supplier.php';
 require_once __DIR__ . '/../src/Models/Order.php';
 require_once __DIR__ . '/../src/Models/Transfer.php';
-require_once __DIR__ . '/../src/Models/Sale.php';
-require_once __DIR__ . '/../src/Models/User.php';
 
 // Load Controllers
 require_once __DIR__ . '/../src/Controllers/StationController.php';
@@ -40,8 +38,6 @@ require_once __DIR__ . '/../src/Controllers/FuelTypeController.php';
 require_once __DIR__ . '/../src/Controllers/SupplierController.php';
 require_once __DIR__ . '/../src/Controllers/OrderController.php';
 require_once __DIR__ . '/../src/Controllers/TransferController.php';
-require_once __DIR__ . '/../src/Controllers/SaleController.php';
-require_once __DIR__ . '/../src/Controllers/UserController.php';
 
 use App\Core\Response;
 use App\Controllers\StationController;
@@ -50,8 +46,6 @@ use App\Controllers\FuelTypeController;
 use App\Controllers\SupplierController;
 use App\Controllers\OrderController;
 use App\Controllers\TransferController;
-use App\Controllers\SaleController;
-use App\Controllers\UserController;
 
 // Simple router
 try {
@@ -73,8 +67,6 @@ try {
     $supplierController = new SupplierController();
     $orderController = new OrderController();
     $transferController = new TransferController();
-    $saleController = new SaleController();
-    $userController = new UserController();
 
     // ==================== STATIONS ====================
     if ($requestMethod === 'GET' && $path === '/api/stations') {
@@ -156,42 +148,6 @@ try {
 
     } elseif ($requestMethod === 'GET' && preg_match('#^/api/transfers/(\d+)$#', $path, $matches)) {
         $transferController->show((int) $matches[1]);
-
-    // ==================== SALES ====================
-    } elseif ($requestMethod === 'GET' && $path === '/api/sales') {
-        $saleController->index();
-
-    } elseif ($requestMethod === 'GET' && $path === '/api/sales/unpaid') {
-        $saleController->unpaid();
-
-    } elseif ($requestMethod === 'GET' && $path === '/api/sales/summary/fuel-type') {
-        $saleController->summaryByFuelType();
-
-    } elseif ($requestMethod === 'GET' && $path === '/api/sales/summary/depot') {
-        $saleController->summaryByDepot();
-
-    } elseif ($requestMethod === 'GET' && $path === '/api/sales/recent') {
-        $saleController->recent();
-
-    } elseif ($requestMethod === 'GET' && $path === '/api/sales/daily-report') {
-        $saleController->dailyReport();
-
-    } elseif ($requestMethod === 'GET' && preg_match('#^/api/sales/(\d+)$#', $path, $matches)) {
-        $saleController->show((int) $matches[1]);
-
-    // ==================== USERS ====================
-    } elseif ($requestMethod === 'GET' && $path === '/api/users') {
-        $userController->index();
-
-    } elseif ($requestMethod === 'GET' && $path === '/api/users/active') {
-        $userController->active();
-
-    } elseif ($requestMethod === 'GET' && preg_match('#^/api/users/(\d+)$#', $path, $matches)) {
-        $userController->show((int) $matches[1]);
-
-    // ==================== AUTH ====================
-    } elseif ($requestMethod === 'POST' && $path === '/api/auth/login') {
-        $userController->login();
 
     } else {
         // 404 Not Found
