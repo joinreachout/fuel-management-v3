@@ -1,5 +1,86 @@
-# Vue 3 + Vite
+# Fuel Management System - Frontend
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+**Vue 3 + Vite + Tailwind CSS**
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+Real-time dashboard for monitoring fuel inventory, alerts, and critical tanks.
+
+## 🚀 Quick Start
+
+### Development
+```bash
+npm install
+npm run dev
+```
+Open: http://localhost:5173
+
+### Production Build
+```bash
+npm run build
+```
+Output: `dist/` folder
+
+### Preview Production
+```bash
+npm run preview
+```
+
+## 📊 Features
+
+- **Real-time Dashboard** - Auto-refresh every 30 seconds
+- **Inventory Stats** - Stations, depots, tanks, fill levels
+- **Alert System** - 5 severity levels (Catastrophe → Info)
+- **Critical Tanks** - Monitoring with days until empty
+- **Responsive Design** - Mobile, tablet, desktop support
+
+## 🔧 Tech Stack
+
+- Vue 3 (Composition API)
+- Vite (Build tool)
+- Tailwind CSS (Styling)
+- Axios (API client)
+- Vue Router (Future: Multi-page navigation)
+
+## 📁 Structure
+
+```
+src/
+├── components/          # Reusable UI components
+│   ├── StatCard.vue
+│   ├── AlertCard.vue
+│   └── CriticalTankCard.vue
+├── views/               # Page views
+│   └── Dashboard.vue
+├── services/            # API integration
+│   └── api.js
+├── App.vue              # Root component
+└── main.js              # Entry point
+```
+
+## 🌐 API Integration
+
+Connects to REV 3.0 Backend API:
+- Base URL: `https://fuel.kittykat.tech/rev3/backend/public/api`
+- 31 endpoints fully integrated
+- Dashboard endpoints working
+
+## 📦 Deployment
+
+See `FRONTEND_DEPLOYMENT.md` for full deployment instructions.
+
+**Quick Deploy:**
+1. Build: `npm run build`
+2. Upload `dist/` folder to server
+3. Configure: Set base path in `vite.config.js`
+
+## ✅ Status
+
+- ✅ Dashboard working locally
+- ✅ API integration complete
+- ✅ Production build ready
+- ⏳ Pending server deployment
+
+---
+
+**Last Updated:** 2026-02-16
+**Version:** 1.0.0
+**Git Commit:** a13bed1
