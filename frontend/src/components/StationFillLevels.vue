@@ -175,7 +175,7 @@ const loadData = async () => {
       const stationsData = stationsRes.data.data || [];
 
       // Transform stations data to match template expectations
-      stations.value = stationsData.slice(0, 5).map(s => ({
+      stations.value = stationsData.map(s => ({
         station_id: s.id,
         station_name: s.name,
         station_code: s.code
