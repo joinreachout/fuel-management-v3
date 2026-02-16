@@ -308,13 +308,14 @@ class ForecastService
                 s.id as station_id,
                 s.name as station_name,
                 s.code as station_code,
-                s.region_name,
+                r.name as region_name,
                 dt.id as tank_id,
                 dt.fuel_type_id,
                 ft.name as fuel_type_name,
                 dt.current_stock_liters,
                 sp.liters_per_day as daily_consumption_liters
             FROM stations s
+            LEFT JOIN regions r ON s.region_id = r.id
             LEFT JOIN depots d ON s.id = d.station_id
             LEFT JOIN depot_tanks dt ON d.id = dt.depot_id
             LEFT JOIN fuel_types ft ON dt.fuel_type_id = ft.id
@@ -327,7 +328,7 @@ class ForecastService
         $params = [];
 
         if ($region) {
-            $sql .= " AND s.region_name = ?";
+            $sql .= " AND r.name = ?";
             $params[] = $region;
         }
 
