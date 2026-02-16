@@ -85,11 +85,11 @@ class Supplier
                 o.delivery_date,
                 o.status,
                 o.total_amount,
-                o.currency,
                 ft.name as fuel_type_name,
                 ft.code as fuel_type_code,
                 o.quantity_liters,
-                o.price_per_liter,
+                ROUND(o.quantity_liters * ft.density / 1000, 2) as quantity_tons,
+                o.price_per_ton,
                 o.created_at
             FROM orders o
             LEFT JOIN fuel_types ft ON o.fuel_type_id = ft.id
