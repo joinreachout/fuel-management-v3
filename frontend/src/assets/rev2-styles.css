@@ -1,0 +1,1637 @@
+/* ========================================
+   NEW DESIGN - BLACK HEADER & KPI
+   ======================================== */
+
+/* Body Background */
+body {
+    background-color: #f5f5f5 !important;
+}
+
+/* ========================================
+   KITTY KAT LOGO
+   ======================================== */
+
+/* Logo hover effect */
+header img {
+    transition: all 0.3s ease;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+}
+
+header img:hover {
+    transform: scale(1.05);
+    filter: brightness(1.2) !important;
+}
+
+/* Logo link */
+header a[href="/"] {
+    display: inline-flex;
+    align-items: center;
+}
+
+/* ========================================
+   HEADER WITH PROPER SPACING
+   ======================================== */
+
+/* Header height with breathing room - increased for 70% overlap */
+header {
+    min-height: 560px;
+}
+
+/* KPI Numbers - White by default */
+#kpi-total-stations,
+#kpi-shortages,
+#kpi-critical-stations,
+#kpi-low-stations,
+#kpi-mandatory-orders,
+#kpi-recommended-orders,
+#kpi-active-transfers {
+    font-size: 1.5rem;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    transition: all 0.2s ease;
+    color: white;
+}
+
+/* Critical class for red numbers */
+#kpi-shortages.critical,
+#kpi-critical-stations.critical {
+    color: #ef4444 !important;
+}
+
+/* Hover effect */
+#kpi-total-stations:hover,
+#kpi-shortages:hover,
+#kpi-critical-stations:hover,
+#kpi-low-stations:hover,
+#kpi-mandatory-orders:hover,
+#kpi-recommended-orders:hover,
+#kpi-active-transfers:hover {
+    transform: scale(1.1);
+}
+
+/* Red glow on hover for critical */
+#kpi-shortages.critical:hover,
+#kpi-critical-stations.critical:hover {
+    text-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+}
+
+/* ========================================
+   WIDGETS - COMPACT & MODERN
+   ======================================== */
+
+/* Widget headers with gradient */
+.bg-gradient-to-r.from-gray-50 {
+    background: linear-gradient(to right, #f9fafb, #ffffff);
+}
+
+/* Widget shadows with hover effect */
+.bg-white.rounded-xl.shadow-lg {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+}
+
+.bg-white.rounded-xl.shadow-lg:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+/* Compact spacing */
+.space-y-6 > * + * {
+    margin-top: 1.5rem;
+}
+
+/* Filter inputs - compact */
+select.text-sm {
+    min-width: 120px;
+}
+
+select.text-sm:focus {
+    outline: none;
+}
+
+/* ========================================
+   FORECAST CHART - FILTERS SIDEBAR
+   ======================================== */
+
+/* Filters sidebar */
+.w-48.flex-shrink-0 {
+    background: #f9fafb;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+}
+
+/* Filter labels */
+.w-48.flex-shrink-0 label {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+/* Filter selects */
+.w-48.flex-shrink-0 select {
+    width: 100%;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.w-48.flex-shrink-0 select:hover {
+    border-color: #3b82f6;
+}
+
+/* Chart canvas container */
+.flex-1.min-h-\[400px\] {
+    position: relative;
+    min-height: 400px;
+    height: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Ensure canvas is visible and properly sized */
+#forecast-chart {
+    max-height: none !important;
+    height: 100% !important;
+    width: 100% !important;
+    display: block !important;
+    visibility: visible !important;
+}
+
+/* Responsive: Stack filters on mobile */
+@media (max-width: 768px) {
+    .p-6.flex.gap-6 {
+        flex-direction: column;
+    }
+    
+    .w-48.flex-shrink-0 {
+        width: 100%;
+    }
+    
+    .flex-1.min-h-\[400px\] {
+        height: 400px;
+    }
+}
+
+/* ========================================
+   WIDGETS OVERLAP EFFECT
+   ======================================== */
+
+/* Main content - NO OVERLAP */
+.min-h-screen.bg-gray-50 {
+    position: relative !important;
+}
+
+/* ========================================
+   FUEL FORECAST WIDGET - OVERLAP HEADER
+   ======================================== */
+
+/* Fuel Forecast widget overlaps header - 70% overlap */
+.bg-white.rounded-2xl.shadow-lg.-mt-96 {
+    margin-top: -24rem !important; /* -384px - overlaps header by ~70% of widget height */
+    position: relative;
+    z-index: 20; /* Above header background */
+}
+
+/* ========================================
+   STATION FILL LEVELS - NARROW BARS
+   ======================================== */
+
+/* Station card - narrow horizontal layout */
+.station-fill-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: #f9fafb;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s ease;
+}
+
+.station-fill-card:hover {
+    background: #ffffff;
+    border-color: #3b82f6;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+/* Station name - compact */
+.station-name {
+    min-width: 120px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+/* Fuel bars container - horizontal */
+.fuel-bars-container {
+    display: flex;
+    gap: 0.5rem;
+    flex: 1;
+    align-items: center;
+}
+
+/* Individual fuel bar - narrow */
+.fuel-bar-group {
+    flex: 1;
+    min-width: 60px;
+    position: relative;
+}
+
+.fuel-bar-label {
+    font-size: 0.625rem;
+    color: #6b7280;
+    margin-bottom: 0.25rem;
+    text-align: center;
+}
+
+.fuel-bar {
+    height: 32px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.fuel-bar-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.625rem;
+    font-weight: 600;
+    color: white;
+}
+
+/* Fuel bar colors */
+.fuel-bar-fill.critical {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.fuel-bar-fill.low {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.fuel-bar-fill.normal {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.fuel-bar-fill.high {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+/* ========================================
+   RECOMMENDED TASKS - COMPACT
+   ======================================== */
+
+.task-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: #f9fafb;
+    border-radius: 0.5rem;
+    border-left: 3px solid #3b82f6;
+    transition: all 0.2s ease;
+}
+
+.task-item:hover {
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.task-item.critical {
+    border-left-color: #ef4444;
+}
+
+.task-item.warning {
+    border-left-color: #f59e0b;
+}
+
+.task-item.info {
+    border-left-color: #3b82f6;
+}
+
+.task-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.task-icon.critical {
+    background: #fee2e2;
+    color: #ef4444;
+}
+
+.task-icon.warning {
+    background: #fef3c7;
+    color: #f59e0b;
+}
+
+.task-icon.info {
+    background: #dbeafe;
+    color: #3b82f6;
+}
+
+.task-content {
+    flex: 1;
+}
+
+.task-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.125rem;
+}
+
+.task-description {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+/* ========================================
+   PAGE BACKGROUND - SUBTLE FUEL PATTERN (RIGHT SIDE)
+   ======================================== */
+
+/* Main background with subtle fuel drops on the right side only */
+.min-h-screen.bg-gray-50 {
+    background-color: #f9fafb;
+    position: relative;
+}
+
+/* Fuel drops pattern - positioned right */
+.min-h-screen.bg-gray-50::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 40%;
+    height: 100%;
+    background-image: 
+        /* Large subtle drops */
+        radial-gradient(circle at 80% 20%, rgba(34, 211, 238, 0.04) 0%, transparent 40%),
+        radial-gradient(circle at 90% 50%, rgba(59, 130, 246, 0.04) 0%, transparent 40%),
+        radial-gradient(circle at 75% 80%, rgba(139, 92, 246, 0.03) 0%, transparent 40%),
+        /* Medium droplets */
+        radial-gradient(circle at 85% 35%, rgba(34, 211, 238, 0.03) 0%, transparent 25%),
+        radial-gradient(circle at 95% 65%, rgba(59, 130, 246, 0.03) 0%, transparent 25%),
+        /* Small droplets */
+        radial-gradient(circle at 78% 45%, rgba(34, 211, 238, 0.02) 0%, transparent 15%),
+        radial-gradient(circle at 88% 75%, rgba(59, 130, 246, 0.02) 0%, transparent 15%),
+        radial-gradient(circle at 92% 30%, rgba(139, 92, 246, 0.02) 0%, transparent 15%);
+    pointer-events: none;
+    z-index: 1; /* Raised from 0 */
+}
+
+/* Ensure widgets are above background */
+.bg-white.rounded-xl {
+    position: relative;
+    z-index: 10; /* Raised from 1 */
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 1024px) {
+    .grid.lg\:grid-cols-2 {
+        grid-template-columns: 1fr;
+    }
+    
+    .lg\:col-span-2 {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 1280px) {
+    .xl\:col-span-3 {
+        grid-column: span 2;
+    }
+}
+
+/* ========================================
+   RESPONSIVE KPI - GRADUAL RESIZE
+   ======================================== */
+
+/* Large Laptop: Slightly smaller */
+@media (max-width: 1536px) {
+    #kpi-total-stations,
+    #kpi-shortages,
+    #kpi-critical-stations,
+    #kpi-low-stations,
+    #kpi-mandatory-orders,
+    #kpi-recommended-orders,
+    #kpi-active-transfers {
+        font-size: 1.25rem; /* 20px instead of 24px */
+    }
+    
+    .flex.items-center.gap-10 {
+        gap: 2rem; /* gap-8 instead of gap-10 */
+    }
+}
+
+/* Laptop: Smaller KPI */
+@media (max-width: 1280px) {
+    #kpi-total-stations,
+    #kpi-shortages,
+    #kpi-critical-stations,
+    #kpi-low-stations,
+    #kpi-mandatory-orders,
+    #kpi-recommended-orders,
+    #kpi-active-transfers {
+        font-size: 1.125rem; /* 18px */
+    }
+    
+    .flex.items-center.gap-10 {
+        gap: 1.5rem; /* gap-6 */
+    }
+    
+    /* Smaller labels */
+    .flex.flex-col.leading-tight div {
+        font-size: 0.625rem; /* 10px */
+    }
+    
+    /* Narrower divider */
+    .h-8.w-0\.5 {
+        height: 1.5rem; /* h-6 */
+    }
+}
+
+/* Tablet: Hide KPI (only here!) */
+@media (max-width: 1024px) {
+    .flex.items-center.gap-10 {
+        display: none !important;
+    }
+    
+    header {
+        min-height: 80px;
+    }
+    
+    .h-40 {
+        height: 5rem;
+    }
+    
+    .-mt-24 {
+        margin-top: -3rem;
+    }
+}
+
+/* Mobile: Compact header */
+@media (max-width: 768px) {
+    header {
+        min-height: 60px;
+    }
+    
+    header nav {
+        display: none;
+    }
+}
+
+/* Last Update Box */
+.bg-white\/5 {
+    backdrop-filter: blur(10px);
+}
+
+/* KPI Numbers - ALL WHITE by default */
+#kpi-total-stations,
+#kpi-shortages,
+#kpi-critical-stations,
+#kpi-low-stations,
+#kpi-mandatory-orders,
+#kpi-recommended-orders,
+#kpi-active-transfers {
+    font-size: 1.5rem; /* 24px */
+    line-height: 1;
+    letter-spacing: -0.02em;
+    transition: all 0.2s ease;
+    color: white; /* DEFAULT: white */
+}
+
+/* CRITICAL numbers - RED when > 0 (will be set by JS) */
+#kpi-shortages.critical,
+#kpi-critical-stations.critical {
+    color: #ef4444 !important; /* Pure red */
+}
+
+/* Hover effect - subtle scale */
+#kpi-total-stations:hover,
+#kpi-shortages:hover,
+#kpi-critical-stations:hover,
+#kpi-low-stations:hover,
+#kpi-mandatory-orders:hover,
+#kpi-recommended-orders:hover,
+#kpi-active-transfers:hover {
+    transform: scale(1.1);
+}
+
+/* Red glow for critical numbers on hover */
+#kpi-shortages.critical:hover,
+#kpi-critical-stations.critical:hover {
+    text-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+}
+
+/* Vertical divider - Smaller */
+.h-8.w-px {
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.2), transparent);
+}
+
+/* Responsive */
+@media (max-width: 1536px) {
+    header {
+        min-height: 100px;
+    }
+    
+    #kpi-total-stations,
+    #kpi-shortages,
+    #kpi-critical-stations,
+    #kpi-low-stations,
+    #kpi-mandatory-orders,
+    #kpi-recommended-orders,
+    #kpi-active-transfers {
+        font-size: 1.25rem;
+    }
+}
+
+@media (max-width: 1280px) {
+    /* Stack on smaller screens */
+    .flex.items-center.justify-between {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+}
+
+/* Smooth Scrolling */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Header Navigation Active State */
+header nav a {
+    position: relative;
+    padding-bottom: 4px;
+}
+
+header nav a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: white;
+    transition: width 0.3s ease;
+}
+
+header nav a:hover::after {
+    width: 100%;
+}
+
+/* KPI Cards Hover Effect */
+.bg-white\/5:hover {
+    transform: translateY(-2px);
+}
+
+/* Number Animation */
+#kpi-total-stations,
+#kpi-shortages,
+#kpi-mandatory-orders,
+#kpi-recommended-orders {
+    transition: all 0.3s ease;
+}
+
+/* Refresh Button Spin Animation */
+.fa-sync-alt.fa-spin {
+    animation: spin 1s linear;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Mobile Menu Toggle (for future) */
+@media (max-width: 768px) {
+    header nav {
+        display: none;
+    }
+}
+
+/* Ensure widgets have white background */
+.bg-white {
+    background-color: white !important;
+}
+
+/* Orders Calendar Styles */
+.calendar-container {
+    max-height: 60vh;
+    overflow: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.calendar-grid {
+    display: table;
+    width: 100%;
+    min-width: max-content;
+}
+
+.calendar-row {
+    display: table-row;
+}
+
+.calendar-cell {
+    display: table-cell;
+    background: white;
+    padding: 8px;
+    min-height: 40px;
+    min-width: 80px;
+    max-width: 80px;
+    width: 80px;
+    border: 1px solid #e5e7eb;
+    vertical-align: middle;
+    text-align: center;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.calendar-input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-size: 14px;
+    padding: 4px;
+    border-radius: 3px;
+    min-width: 0;
+}
+
+.calendar-input:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: -2px;
+    background: #eff6ff;
+}
+
+.depot-cell {
+    background: #f9fafb;
+    font-weight: 600;
+    font-size: 13px;
+    text-align: left;
+    padding-left: 12px;
+    min-width: 150px;
+    max-width: 150px;
+    width: 150px;
+}
+
+.fuel-cell {
+    background: #f3f4f6;
+    font-weight: 500;
+    font-size: 12px;
+    text-align: center;
+    min-width: 120px;
+    max-width: 120px;
+    width: 120px;
+}
+
+.date-header {
+    background: #1f2937;
+    color: white;
+    font-weight: 600;
+    font-size: 10px;
+    text-align: center;
+    min-width: 60px;
+    max-width: 60px;
+    width: 60px;
+    padding: 4px 2px;
+}
+
+.total-cell {
+    background: #fef3c7;
+    font-weight: 700;
+    font-size: 13px;
+    text-align: center;
+    color: #92400e;
+    min-width: 80px;
+    max-width: 80px;
+    width: 80px;
+}
+
+.has-value {
+    background: #ecfdf5;
+}
+
+.has-value .calendar-input {
+    font-weight: 600;
+    color: #065f46;
+}
+
+.fuel-автобензины { border-left: 4px solid #3b82f6; }
+.fuel-дт { border-left: 4px solid #ef4444; }
+.fuel-газ { border-left: 4px solid #10b981; }
+
+/* Animations */
+.calendar-input:focus,
+.has-value {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Scrollbars */
+.calendar-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.calendar-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.calendar-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.calendar-container::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .calendar-grid {
+        font-size: 12px;
+    }
+    
+    .calendar-cell {
+        padding: 4px;
+        min-height: 35px;
+    }
+    
+    .depot-cell {
+        padding-left: 8px;
+    }
+}
+
+/* ========================================
+   OPTIMUS AI ASSISTANT - CYAN & MAGENTA
+   Футуристичный дизайн с эффектами
+   ======================================== */
+
+/* Кнопка Optimus */
+.ai-assistant-button {
+    position: fixed !important;
+    bottom: 24px !important;
+    right: 24px !important;
+    left: auto !important;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #06b6d4 0%, #ec4899 100%);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 30px;
+    box-shadow: 0 4px 20px rgba(236, 72, 153, 0.4);
+    z-index: 1000;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: buttonPulse 3s ease-in-out infinite, buttonGlow 2s ease-in-out infinite;
+}
+
+@keyframes buttonPulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes buttonGlow {
+    0%, 100% {
+        box-shadow: 0 4px 20px rgba(236, 72, 153, 0.4),
+                    0 0 30px rgba(6, 182, 212, 0.3);
+    }
+    50% {
+        box-shadow: 0 6px 30px rgba(236, 72, 153, 0.6),
+                    0 0 40px rgba(6, 182, 212, 0.5);
+    }
+}
+
+.ai-assistant-button:hover {
+    transform: translateY(-3px) scale(1.1);
+    box-shadow: 0 8px 40px rgba(236, 72, 153, 0.6),
+                0 0 50px rgba(6, 182, 212, 0.6);
+}
+
+.ai-assistant-button:active {
+    transform: translateY(-1px) scale(1.05);
+}
+
+/* Контейнер чата */
+.ai-assistant-container {
+    position: fixed !important;
+    bottom: 96px !important;
+    right: 24px !important;
+    left: auto !important;
+    width: 400px;
+    max-width: calc(100vw - 48px);
+    height: 540px;
+    max-height: calc(100vh - 130px);
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15),
+                0 0 30px rgba(236, 72, 153, 0.1);
+    display: flex;
+    flex-direction: column;
+    z-index: 999;
+    overflow: hidden;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    animation: containerSlideUp 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.ai-assistant-container::before {
+    content: '';
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 16px;
+    padding: 2px;
+    background: linear-gradient(135deg, #06b6d4 0%, #ec4899 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.6;
+    z-index: 0;
+}
+
+@keyframes containerSlideUp {
+    0% {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    60% {
+        transform: translateY(-5px) scale(1.02);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Заголовок */
+.ai-assistant-header {
+    background: linear-gradient(135deg, #06b6d4 0%, #ec4899 100%);
+    color: white;
+    padding: 18px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-assistant-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    animation: headerShine 3s ease-in-out infinite;
+}
+
+@keyframes headerShine {
+    0%, 100% {
+        transform: translate(-50%, -50%);
+    }
+    50% {
+        transform: translate(-30%, -30%);
+    }
+}
+
+.ai-assistant-header h3 {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    position: relative;
+    z-index: 1;
+}
+
+.ai-assistant-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: 400;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+}
+
+.ai-assistant-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+}
+
+/* Область сообщений */
+.ai-assistant-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    background: linear-gradient(to bottom, #f8fafc 0%, #f1f5f9 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ai-assistant-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.ai-assistant-messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.ai-assistant-messages::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #06b6d4 0%, #ec4899 100%);
+    border-radius: 10px;
+}
+
+.ai-assistant-messages::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #0891b2 0%, #db2777 100%);
+}
+
+/* Сообщения пользователя */
+.user-message {
+    align-self: flex-end;
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+    color: white;
+    padding: 11px 15px;
+    border-radius: 18px 18px 4px 18px;
+    max-width: 75%;
+    word-wrap: break-word;
+    box-shadow: 0 2px 8px rgba(6, 182, 212, 0.3);
+    font-size: 14px;
+    line-height: 1.5;
+    animation: messageSlideIn 0.3s ease-out;
+}
+
+/* Сообщения от Optimus */
+.ai-message {
+    align-self: flex-start;
+    background: white;
+    color: #1e293b;
+    padding: 11px 15px;
+    border-radius: 18px 18px 18px 4px;
+    max-width: 80%;
+    word-wrap: break-word;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    font-size: 14px;
+    line-height: 1.6;
+    animation: messageSlideIn 0.3s ease-out;
+    position: relative;
+}
+
+.ai-message::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(135deg, #06b6d4 0%, #ec4899 100%);
+    border-radius: 18px 0 0 18px;
+}
+
+.ai-message strong {
+    background: linear-gradient(135deg, #06b6d4 0%, #ec4899 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 600;
+}
+
+@keyframes messageSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Индикатор "печатает..." */
+.typing-indicator {
+    align-self: flex-start;
+    background: white;
+    padding: 12px 16px;
+    border-radius: 18px 18px 18px 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.typing-indicator span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    animation: typingDots 1.4s infinite;
+}
+
+.typing-indicator span:nth-child(1) {
+    background: #06b6d4;
+}
+
+.typing-indicator span:nth-child(2) {
+    background: #8b5cf6;
+    animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+    background: #ec4899;
+    animation-delay: 0.4s;
+}
+
+@keyframes typingDots {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.5;
+    }
+    30% {
+        transform: translateY(-8px);
+        opacity: 1;
+    }
+}
+
+/* Область ввода */
+.ai-assistant-input-container {
+    display: flex;
+    gap: 10px;
+    padding: 14px 16px;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+}
+
+.ai-assistant-input-container input {
+    flex: 1;
+    padding: 11px 16px;
+    border: 1px solid #cbd5e1;
+    border-radius: 22px;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.3s ease;
+    background: #f8fafc;
+}
+
+.ai-assistant-input-container input:focus {
+    border-color: transparent;
+    background: white;
+    box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2),
+                0 0 0 4px rgba(236, 72, 153, 0.1);
+}
+
+.ai-assistant-input-container button {
+    background: linear-gradient(135deg, #06b6d4 0%, #ec4899 100%);
+    color: white;
+    border: none;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3);
+}
+
+.ai-assistant-input-container button:hover {
+    transform: scale(1.1) rotate(15deg);
+    box-shadow: 0 4px 16px rgba(236, 72, 153, 0.5),
+                0 0 20px rgba(6, 182, 212, 0.3);
+}
+
+.ai-assistant-input-container button:active {
+    transform: scale(1.05) rotate(10deg);
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+    .ai-assistant-button {
+        bottom: 20px;
+        right: 20px;
+        width: 56px;
+        height: 56px;
+        font-size: 28px;
+    }
+    
+    .ai-assistant-container {
+        bottom: 88px;
+        right: 20px;
+        left: 20px;
+        width: auto;
+        height: 500px;
+    }
+    
+    .ai-assistant-header {
+        padding: 16px;
+    }
+    
+    .ai-assistant-header h3 {
+        font-size: 17px;
+    }
+    
+    .user-message,
+    .ai-message {
+        max-width: 85%;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 480px) {
+    .ai-assistant-container {
+        height: 450px;
+        bottom: 88px;
+    }
+    
+    .ai-assistant-messages {
+        padding: 12px;
+    }
+    
+    .ai-assistant-input-container {
+        padding: 12px;
+    }
+}
+
+/* ========================================== */
+/* OPTIMUS ACTION BUTTONS                     */
+/* Кнопки действий в ответах Optimus         */
+/* ========================================== */
+
+.optimus-action-btn {
+    display: inline-block;
+    margin: 5px 5px 5px 0;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    font-family: inherit;
+    vertical-align: middle;
+}
+
+.optimus-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.optimus-action-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.optimus-action-btn.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.optimus-action-btn.btn-primary:hover {
+    background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%);
+}
+
+.optimus-action-btn.btn-info {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+}
+
+.optimus-action-btn.btn-info:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.optimus-action-btn.btn-secondary {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: white;
+}
+
+.optimus-action-btn.btn-secondary:hover {
+    background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+}
+
+.optimus-action-btn.btn-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+}
+
+.optimus-action-btn.btn-warning:hover {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+}
+
+.optimus-action-btn.btn-default {
+    background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+    color: #374151;
+}
+
+.optimus-action-btn.btn-default:hover {
+    background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%);
+}
+
+/* Анимация появления кнопок */
+@keyframes buttonAppear {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.optimus-action-btn {
+    animation: buttonAppear 0.3s ease;
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 768px) {
+    .optimus-action-btn {
+        padding: 8px 14px;
+        font-size: 13px;
+    }
+}
+
+/* ========================================
+   STATION FILL LEVELS - IMPROVED
+   ======================================== */
+
+#station-fill-levels-section {
+    overflow: visible; /* Allow tooltips to overflow */
+}
+
+.station-fill-card {
+    padding: 14px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: #fafbfc;
+    position: relative;
+    margin-bottom: 12px;
+    overflow: visible; /* Allow tooltip to overflow */
+}
+
+.station-fill-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+    background: white;
+}
+
+.station-fill-card:active {
+    transform: translateY(0);
+}
+
+.station-fill-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.station-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.station-avg {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.station-alerts {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 12px;
+}
+
+.alert-badge {
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 11px;
+}
+
+.alert-critical {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.alert-low {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.alert-ok {
+    background: #f0fdf4;
+    color: #16a34a;
+}
+
+/* Mini Bars Container */
+.fuel-bars-container {
+    display: flex;
+    gap: 6px;
+    align-items: flex-end;
+    height: 100px;
+    padding: 6px 0;
+    position: relative;
+    overflow: visible; /* Allow tooltip to overflow */
+}
+
+.fuel-bar-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    z-index: 1; /* Base z-index */
+}
+
+.fuel-bar-group:hover {
+    z-index: 10000; /* При hover поднимаем выше всех */
+}
+
+.fuel-label {
+    font-size: 9px;
+    font-weight: 600;
+    color: #6b7280;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.fuel-bar-wrapper {
+    width: 100%;
+    height: 70px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    position: relative;
+    cursor: pointer;
+}
+
+.fuel-mini-bar {
+    width: 100%;
+    background: #e5e7eb;
+    border-radius: 3px 3px 0 0;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    min-height: 2px;
+}
+
+/* Цвета баров по статусу */
+.fuel-mini-bar.status-critical {
+    background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 -2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.fuel-mini-bar.status-low {
+    background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+    box-shadow: 0 -2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.fuel-mini-bar.status-normal {
+    background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+    box-shadow: 0 -2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.fuel-mini-bar.status-high {
+    background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+    box-shadow: 0 -2px 8px rgba(59, 130, 246, 0.3);
+}
+
+/* Hover эффект */
+.fuel-bar-wrapper:hover .fuel-mini-bar {
+    transform: scaleY(1.05);
+    filter: brightness(1.1);
+}
+
+.fuel-percentage {
+    font-size: 10px;
+    font-weight: 700;
+    color: #374151;
+    text-align: center;
+    margin-top: 3px;
+}
+
+/* Tooltip - FIXED Z-INDEX */
+.fuel-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    background: #1f2937;
+    color: white;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10000;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    min-width: 180px;
+}
+
+.fuel-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #1f2937;
+}
+
+.fuel-bar-wrapper:hover .fuel-tooltip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-12px);
+}
+
+.fuel-tooltip .tooltip-name {
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: #60a5fa;
+    font-size: 13px;
+}
+
+.fuel-tooltip .tooltip-detail {
+    font-size: 11px;
+    color: #d1d5db;
+    line-height: 1.5;
+}
+
+/* Анимация появления баров */
+@keyframes barGrow {
+    from {
+        height: 0;
+        opacity: 0;
+    }
+    to {
+        height: var(--bar-height);
+        opacity: 1;
+    }
+}
+
+.fuel-mini-bar.animate {
+    animation: barGrow 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Space-y utility */
+.space-y-4 > * + * {
+    margin-top: var(--spacing-md);
+}
+
+/* Space-y utility */
+.space-y-3 > * + * {
+    margin-top: 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .fuel-bars-container {
+        height: 80px;
+        gap: 4px;
+    }
+    
+    .fuel-bar-wrapper {
+        height: 50px;
+    }
+    
+    .fuel-label {
+        font-size: 8px;
+    }
+    
+    .fuel-percentage {
+        font-size: 9px;
+    }
+    
+    .station-fill-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    
+    .fuel-tooltip {
+        font-size: 11px;
+        padding: 8px 12px;
+    }
+}
+
+/* ========================================
+   PAGE OVERLAP EFFECT
+   ======================================== */
+
+/* Widgets overlap header */
+.-mt-24 {
+    margin-top: -6rem !important;
+}
+
+.pt-28 {
+    padding-top: 7rem !important;
+}
+
+/* ========================================
+   BACKGROUND PATTERN (RIGHT SIDE)
+   ======================================== */
+
+/* Subtle fuel drops pattern - inline in HTML */
+
+/* ========================================
+   STATION TABS STYLING
+   ======================================== */
+
+/* Tabs container scrollbar */
+#station-tabs {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+
+#station-tabs::-webkit-scrollbar {
+    height: 4px;
+}
+
+#station-tabs::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 2px;
+}
+
+/* Tab hover and active states handled via JavaScript classes */
+
+/* ========================================
+   VERTICAL FUEL BARS
+   ======================================== */
+
+/* Bar container shadow */
+#station-fill-bars .w-16.h-64 {
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Bar hover effect */
+#station-fill-bars > div:hover .w-16.h-64 {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+}
+
+/* ========================================
+   WIDGETS SHADOW & HOVER
+   ======================================== */
+
+.bg-white.rounded-xl.shadow-lg {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+}
+
+.bg-white.rounded-xl.shadow-lg:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
