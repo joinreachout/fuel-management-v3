@@ -185,9 +185,89 @@
             <p class="text-xs text-gray-500 mt-1">Predictive analysis of fuel levels across stations</p>
           </div>
 
-          <!-- Chart Content -->
-          <div class="p-6">
-            <canvas id="forecastChart" height="100"></canvas>
+          <!-- Chart Content: Filters (Left) + Canvas (Right) -->
+          <div class="p-6 flex gap-6">
+
+            <!-- LEFT: Filters Sidebar -->
+            <div class="w-48 flex-shrink-0 space-y-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+
+              <!-- Level Filter -->
+              <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-2">
+                  <i class="fas fa-layer-group text-gray-400 mr-1"></i>
+                  Level
+                </label>
+                <select
+                  v-model="chartFilters.level"
+                  class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                  <option value="station">Station</option>
+                  <option value="region">Region</option>
+                </select>
+              </div>
+
+              <!-- Region Filter -->
+              <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-2">
+                  <i class="fas fa-map-marker-alt text-gray-400 mr-1"></i>
+                  Region
+                </label>
+                <select
+                  v-model="chartFilters.region"
+                  class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                  <option value="">All Regions</option>
+                </select>
+              </div>
+
+              <!-- Station Filter -->
+              <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-2">
+                  <i class="fas fa-gas-pump text-gray-400 mr-1"></i>
+                  Station
+                </label>
+                <select
+                  v-model="chartFilters.station"
+                  class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                  <option value="">All Stations</option>
+                </select>
+              </div>
+
+              <!-- Fuel Type Filter -->
+              <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-2">
+                  <i class="fas fa-oil-can text-gray-400 mr-1"></i>
+                  Fuel Type
+                </label>
+                <select
+                  v-model="chartFilters.fuelType"
+                  class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                  <option value="">All Fuel Types</option>
+                </select>
+              </div>
+
+              <!-- Forecast Days Filter -->
+              <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-2">
+                  <i class="fas fa-calendar-alt text-gray-400 mr-1"></i>
+                  Forecast Days
+                </label>
+                <select
+                  v-model="chartFilters.days"
+                  class="w-full text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                  <option value="30">30 Days</option>
+                  <option value="60">60 Days</option>
+                  <option value="90">90 Days</option>
+                </select>
+              </div>
+
+            </div>
+
+            <!-- RIGHT: Chart Canvas -->
+            <div class="flex-1 min-w-0">
+              <div class="min-h-[400px] relative">
+                <canvas id="forecastChart"></canvas>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -240,6 +320,14 @@ const alerts = ref([]);
 const criticalTanks = ref([]);
 const lastUpdated = ref('');
 const currentDateTime = ref('');
+
+const chartFilters = ref({
+  level: 'station',
+  region: '',
+  station: '',
+  fuelType: '',
+  days: '30'
+});
 
 const criticalCount = computed(() => {
   return criticalTanks.value.length;
