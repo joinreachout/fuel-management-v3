@@ -174,12 +174,15 @@ const loadData = async () => {
     if (stationsRes.data.success) {
       const stationsData = stationsRes.data.data || [];
 
-      // Create mock station tanks from critical depot tanks
-      // This is temporary until we have proper station tanks API
-      stations.value = stationsData.slice(0, 5); // Limit to 5 stations for demo
+      // Transform stations data to match template expectations
+      stations.value = stationsData.slice(0, 5).map(s => ({
+        station_id: s.id,
+        station_name: s.name,
+        station_code: s.code
+      }));
 
       if (stations.value.length > 0) {
-        activeStationId.value = stations.value[0].id;
+        activeStationId.value = stations.value[0].station_id;
 
         // Generate mock tank data for each station
         stations.value.forEach(station => {
@@ -196,8 +199,8 @@ const loadData = async () => {
             const currentStock = capacity * (fillPercentage / 100);
 
             tanks.value.push({
-              tank_id: `${station.id}-${idx}`,
-              station_id: station.id,
+              tank_id: `${station.station_id}-${idx}`,
+              station_id: station.station_id,
               product_name: fuel.name,
               fuel_type_id: fuel.id,
               tank_capacity_liters: capacity,
