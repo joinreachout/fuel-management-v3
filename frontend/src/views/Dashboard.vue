@@ -273,6 +273,32 @@
             <!-- RIGHT: Chart Canvas -->
             <div class="flex-1 min-w-0">
               <div class="min-h-[400px] relative">
+                <!-- No Data Message -->
+                <div v-if="!forecastHasData" class="absolute inset-0 flex items-center justify-center">
+                  <div class="text-center p-8 max-w-md">
+                    <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-amber-100 flex items-center justify-center">
+                      <i class="fas fa-chart-line text-4xl text-amber-600"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-gray-800 mb-2">No Forecast Data Available</h4>
+                    <p class="text-sm text-gray-600 mb-4">
+                      {{ forecastMessage || 'No sales data (liters_per_day) found for selected filters.' }}
+                    </p>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
+                      <p class="text-xs font-semibold text-blue-800 mb-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Required Data:
+                      </p>
+                      <ul class="text-xs text-blue-700 space-y-1">
+                        <li>• Daily sales data in <code class="bg-blue-100 px-1 rounded">sales_params</code> table</li>
+                        <li>• Active depot tanks with stock levels</li>
+                        <li>• Current stock in <code class="bg-blue-100 px-1 rounded">depot_tanks</code></li>
+                      </ul>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-4">
+                      Try selecting "All Stations" or "All Fuel Types" to see available data
+                    </p>
+                  </div>
+                </div>
                 <canvas id="forecastChart"></canvas>
               </div>
             </div>
@@ -359,6 +385,9 @@ const chartFilters = ref({
   fuelType: '',
   days: '30'
 });
+
+const forecastHasData = ref(true);
+const forecastMessage = ref('');
 
 const criticalCount = computed(() => {
   return criticalTanks.value.length;
@@ -470,38 +499,46 @@ const updateForecastChart = (forecastData) => {
   const ctx = document.getElementById('forecastChart');
   if (!ctx) return;
 
+  // Check if we have data
+  const hasData = forecastData.datasets && forecastData.datasets.length > 0;
+  forecastHasData.value = hasData;
+  forecastMessage.value = forecastData.message || '';
+
   // Destroy existing chart
   if (forecastChartInstance) {
     forecastChartInstance.destroy();
+    forecastChartInstance = null;
   }
 
-  // Create new chart with API data
-  forecastChartInstance = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: forecastData.labels || [],
-      datasets: forecastData.datasets || []
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      plugins: {
-        legend: {
-          display: true,
-          position: 'top',
-        }
+  // Only create chart if we have data
+  if (hasData) {
+    forecastChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: forecastData.labels || [],
+        datasets: forecastData.datasets || []
       },
-      scales: {
-        y: {
-          beginAtZero: false,
-          title: {
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
             display: true,
-            text: 'Stock (Tons)'
+            position: 'top',
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: false,
+            title: {
+              display: true,
+              text: 'Stock (Tons)'
+            }
           }
         }
       }
-    }
-  });
+    });
+  }
 };
 
 // Watch for filter changes and reload forecast
