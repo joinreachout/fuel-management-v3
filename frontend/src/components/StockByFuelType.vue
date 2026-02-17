@@ -80,10 +80,13 @@
               </div>
             </div>
 
-            <!-- Label -->
+            <!-- Label Below Bar -->
             <div class="text-center">
               <div class="text-xs font-semibold text-gray-700">{{ location.name }}</div>
-              <div class="text-xs text-gray-500">{{ formatLiters(location.stock) }}</div>
+              <div class="text-xs font-bold" :style="{ color: getBarColor(location.fillPercentage) }">
+                {{ formatLiters(location.stock) }}
+              </div>
+              <div class="text-xs text-gray-500">{{ formatLiters(location.capacity) }}</div>
             </div>
           </div>
         </div>
@@ -99,6 +102,7 @@ import { fuelTypesApi } from '../services/api';
 const loading = ref(true);
 const fuelTypes = ref([]);
 const stationStockData = ref([]); // Real stock data from API
+const allFuelStockData = ref({}); // Store stock data for ALL fuel types
 const activeFuelId = ref(null);
 const viewMode = ref('stations'); // 'stations' or 'regions'
 
@@ -126,15 +130,36 @@ const getFuelTabStyle = (fuel) => {
     return {}; // Active uses CSS class
   }
 
-  // Color based on fuel type
-  const colors = {
-    'Diesel': { bg: '#dbeafe', color: '#1e40af' },
-    'Petrol 95': { bg: '#dcfce7', color: '#166534' },
-    'Petrol 98': { bg: '#fef3c7', color: '#92400e' }
-  };
+  // Get stock data for this fuel type
+  const fuelStockData = allFuelStockData.value[fuel.id];
+  if (!fuelStockData || fuelStockData.length === 0) {
+    return { background: '#e5e7eb', color: '#6b7280' }; // Gray if no data
+  }
 
-  const fuelColor = colors[fuel.name] || { bg: '#f3f4f6', color: '#374151' };
-  return { background: fuelColor.bg, color: fuelColor.color };
+  // Find minimum fill percentage (most critical location)
+  const minFill = Math.min(...fuelStockData.map(s => parseFloat(s.avg_fill_percentage || 100)));
+
+  // Color based on most critical location level
+  if (minFill < 30) {
+    return { background: '#fecaca', color: '#991b1b' }; // Red - critical
+  } else if (minFill < 50) {
+    return { background: '#fed7aa', color: '#9a3412' }; // Orange - low
+  } else {
+    return { background: '#d1fae5', color: '#065f46' }; // Green - normal
+  }
+};
+
+const getBarColor = (fillPercentage) => {
+  // Return color matching the gradient (use darker color from gradient)
+  if (fillPercentage < 30) {
+    return '#dc2626'; // Red
+  } else if (fillPercentage < 50) {
+    return '#ea580c'; // Orange
+  } else if (fillPercentage < 80) {
+    return '#84cc16'; // Yellow-green
+  } else {
+    return '#16a34a'; // Green
+  }
 };
 
 const getBarStyle = (location) => {
@@ -170,7 +195,14 @@ const formatLiters = (liters) => {
 
 const selectFuel = async (fuelId) => {
   activeFuelId.value = fuelId;
-  await loadStockForFuel(fuelId);
+
+  // Use already loaded data if available
+  if (allFuelStockData.value[fuelId]) {
+    stationStockData.value = allFuelStockData.value[fuelId];
+  } else {
+    // Load if not yet loaded
+    await loadStockForFuel(fuelId);
+  }
 };
 
 const loadStockForFuel = async (fuelId) => {
@@ -180,7 +212,11 @@ const loadStockForFuel = async (fuelId) => {
     const response = await fuelTypesApi.getStationsByFuelType(fuelId);
 
     if (response.data.success) {
-      stationStockData.value = response.data.data || [];
+      const data = response.data.data || [];
+      stationStockData.value = data;
+
+      // Store in allFuelStockData for tab color calculation
+      allFuelStockData.value[fuelId] = data;
     }
   } catch (error) {
     console.error(`Error loading stock for fuel type ${fuelId}:`, error);
@@ -200,10 +236,17 @@ const loadData = async () => {
     if (fuelTypesRes.data.success) {
       fuelTypes.value = fuelTypesRes.data.data || [];
 
-      // Select first fuel type and load its stock data
+      // Load stock data for ALL fuel types to enable color indicators on tabs
       if (fuelTypes.value.length > 0) {
         activeFuelId.value = fuelTypes.value[0].id;
-        await loadStockForFuel(fuelTypes.value[0].id);
+
+        // Load all fuel stock data in parallel
+        await Promise.all(
+          fuelTypes.value.map(fuel => loadStockForFuel(fuel.id))
+        );
+
+        // Reload current fuel to update display
+        stationStockData.value = allFuelStockData.value[activeFuelId.value] || [];
       }
     }
   } catch (error) {
