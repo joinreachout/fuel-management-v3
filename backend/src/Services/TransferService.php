@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Core\Database;
-use PDO;
 
 class TransferService
 {
@@ -13,32 +12,29 @@ class TransferService
         ?int $toStation = null,
         ?int $fuelType = null
     ): array {
-        $db = Database::getInstance();
-        $pdo = $db->getConnection();
-
         try {
             // Build query with filters
             $whereConditions = [];
             $params = [];
 
             if ($status) {
-                $whereConditions[] = "t.status = :status";
-                $params[':status'] = $status;
+                $whereConditions[] = "t.status = ?";
+                $params[] = $status;
             }
 
             if ($fromStation) {
-                $whereConditions[] = "t.from_station_id = :from_station";
-                $params[':from_station'] = $fromStation;
+                $whereConditions[] = "t.from_station_id = ?";
+                $params[] = $fromStation;
             }
 
             if ($toStation) {
-                $whereConditions[] = "t.to_station_id = :to_station";
-                $params[':to_station'] = $toStation;
+                $whereConditions[] = "t.to_station_id = ?";
+                $params[] = $toStation;
             }
 
             if ($fuelType) {
-                $whereConditions[] = "t.fuel_type_id = :fuel_type";
-                $params[':fuel_type'] = $fuelType;
+                $whereConditions[] = "t.fuel_type_id = ?";
+                $params[] = $fuelType;
             }
 
             $whereClause = !empty($whereConditions) ? 'WHERE ' . implode(' AND ', $whereConditions) : '';
@@ -58,9 +54,7 @@ class TransferService
                 ORDER BY t.created_at DESC
             ";
 
-            $stmt = $pdo->prepare($query);
-            $stmt->execute($params);
-            $transfers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $transfers = Database::fetchAll($query, $params);
 
             // Get statistics
             $statsQuery = "
@@ -75,9 +69,7 @@ class TransferService
                 {$whereClause}
             ";
 
-            $statsStmt = $pdo->prepare($statsQuery);
-            $statsStmt->execute($params);
-            $stats = $statsStmt->fetch(PDO::FETCH_ASSOC);
+            $stats = Database::fetchOne($statsQuery, $params);
 
             return [
                 'success' => true,

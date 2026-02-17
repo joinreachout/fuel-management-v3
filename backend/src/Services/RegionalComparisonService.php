@@ -3,14 +3,11 @@
 namespace App\Services;
 
 use App\Core\Database;
-use PDO;
 
 class RegionalComparisonService
 {
     public static function getRegionalComparison(): array
     {
-        $db = Database::getInstance();
-        $pdo = $db->getConnection();
 
         try {
             // Get regional comparison data
@@ -27,8 +24,7 @@ class RegionalComparisonService
                 ORDER BY r.name
             ";
 
-            $stmt = $pdo->query($query);
-            $regions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $regions = Database::fetchAll($query);
 
             // Get additional data for each region
             foreach ($regions as &$region) {
@@ -44,21 +40,19 @@ class RegionalComparisonService
                     FROM depot_tanks dt
                     JOIN depots d ON dt.depot_id = d.id
                     JOIN stations s ON d.station_id = s.id
-                    WHERE s.region_id = :region_id
+                    WHERE s.region_id = ?
                       AND dt.is_active = TRUE
                       AND dt.fuel_type_id IS NOT NULL
                 ";
 
-                $fillStmt = $pdo->prepare($fillQuery);
-                $fillStmt->execute([':region_id' => $regionId]);
-                $fillData = $fillStmt->fetch(PDO::FETCH_ASSOC);
+                $fillData = Database::fetchOne($fillQuery, [$regionId]);
                 $avgFill = $fillData ? floatval($fillData['fill_percentage']) : 0;
 
                 // Get critical stations count
                 $criticalQuery = "
                     SELECT COUNT(DISTINCT s.id) as critical_count
                     FROM stations s
-                    WHERE s.region_id = :region_id
+                    WHERE s.region_id = ?
                       AND s.id IN (
                           SELECT DISTINCT d.station_id
                           FROM depot_tanks dt
@@ -71,9 +65,7 @@ class RegionalComparisonService
                       )
                 ";
 
-                $criticalStmt = $pdo->prepare($criticalQuery);
-                $criticalStmt->execute([':region_id' => $regionId]);
-                $criticalData = $criticalStmt->fetch(PDO::FETCH_ASSOC);
+                $criticalData = Database::fetchOne($criticalQuery, [$regionId]);
                 $criticalCount = $criticalData ? intval($criticalData['critical_count']) : 0;
 
                 // Get total stock in tons
@@ -84,14 +76,12 @@ class RegionalComparisonService
                     JOIN depots d ON dt.depot_id = d.id
                     JOIN stations s ON d.station_id = s.id
                     JOIN fuel_types ft ON dt.fuel_type_id = ft.id
-                    WHERE s.region_id = :region_id
+                    WHERE s.region_id = ?
                       AND dt.is_active = TRUE
                       AND dt.fuel_type_id IS NOT NULL
                 ";
 
-                $stockStmt = $pdo->prepare($stockQuery);
-                $stockStmt->execute([':region_id' => $regionId]);
-                $stockData = $stockStmt->fetch(PDO::FETCH_ASSOC);
+                $stockData = Database::fetchOne($stockQuery, [$regionId]);
                 $totalStock = $stockData ? floatval($stockData['total_stock_tons']) : 0;
 
                 // Get total consumption in tons per day
@@ -102,12 +92,10 @@ class RegionalComparisonService
                     JOIN depots d ON sp.depot_id = d.id
                     JOIN stations s ON d.station_id = s.id
                     JOIN fuel_types ft ON sp.fuel_type_id = ft.id
-                    WHERE s.region_id = :region_id
+                    WHERE s.region_id = ?
                 ";
 
-                $consumptionStmt = $pdo->prepare($consumptionQuery);
-                $consumptionStmt->execute([':region_id' => $regionId]);
-                $consumptionData = $consumptionStmt->fetch(PDO::FETCH_ASSOC);
+                $consumptionData = Database::fetchOne($consumptionQuery, [$regionId]);
                 $totalConsumption = $consumptionData ? floatval($consumptionData['total_consumption_tons']) : 0;
 
                 // Add calculated fields
