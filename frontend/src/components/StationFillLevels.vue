@@ -231,6 +231,14 @@ const selectStation = async (stationId) => {
   if (!hasStationTanks) {
     await loadStationTanks(stationId);
   }
+
+  // Update scroll pages after station change
+  setTimeout(() => {
+    updateScrollPages();
+    if (scrollContainer.value) {
+      scrollContainer.value.scrollLeft = 0; // Reset scroll position
+    }
+  }, 100);
 };
 
 const loadStationTanks = async (stationId) => {
