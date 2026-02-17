@@ -34,7 +34,7 @@
         <p class="text-gray-500">No tank data available</p>
       </div>
 
-      <div v-else class="overflow-x-auto overflow-y-visible scrollbar-thin w-full min-w-0">
+      <div v-else ref="scrollContainer" @scroll="handleScroll" class="overflow-x-auto overflow-y-visible scrollbar-thin w-full min-w-0">
         <div class="flex items-end justify-around gap-6 min-h-[300px] min-w-max pb-1">
           <!-- Vertical Bar for each tank -->
           <div
@@ -77,13 +77,13 @@
         </div>
       </div>
 
-      <!-- Fuel Type Indicators (show how many fuel types for current station) -->
-      <div class="flex justify-center gap-2 mt-3 min-h-[22px] py-0.5" v-if="currentStationTanks.length > 0">
+      <!-- Scroll Page Indicators -->
+      <div class="flex justify-center gap-2 mt-3 min-h-[22px] py-0.5" v-if="scrollPages > 1">
         <div
-          v-for="(tank, index) in currentStationTanks"
-          :key="tank.tank_id"
+          v-for="page in scrollPages"
+          :key="page"
           class="w-2 h-2 rounded-full transition-all"
-          :class="index === 0 ? 'bg-orange-500 w-6' : 'bg-gray-300'">
+          :class="currentScrollPage === page - 1 ? 'bg-orange-500 w-6' : 'bg-gray-300'">
         </div>
       </div>
     </div>
@@ -98,6 +98,9 @@ const loading = ref(true);
 const stations = ref([]);
 const allTanks = ref([]); // Store all tanks from API
 const activeStationId = ref(null);
+const scrollContainer = ref(null);
+const currentScrollPage = ref(0);
+const scrollPages = ref(1);
 
 // Get tanks for currently selected station from real data
 // Group by fuel type and sum capacities/stocks
@@ -293,8 +296,38 @@ const loadData = async () => {
   }
 };
 
+const handleScroll = () => {
+  if (!scrollContainer.value) return;
+
+  const container = scrollContainer.value;
+  const scrollLeft = container.scrollLeft;
+  const containerWidth = container.clientWidth;
+  const scrollWidth = container.scrollWidth;
+
+  // Calculate number of pages based on scroll width
+  scrollPages.value = Math.ceil(scrollWidth / containerWidth);
+
+  // Calculate current page
+  currentScrollPage.value = Math.floor(scrollLeft / containerWidth);
+};
+
+const updateScrollPages = () => {
+  if (!scrollContainer.value) return;
+
+  const container = scrollContainer.value;
+  const containerWidth = container.clientWidth;
+  const scrollWidth = container.scrollWidth;
+
+  scrollPages.value = Math.ceil(scrollWidth / containerWidth);
+};
+
 onMounted(() => {
   loadData();
+
+  // Update scroll pages after data loads and DOM updates
+  setTimeout(() => {
+    updateScrollPages();
+  }, 500);
 });
 </script>
 
