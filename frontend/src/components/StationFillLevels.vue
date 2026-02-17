@@ -77,16 +77,14 @@
         </div>
       </div>
 
-      <!-- Pagination Dots (if needed for mobile scroll) -->
-      <div class="flex justify-center gap-2 mt-3 min-h-[22px] py-0.5" v-if="stations.length > 1">
-        <button
-          v-for="station in stations"
-          :key="station.station_id"
-          type="button"
+      <!-- Fuel Type Indicators (show how many fuel types for current station) -->
+      <div class="flex justify-center gap-2 mt-3 min-h-[22px] py-0.5" v-if="currentStationTanks.length > 0">
+        <div
+          v-for="(tank, index) in currentStationTanks"
+          :key="tank.tank_id"
           class="w-2 h-2 rounded-full transition-all"
-          :class="activeStationId === station.station_id ? 'bg-orange-500 w-6' : 'bg-gray-300'"
-          @click="selectStation(station.station_id)">
-        </button>
+          :class="index === 0 ? 'bg-orange-500 w-6' : 'bg-gray-300'">
+        </div>
       </div>
     </div>
   </div>
