@@ -98,18 +98,46 @@ const allTanks = ref([]); // Store all tanks from API
 const activeStationId = ref(null);
 
 // Get tanks for currently selected station from real data
+// Group by fuel type and sum capacities/stocks
 const currentStationTanks = computed(() => {
   if (!activeStationId.value || allTanks.value.length === 0) return [];
 
   const stationTanks = allTanks.value.filter(tank => tank.station_id === activeStationId.value);
 
-  // Sort by depot name, then fuel type name
-  return stationTanks.sort((a, b) => {
-    if (a.depot_name !== b.depot_name) {
-      return a.depot_name.localeCompare(b.depot_name);
+  // Group by fuel type ID
+  const groupedByFuel = {};
+
+  stationTanks.forEach(tank => {
+    const fuelId = tank.fuel_type_id;
+
+    if (!groupedByFuel[fuelId]) {
+      groupedByFuel[fuelId] = {
+        tank_id: `grouped_${fuelId}`,
+        station_id: tank.station_id,
+        fuel_type_id: fuelId,
+        product_name: tank.product_name,
+        fuel_type_code: tank.fuel_type_code,
+        tank_capacity_liters: 0,
+        current_stock_liters: 0,
+        tank_count: 0
+      };
     }
-    return a.product_name.localeCompare(b.product_name);
+
+    groupedByFuel[fuelId].tank_capacity_liters += tank.tank_capacity_liters;
+    groupedByFuel[fuelId].current_stock_liters += tank.current_stock_liters;
+    groupedByFuel[fuelId].tank_count++;
   });
+
+  // Convert to array and calculate fill percentage
+  const grouped = Object.values(groupedByFuel).map(fuel => ({
+    ...fuel,
+    fill_percentage: fuel.tank_capacity_liters > 0
+      ? (fuel.current_stock_liters / fuel.tank_capacity_liters) * 100
+      : 0
+  }));
+
+  // Sort by fuel type name
+  return grouped.sort((a, b) => a.product_name.localeCompare(b.product_name));
 });
 
 const getTabStyle = (station) => {
