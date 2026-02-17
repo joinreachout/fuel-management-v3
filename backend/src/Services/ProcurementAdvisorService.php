@@ -83,13 +83,28 @@ class ProcurementAdvisorService
                 $daysLeft
             );
 
-            // Calculate recommended order quantity
-            $targetLevel = (float)($row['target_level_liters'] ?? $capacityLiters * 0.8);
-            $recommendedOrderLiters = max(0, $targetLevel - $currentStockLiters);
-            $recommendedOrderTons = $recommendedOrderLiters * $density / 1000;
-
-            // Get best supplier for this fuel type and station
+            // Get best supplier for this fuel type and station (needed for delivery time calculation)
             $bestSupplier = self::getBestSupplier($row['fuel_type_id'], $row['station_id'], $urgency);
+
+            // Calculate recommended order quantity with proper logic
+            $targetLevel = (float)($row['target_level_liters'] ?? $capacityLiters * 0.8);
+            $deliveryDays = $bestSupplier['avg_delivery_days'] ?? 7;
+            $safetyBufferDays = 2; // Extra buffer days for delays
+
+            // Calculate consumption during delivery period
+            $consumptionDuringDelivery = $dailyConsumption * ($deliveryDays + $safetyBufferDays);
+
+            // Recommended order = What we need to reach target + What will be consumed during delivery - What we have now
+            // This ensures we'll have target_level when order arrives
+            $recommendedOrderLiters = max(0,
+                $targetLevel + $consumptionDuringDelivery - $currentStockLiters
+            );
+
+            // Check if order exceeds capacity - if so, cap at capacity
+            $maxOrderLiters = $capacityLiters - $currentStockLiters + $consumptionDuringDelivery;
+            $recommendedOrderLiters = min($recommendedOrderLiters, $maxOrderLiters);
+
+            $recommendedOrderTons = $recommendedOrderLiters * $density / 1000;
 
             // Calculate critical date and last order date
             $criticalDate = null;
@@ -99,11 +114,8 @@ class ProcurementAdvisorService
             if ($daysLeft > 0) {
                 $criticalDate = date('Y-m-d', strtotime("+{$daysLeft} days"));
 
-                // Consider supplier delivery time
-                $deliveryDays = $bestSupplier['avg_delivery_days'] ?? 7;
-                $safetyBuffer = 2; // Extra buffer days
-                $orderLeadTime = $deliveryDays + $safetyBuffer;
-
+                // Last order date: when we must order to receive delivery before critical
+                $orderLeadTime = $deliveryDays + $safetyBufferDays;
                 $daysUntilMustOrder = max(0, $daysLeft - $orderLeadTime);
                 $lastOrderDate = date('Y-m-d', strtotime("+{$daysUntilMustOrder} days"));
                 $daysUntilCritical = max(0, $daysLeft);
@@ -130,6 +142,13 @@ class ProcurementAdvisorService
                 'daily_consumption_tons' => round($dailyConsumptionTons, 2),
                 'recommended_order_tons' => round($recommendedOrderTons, 2),
                 'recommended_order_liters' => round($recommendedOrderLiters, 2),
+                'calculation_details' => [
+                    'target_level_tons' => round($targetLevel * $density / 1000, 2),
+                    'consumption_during_delivery_tons' => round($consumptionDuringDelivery * $density / 1000, 2),
+                    'delivery_days' => $deliveryDays,
+                    'safety_buffer_days' => $safetyBufferDays,
+                    'formula' => 'recommended = (target_level + consumption_during_delivery) - current_stock'
+                ],
                 'best_supplier' => $bestSupplier,
                 'created_at' => date('Y-m-d H:i:s')
             ];
