@@ -1,0 +1,21 @@
+# REV 3.0 - Serve SPA directly at /rev3/ (no redirect to /rev3/frontend/dist/)
+# Prevents wrong redirect to /rev3/frontend/dist/rev3/
+
+RewriteEngine On
+RewriteBase /rev3/
+
+# Existing physical files FIRST - serve directly (update.html, deploy.php, etc.)
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Don't rewrite: backend API (directories)
+RewriteRule ^backend/ - [L]
+
+# /rev3/assets/* → frontend/dist/assets/* (Vite output)
+RewriteRule ^assets/(.*)$ frontend/dist/assets/$1 [L]
+
+# Static files in dist root (truck_header.jpg, kkt_logo.png, vite.svg)
+RewriteRule ^(truck_header\.jpg|kkt_logo\.png|vite\.svg)$ frontend/dist/$1 [L]
+
+# SPA fallback: /rev3/, /rev3/orders, etc. → frontend/dist/index.html
+RewriteRule ^(.*)$ frontend/dist/index.html [L]

@@ -1,7 +1,7 @@
 <template>
-  <Dashboard />
+  <router-view />
 </template>
 
 <script setup>
-import Dashboard from './views/Dashboard.vue';
+// App component now uses router-view
 </script>

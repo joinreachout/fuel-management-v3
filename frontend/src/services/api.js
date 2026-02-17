@@ -61,7 +61,7 @@ export const ordersApi = {
 
 // Transfers API
 export const transfersApi = {
-  getAll: () => api.get('/transfers'),
+  getAll: (params) => api.get('/transfers', { params }),
   getById: (id) => api.get(`/transfers/${id}`),
   getByStatus: (status) => api.get(`/transfers/status/${status}`),
   getByStation: (id) => api.get(`/transfers/station/${id}`),
@@ -74,6 +74,16 @@ export const reportsApi = {
   getStationPerformance: () => api.get('/reports/station-performance'),
   getLowStock: () => api.get('/reports/low-stock'),
   getCapacityUtilization: () => api.get('/reports/capacity-utilization'),
+};
+
+// Cost Analysis API
+export const costAnalysisApi = {
+  get: () => api.get('/cost-analysis'),
+};
+
+// Regional Comparison API
+export const regionalComparisonApi = {
+  get: () => api.get('/regional-comparison'),
 };
 
 export default api;

@@ -2,108 +2,25 @@
 
 namespace App\Controllers;
 
+use App\Services\TransferService;
 use App\Core\Response;
-use App\Models\Transfer;
 
-/**
- * Transfer Controller
- * Handles HTTP requests for transfer resources
- */
 class TransferController
 {
-    /**
-     * GET /api/transfers
-     * Get all transfers
-     */
-    public function index(): void
+    public function getTransfers(): void
     {
         try {
-            $transfers = Transfer::all();
+            $status = $_GET['status'] ?? null;
+            $fromStation = isset($_GET['from_station']) ? (int)$_GET['from_station'] : null;
+            $toStation = isset($_GET['to_station']) ? (int)$_GET['to_station'] : null;
+            $fuelType = isset($_GET['fuel_type']) ? (int)$_GET['fuel_type'] : null;
 
-            Response::json([
-                'success' => true,
-                'data' => $transfers,
-                'count' => count($transfers)
-            ]);
+            $data = TransferService::getTransfers($status, $fromStation, $toStation, $fuelType);
+            Response::json($data);
         } catch (\Exception $e) {
             Response::json([
                 'success' => false,
-                'error' => 'Failed to fetch transfers: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * GET /api/transfers/{id}
-     * Get single transfer by ID
-     */
-    public function show(int $id): void
-    {
-        try {
-            $transfer = Transfer::find($id);
-
-            if (!$transfer) {
-                Response::json([
-                    'success' => false,
-                    'error' => 'Transfer not found'
-                ], 404);
-                return;
-            }
-
-            Response::json([
-                'success' => true,
-                'data' => $transfer
-            ]);
-        } catch (\Exception $e) {
-            Response::json([
-                'success' => false,
-                'error' => 'Failed to fetch transfer: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * GET /api/transfers/pending
-     * Get pending transfers
-     */
-    public function pending(): void
-    {
-        try {
-            $transfers = Transfer::getPending();
-
-            Response::json([
-                'success' => true,
-                'data' => $transfers,
-                'count' => count($transfers)
-            ]);
-        } catch (\Exception $e) {
-            Response::json([
-                'success' => false,
-                'error' => 'Failed to fetch pending transfers: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * GET /api/transfers/recent
-     * Get recent transfers (last 30 days)
-     */
-    public function recent(): void
-    {
-        try {
-            $days = $_GET['days'] ?? 30;
-            $transfers = Transfer::getRecent((int)$days);
-
-            Response::json([
-                'success' => true,
-                'data' => $transfers,
-                'count' => count($transfers),
-                'days' => (int)$days
-            ]);
-        } catch (\Exception $e) {
-            Response::json([
-                'success' => false,
-                'error' => 'Failed to fetch recent transfers: ' . $e->getMessage()
+                'message' => 'Failed to fetch transfers: ' . $e->getMessage()
             ], 500);
         }
     }

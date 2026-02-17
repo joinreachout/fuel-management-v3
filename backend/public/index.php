@@ -4,9 +4,12 @@
  * Handles all incoming HTTP requests and routes to appropriate controllers
  */
 
-// Set error reporting for development
+// Load configuration first (defines env() function)
+require_once __DIR__ . '/../config/database.php';
+
+// Set error reporting based on environment
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', env('APP_DEBUG', '0'));
 
 // Set JSON content type
 header('Content-Type: application/json');
@@ -17,8 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Load configuration and core files
-require_once __DIR__ . '/../config/database.php';
+// Load core files
 require_once __DIR__ . '/../src/Core/Response.php';
 require_once __DIR__ . '/../src/Core/Database.php';
 
@@ -35,6 +37,9 @@ require_once __DIR__ . '/../src/Models/Transfer.php';
 require_once __DIR__ . '/../src/Services/ForecastService.php';
 require_once __DIR__ . '/../src/Services/AlertService.php';
 require_once __DIR__ . '/../src/Services/ReportService.php';
+require_once __DIR__ . '/../src/Services/CostAnalysisService.php';
+require_once __DIR__ . '/../src/Services/TransferService.php';
+require_once __DIR__ . '/../src/Services/RegionalComparisonService.php';
 
 // Load Controllers
 require_once __DIR__ . '/../src/Controllers/StationController.php';
@@ -45,6 +50,8 @@ require_once __DIR__ . '/../src/Controllers/OrderController.php';
 require_once __DIR__ . '/../src/Controllers/TransferController.php';
 require_once __DIR__ . '/../src/Controllers/DashboardController.php';
 require_once __DIR__ . '/../src/Controllers/ReportController.php';
+require_once __DIR__ . '/../src/Controllers/CostAnalysisController.php';
+require_once __DIR__ . '/../src/Controllers/RegionalComparisonController.php';
 
 use App\Core\Response;
 use App\Controllers\StationController;
@@ -55,6 +62,8 @@ use App\Controllers\OrderController;
 use App\Controllers\TransferController;
 use App\Controllers\DashboardController;
 use App\Controllers\ReportController;
+use App\Controllers\CostAnalysisController;
+use App\Controllers\RegionalComparisonController;
 
 // Simple router
 try {
@@ -78,6 +87,8 @@ try {
     $transferController = new TransferController();
     $dashboardController = new DashboardController();
     $reportController = new ReportController();
+    $costAnalysisController = new CostAnalysisController();
+    $regionalComparisonController = new RegionalComparisonController();
 
     // ==================== STATIONS ====================
     if ($requestMethod === 'GET' && $path === '/api/stations') {
@@ -149,7 +160,7 @@ try {
 
     // ==================== TRANSFERS ====================
     } elseif ($requestMethod === 'GET' && $path === '/api/transfers') {
-        $transferController->index();
+        $transferController->getTransfers();
 
     } elseif ($requestMethod === 'GET' && $path === '/api/transfers/pending') {
         $transferController->pending();
@@ -191,6 +202,14 @@ try {
 
     } elseif ($requestMethod === 'GET' && $path === '/api/reports/capacity-utilization') {
         $reportController->capacityUtilization();
+
+    // ==================== COST ANALYSIS ====================
+    } elseif ($requestMethod === 'GET' && $path === '/api/cost-analysis') {
+        $costAnalysisController->getCostAnalysis();
+
+    // ==================== REGIONAL COMPARISON ====================
+    } elseif ($requestMethod === 'GET' && $path === '/api/regional-comparison') {
+        $regionalComparisonController->getRegionalComparison();
 
     } else {
         // 404 Not Found

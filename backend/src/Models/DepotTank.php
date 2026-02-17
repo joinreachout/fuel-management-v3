@@ -109,11 +109,11 @@ class DepotTank
             // Log the change in stock_audit
             Database::insert('stock_audit', [
                 'depot_tank_id' => $tankId,
-                'change_type' => $reason,
+                'change_reason' => $reason,
                 'old_stock_liters' => $oldStock,
                 'new_stock_liters' => $newStockLiters,
                 'change_liters' => $newStockLiters - $oldStock,
-                'created_at' => date('Y-m-d H:i:s')
+                'changed_at' => date('Y-m-d H:i:s')
             ]);
 
             Database::commit();

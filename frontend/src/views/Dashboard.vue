@@ -12,12 +12,12 @@
 
         <!-- Menu -->
         <nav class="flex items-center gap-6">
-          <a href="#" class="text-white font-medium border-b-2 border-white pb-1 text-sm">Dashboard</a>
-          <a href="#" class="text-gray-400 hover:text-white transition-colors text-sm">Orders</a>
-          <a href="#" class="text-gray-400 hover:text-white transition-colors text-sm">Transfers</a>
-          <a href="#" class="text-gray-400 hover:text-white transition-colors text-sm">Parameters</a>
-          <a href="#" class="text-gray-400 hover:text-white transition-colors text-sm">Import</a>
-          <a href="#" class="text-gray-400 hover:text-white transition-colors text-sm">How It Works</a>
+          <router-link to="/" class="text-white font-medium border-b-2 border-white pb-1 text-sm">Dashboard</router-link>
+          <router-link to="/orders" class="text-gray-400 hover:text-white transition-colors text-sm">Orders</router-link>
+          <router-link to="/transfers" class="text-gray-400 hover:text-white transition-colors text-sm">Transfers</router-link>
+          <router-link to="/parameters" class="text-gray-400 hover:text-white transition-colors text-sm">Parameters</router-link>
+          <router-link to="/import" class="text-gray-400 hover:text-white transition-colors text-sm">Import</router-link>
+          <router-link to="/how-it-works" class="text-gray-400 hover:text-white transition-colors text-sm">How It Works</router-link>
         </nav>
       </div>
     </div>
@@ -31,7 +31,7 @@
       <!-- Truck Background Image - Right Side with Gradient Fade -->
       <div class="absolute inset-0 overflow-hidden pointer-events-none">
         <div class="absolute right-0 top-0 bottom-0 w-2/3" style="
-          background-image: linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 15%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0) 60%), url('/rev3/frontend/dist/truck_header.jpg');
+          background-image: linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 15%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0) 60%), url('/rev3/truck_header.jpg');
           background-size: auto 100%;
           background-position: center right;
           background-repeat: no-repeat;
@@ -177,16 +177,34 @@
         <div class="bg-white rounded-2xl shadow-lg overflow-hidden -mt-96 relative z-20">
 
           <!-- Chart Header -->
-          <div class="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200 px-6 py-4">
-            <h3 class="text-lg font-bold text-gray-800">
-              <i class="fas fa-chart-line text-blue-500 mr-2"></i>
-              Fuel Level Forecast - Station Level (Tons)
-            </h3>
-            <p class="text-xs text-gray-500 mt-1">Predictive analysis of fuel levels across stations</p>
+          <div class="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200 px-6 py-4 flex items-start justify-between">
+            <div>
+              <h3 class="text-lg font-bold text-gray-800">
+                <i class="fas fa-chart-line text-blue-500 mr-2"></i>
+                Fuel Level Forecast - Station Level (Tons)
+              </h3>
+              <p class="text-xs text-gray-500 mt-1">Predictive analysis of fuel levels across stations</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  v-model="showLegend"
+                  class="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                <span class="text-xs text-gray-600">Show Legend</span>
+              </label>
+              <button
+                type="button"
+                class="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                @click="forecastCollapsed = !forecastCollapsed"
+                :title="forecastCollapsed ? 'Expand' : 'Collapse'">
+                <i class="fas" :class="forecastCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
+              </button>
+            </div>
           </div>
 
           <!-- Chart Content: Filters (Left) + Canvas (Right) -->
-          <div class="p-6 flex gap-6">
+          <div v-show="!forecastCollapsed" class="p-6 flex gap-6">
 
             <!-- LEFT: Filters Sidebar -->
             <div class="w-48 flex-shrink-0 space-y-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
@@ -343,6 +361,29 @@
           <TopSuppliers />
         </div>
 
+        <!-- Cost Analysis + Transfer Activity Grid -->
+        <div class="mt-6 grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <!-- WIDGET 7: Cost Analysis Dashboard -->
+          <CostAnalysis />
+
+          <!-- WIDGET 8: Transfer Activity Monitor -->
+          <TransferActivity />
+        </div>
+
+        <!-- Regional Comparison + Fuel Type Distribution Grid -->
+        <div class="mt-6 grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <!-- WIDGET 9: Regional Comparison -->
+          <RegionalComparison />
+
+          <!-- WIDGET 10: Fuel Type Distribution -->
+          <FuelTypeDistribution />
+        </div>
+
+        <!-- Orders Calendar (Full Width) -->
+        <div class="mt-6">
+          <OrdersCalendar />
+        </div>
+
       </div>
     </div>
 
@@ -363,6 +404,11 @@ import WorkingCapital from '../components/WorkingCapital.vue';
 import RiskExposure from '../components/RiskExposure.vue';
 import InventoryTurnover from '../components/InventoryTurnover.vue';
 import TopSuppliers from '../components/TopSuppliers.vue';
+import CostAnalysis from '../components/CostAnalysis.vue';
+import TransferActivity from '../components/TransferActivity.vue';
+import RegionalComparison from '../components/RegionalComparison.vue';
+import FuelTypeDistribution from '../components/FuelTypeDistribution.vue';
+import OrdersCalendar from '../components/OrdersCalendar.vue';
 import OptimusAI from '../components/OptimusAI.vue';
 
 const loading = ref(true);
@@ -388,6 +434,8 @@ const chartFilters = ref({
 
 const forecastHasData = ref(true);
 const forecastMessage = ref('');
+const forecastCollapsed = ref(false);
+const showLegend = ref(true);
 
 const criticalCount = computed(() => {
   return criticalTanks.value.length;
@@ -523,7 +571,7 @@ const updateForecastChart = (forecastData) => {
         maintainAspectRatio: true,
         plugins: {
           legend: {
-            display: true,
+            display: showLegend.value,
             position: 'top',
           }
         },
@@ -545,6 +593,14 @@ const updateForecastChart = (forecastData) => {
 watch(chartFilters, () => {
   loadForecastData();
 }, { deep: true });
+
+// Watch for legend toggle
+watch(showLegend, () => {
+  if (forecastChartInstance) {
+    forecastChartInstance.options.plugins.legend.display = showLegend.value;
+    forecastChartInstance.update();
+  }
+});
 
 onMounted(() => {
   loadDashboard();

@@ -97,31 +97,9 @@ const stations = ref([]);
 const tanks = ref([]);
 const activeStationId = ref(null);
 
-// Fixed tank types - same for all stations (like Stock by Fuel Type uses same stations for all fuels)
-const fixedTankTypes = [
-  { name: 'Diesel', capacity: 100000 },
-  { name: 'Petrol 95', capacity: 100000 },
-  { name: 'Petrol 98', capacity: 100000 }
-];
-
 const currentStationTanks = computed(() => {
   if (!activeStationId.value) return [];
-
-  // Generate NEW random data for fixed tank types - exactly like Stock by Fuel Type
-  return fixedTankTypes.map((tankType, idx) => {
-    const fillPercentage = Math.random() * 70 + 20; // 20-90%
-    const currentStock = tankType.capacity * (fillPercentage / 100);
-
-    return {
-      tank_id: idx, // Fixed ID based on tank type position (0, 1, 2)
-      station_id: activeStationId.value,
-      product_name: tankType.name,
-      fuel_type_id: 25 + idx,
-      tank_capacity_liters: tankType.capacity,
-      current_stock_liters: currentStock,
-      fill_percentage: fillPercentage
-    };
-  });
+  return tanks.value.filter(tank => tank.station_id === activeStationId.value);
 });
 
 const getTabStyle = (station) => {
