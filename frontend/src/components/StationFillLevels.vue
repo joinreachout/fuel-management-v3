@@ -79,12 +79,14 @@
 
       <!-- Scroll Page Indicators -->
       <div class="flex justify-center gap-2 mt-3 min-h-[22px] py-0.5" v-if="scrollPages > 1">
-        <div
+        <button
           v-for="page in scrollPages"
           :key="page"
-          class="w-2 h-2 rounded-full transition-all"
-          :class="currentScrollPage === page - 1 ? 'bg-orange-500 w-6' : 'bg-gray-300'">
-        </div>
+          type="button"
+          class="w-2 h-2 rounded-full transition-all cursor-pointer hover:opacity-70"
+          :class="currentScrollPage === page - 1 ? 'bg-orange-500 w-6' : 'bg-gray-300'"
+          @click="scrollToPage(page - 1)">
+        </button>
       </div>
     </div>
   </div>
@@ -319,6 +321,19 @@ const updateScrollPages = () => {
   const scrollWidth = container.scrollWidth;
 
   scrollPages.value = Math.ceil(scrollWidth / containerWidth);
+};
+
+const scrollToPage = (pageIndex) => {
+  if (!scrollContainer.value) return;
+
+  const container = scrollContainer.value;
+  const containerWidth = container.clientWidth;
+  const scrollLeft = pageIndex * containerWidth;
+
+  container.scrollTo({
+    left: scrollLeft,
+    behavior: 'smooth'
+  });
 };
 
 onMounted(() => {
