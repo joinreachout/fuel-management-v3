@@ -278,10 +278,14 @@ const loadData = async () => {
         station_code: s.code
       }));
 
-      // Load tanks for first station
+      // Load tanks for ALL stations to enable color indicators on tabs
       if (stations.value.length > 0) {
         activeStationId.value = stations.value[0].station_id;
-        await loadStationTanks(stations.value[0].station_id);
+
+        // Load all station tanks in parallel
+        await Promise.all(
+          stations.value.map(station => loadStationTanks(station.station_id))
+        );
       }
     }
   } catch (error) {
