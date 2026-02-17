@@ -63,19 +63,15 @@
                 </div>
               </div>
 
-              <!-- Current Stock Label at Fill Level (REV 2.0 style) -->
-              <div
-                v-if="tank.fill_percentage > 5"
-                class="absolute left-full ml-2 text-xs font-bold text-gray-800 whitespace-nowrap pointer-events-none"
-                :style="{ bottom: `${tank.fill_percentage}%`, transform: 'translateY(50%)' }">
-                {{ formatLiters(tank.current_stock_liters) }}
-              </div>
             </div>
 
             <!-- Label Below Bar -->
             <div class="text-center">
               <div class="text-xs font-semibold text-gray-700">{{ tank.product_name }}</div>
-              <div class="text-xs text-gray-500">{{ formatLiters(tank.current_stock_liters) }}</div>
+              <div class="text-xs font-bold" :style="{ color: getBarColor(tank.fuel_type_id) }">
+                {{ formatLiters(tank.current_stock_liters) }}
+              </div>
+              <div class="text-xs text-gray-500">{{ formatLiters(tank.tank_capacity_liters) }}</div>
             </div>
           </div>
         </div>
@@ -193,6 +189,25 @@ const getBarStyle = (tank) => {
     background: gradient,
     boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.2), inset 0 -2px 4px rgba(0,0,0,0.1)',
   };
+};
+
+const getBarColor = (fuelTypeId) => {
+  // Find a tank with this fuel type to get its fill percentage
+  const tank = currentStationTanks.value.find(t => t.fuel_type_id === fuelTypeId);
+  if (!tank) return '#6b7280'; // Gray fallback
+
+  const fillPct = tank.fill_percentage;
+
+  // Return color matching the gradient (use darker color from gradient)
+  if (fillPct < 30) {
+    return '#dc2626'; // Red
+  } else if (fillPct < 50) {
+    return '#ea580c'; // Orange
+  } else if (fillPct < 80) {
+    return '#84cc16'; // Yellow-green
+  } else {
+    return '#16a34a'; // Green
+  }
 };
 
 const formatLiters = (liters) => {
