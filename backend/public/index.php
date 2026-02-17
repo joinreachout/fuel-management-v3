@@ -42,6 +42,7 @@ require_once __DIR__ . '/../src/Services/TransferService.php';
 require_once __DIR__ . '/../src/Services/RegionalComparisonService.php';
 require_once __DIR__ . '/../src/Services/StationTanksService.php';
 require_once __DIR__ . '/../src/Services/FuelStockService.php';
+require_once __DIR__ . '/../src/Services/ProcurementAdvisorService.php';
 
 // Load Controllers
 require_once __DIR__ . '/../src/Controllers/StationController.php';
@@ -54,6 +55,7 @@ require_once __DIR__ . '/../src/Controllers/DashboardController.php';
 require_once __DIR__ . '/../src/Controllers/ReportController.php';
 require_once __DIR__ . '/../src/Controllers/CostAnalysisController.php';
 require_once __DIR__ . '/../src/Controllers/RegionalComparisonController.php';
+require_once __DIR__ . '/../src/Controllers/ProcurementAdvisorController.php';
 
 use App\Core\Response;
 use App\Controllers\StationController;
@@ -66,6 +68,7 @@ use App\Controllers\DashboardController;
 use App\Controllers\ReportController;
 use App\Controllers\CostAnalysisController;
 use App\Controllers\RegionalComparisonController;
+use App\Controllers\ProcurementAdvisorController;
 
 // Simple router
 try {
@@ -91,6 +94,7 @@ try {
     $reportController = new ReportController();
     $costAnalysisController = new CostAnalysisController();
     $regionalComparisonController = new RegionalComparisonController();
+    $procurementAdvisorController = new ProcurementAdvisorController();
 
     // ==================== STATIONS ====================
     if ($requestMethod === 'GET' && $path === '/api/stations') {
@@ -221,6 +225,16 @@ try {
     // ==================== REGIONAL COMPARISON ====================
     } elseif ($requestMethod === 'GET' && $path === '/api/regional-comparison') {
         $regionalComparisonController->getRegionalComparison();
+
+    // ==================== PROCUREMENT ADVISOR ====================
+    } elseif ($requestMethod === 'GET' && $path === '/api/procurement/upcoming-shortages') {
+        $procurementAdvisorController->getUpcomingShortages();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/procurement/summary') {
+        $procurementAdvisorController->getSummary();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/procurement/supplier-recommendations') {
+        $procurementAdvisorController->getSupplierRecommendations();
 
     } else {
         // 404 Not Found
