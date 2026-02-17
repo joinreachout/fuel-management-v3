@@ -44,6 +44,10 @@ if [ ! -d "node_modules" ]; then
     npm install
 fi
 
+# Clean old build files
+echo "   🧹 Cleaning old build files..."
+rm -rf dist
+
 # Build frontend
 echo "   🔨 Building frontend with Vite..."
 npm run build
