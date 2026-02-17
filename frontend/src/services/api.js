@@ -41,6 +41,7 @@ export const fuelTypesApi = {
   getById: (id) => api.get(`/fuel-types/${id}`),
   getTotalStock: (id) => api.get(`/fuel-types/${id}/total-stock`),
   getStationsByFuelType: (id) => api.get(`/fuel-types/${id}/stations`),
+  getRegionsByFuelType: (id) => api.get(`/fuel-types/${id}/regions`),
 };
 
 // Suppliers API

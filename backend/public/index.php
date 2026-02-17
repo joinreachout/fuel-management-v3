@@ -134,6 +134,9 @@ try {
     } elseif ($requestMethod === 'GET' && preg_match('#^/api/fuel-types/(\d+)/stations$#', $path, $matches)) {
         $fuelTypeController->stations((int) $matches[1]);
 
+    } elseif ($requestMethod === 'GET' && preg_match('#^/api/fuel-types/(\d+)/regions$#', $path, $matches)) {
+        $fuelTypeController->regions((int) $matches[1]);
+
     // ==================== SUPPLIERS ====================
     } elseif ($requestMethod === 'GET' && $path === '/api/suppliers') {
         $supplierController->index();

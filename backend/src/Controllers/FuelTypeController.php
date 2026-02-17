@@ -110,4 +110,30 @@ class FuelTypeController
             ], 500);
         }
     }
+
+    /**
+     * GET /api/fuel-types/{id}/regions
+     * Get stock distribution for a fuel type across all regions
+     */
+    public function regions(int $id): void
+    {
+        try {
+            $result = FuelStockService::getStockByRegions($id);
+
+            if (!$result['success']) {
+                Response::json([
+                    'success' => false,
+                    'error' => $result['message']
+                ], 500);
+                return;
+            }
+
+            Response::json($result);
+        } catch (\Exception $e) {
+            Response::json([
+                'success' => false,
+                'error' => 'Failed to fetch fuel stock by regions: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

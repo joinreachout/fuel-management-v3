@@ -110,16 +110,20 @@ const currentLocations = computed(() => {
   if (!activeFuelId.value || stationStockData.value.length === 0) return [];
 
   // Use REAL data from API
-  return stationStockData.value.map(station => {
-    const stockLiters = parseFloat(station.total_stock_liters || 0);
-    const capacityLiters = parseFloat(station.total_capacity_liters || 0);
-    const stockTons = parseFloat(station.total_stock_tons || 0);
-    const capacityTons = parseFloat(station.total_capacity_tons || 0);
-    const fillPercentage = parseFloat(station.avg_fill_percentage || 0);
+  return stationStockData.value.map(location => {
+    const stockLiters = parseFloat(location.total_stock_liters || 0);
+    const capacityLiters = parseFloat(location.total_capacity_liters || 0);
+    const stockTons = parseFloat(location.total_stock_tons || 0);
+    const capacityTons = parseFloat(location.total_capacity_tons || 0);
+    const fillPercentage = parseFloat(location.avg_fill_percentage || 0);
+
+    // Handle both stations and regions
+    const id = location.station_id || location.region_id;
+    const name = location.station_name || location.region_name || location.station_code;
 
     return {
-      id: station.station_id,
-      name: station.station_name || station.station_code,
+      id: id,
+      name: name,
       stock: stockLiters,
       capacity: capacityLiters,
       stockTons: stockTons,
@@ -208,21 +212,17 @@ const formatLiters = (liters) => {
 
 const selectFuel = async (fuelId) => {
   activeFuelId.value = fuelId;
-
-  // Use already loaded data if available
-  if (allFuelStockData.value[fuelId]) {
-    stationStockData.value = allFuelStockData.value[fuelId];
-  } else {
-    // Load if not yet loaded
-    await loadStockForFuel(fuelId);
-  }
+  await loadStockForFuel(fuelId);
 };
 
 const loadStockForFuel = async (fuelId) => {
   try {
     loading.value = true;
 
-    const response = await fuelTypesApi.getStationsByFuelType(fuelId);
+    // Load data based on view mode
+    const response = viewMode.value === 'stations'
+      ? await fuelTypesApi.getStationsByFuelType(fuelId)
+      : await fuelTypesApi.getRegionsByFuelType(fuelId);
 
     if (response.data.success) {
       const data = response.data.data || [];
@@ -268,6 +268,13 @@ const loadData = async () => {
     loading.value = false;
   }
 };
+
+// Watch for view mode changes
+watch(viewMode, async () => {
+  if (activeFuelId.value) {
+    await loadStockForFuel(activeFuelId.value);
+  }
+});
 
 onMounted(() => {
   loadData();
