@@ -40,6 +40,8 @@ require_once __DIR__ . '/../src/Services/ReportService.php';
 require_once __DIR__ . '/../src/Services/CostAnalysisService.php';
 require_once __DIR__ . '/../src/Services/TransferService.php';
 require_once __DIR__ . '/../src/Services/RegionalComparisonService.php';
+require_once __DIR__ . '/../src/Services/StationTanksService.php';
+require_once __DIR__ . '/../src/Services/FuelStockService.php';
 
 // Load Controllers
 require_once __DIR__ . '/../src/Controllers/StationController.php';
@@ -100,6 +102,9 @@ try {
     } elseif ($requestMethod === 'GET' && preg_match('#^/api/stations/(\d+)/depots$#', $path, $matches)) {
         $stationController->depots((int) $matches[1]);
 
+    } elseif ($requestMethod === 'GET' && preg_match('#^/api/stations/(\d+)/tanks$#', $path, $matches)) {
+        $stationController->tanks((int) $matches[1]);
+
     // ==================== DEPOTS ====================
     } elseif ($requestMethod === 'GET' && $path === '/api/depots') {
         $depotController->index();
@@ -125,6 +130,9 @@ try {
 
     } elseif ($requestMethod === 'GET' && preg_match('#^/api/fuel-types/(\d+)/stock$#', $path, $matches)) {
         $fuelTypeController->stock((int) $matches[1]);
+
+    } elseif ($requestMethod === 'GET' && preg_match('#^/api/fuel-types/(\d+)/stations$#', $path, $matches)) {
+        $fuelTypeController->stations((int) $matches[1]);
 
     // ==================== SUPPLIERS ====================
     } elseif ($requestMethod === 'GET' && $path === '/api/suppliers') {

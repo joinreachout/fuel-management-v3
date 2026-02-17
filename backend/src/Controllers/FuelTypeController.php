@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Core\Response;
 use App\Models\FuelType;
+use App\Services\FuelStockService;
 
 /**
  * FuelType Controller
@@ -80,6 +81,32 @@ class FuelTypeController
             Response::json([
                 'success' => false,
                 'error' => 'Failed to fetch fuel type stock: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/fuel-types/{id}/stations
+     * Get stock distribution for a fuel type across all stations
+     */
+    public function stations(int $id): void
+    {
+        try {
+            $result = FuelStockService::getStockByStations($id);
+
+            if (!$result['success']) {
+                Response::json([
+                    'success' => false,
+                    'error' => $result['message']
+                ], 500);
+                return;
+            }
+
+            Response::json($result);
+        } catch (\Exception $e) {
+            Response::json([
+                'success' => false,
+                'error' => 'Failed to fetch fuel stock by stations: ' . $e->getMessage()
             ], 500);
         }
     }

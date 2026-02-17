@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Core\Database;
 use App\Core\Response;
 use App\Models\Station;
+use App\Services\StationTanksService;
 
 /**
  * Station Controller
@@ -82,6 +83,32 @@ class StationController
             Response::json([
                 'success' => false,
                 'error' => 'Failed to fetch depots: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET /api/stations/{id}/tanks
+     * Get all tanks for a station
+     */
+    public function tanks(int $id): void
+    {
+        try {
+            $result = StationTanksService::getStationTanks($id);
+
+            if (!$result['success']) {
+                Response::json([
+                    'success' => false,
+                    'error' => $result['message']
+                ], 500);
+                return;
+            }
+
+            Response::json($result);
+        } catch (\Exception $e) {
+            Response::json([
+                'success' => false,
+                'error' => 'Failed to fetch tanks: ' . $e->getMessage()
             ], 500);
         }
     }
