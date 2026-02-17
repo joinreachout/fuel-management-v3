@@ -149,19 +149,20 @@ const getTabStyle = (station) => {
     return {}; // Active tab uses CSS class styling
   }
 
-  // Calculate average fill percentage for this station from real data
+  // Get all tanks for this station
   const stationTanks = allTanks.value.filter(t => t.station_id === station.station_id);
   if (stationTanks.length === 0) return { background: '#e5e7eb' };
 
-  const avgFill = stationTanks.reduce((sum, t) => sum + parseFloat(t.fill_percentage || 0), 0) / stationTanks.length;
+  // Find minimum fill percentage (most critical tank)
+  const minFill = Math.min(...stationTanks.map(t => parseFloat(t.fill_percentage || 100)));
 
-  // Color based on fill level (same logic as REV 2.0)
-  if (avgFill < 30) {
-    return { background: '#fecaca', color: '#991b1b' }; // Red
-  } else if (avgFill < 50) {
-    return { background: '#fed7aa', color: '#9a3412' }; // Orange
+  // Color based on most critical tank level
+  if (minFill < 30) {
+    return { background: '#fecaca', color: '#991b1b' }; // Red - critical
+  } else if (minFill < 50) {
+    return { background: '#fed7aa', color: '#9a3412' }; // Orange - low
   } else {
-    return { background: '#d1fae5', color: '#065f46' }; // Green
+    return { background: '#d1fae5', color: '#065f46' }; // Green - normal
   }
 };
 
