@@ -84,9 +84,9 @@
             <div class="text-center">
               <div class="text-xs font-semibold text-gray-700">{{ location.name }}</div>
               <div class="text-xs font-bold" :style="{ color: getBarColor(location.fillPercentage) }">
-                {{ formatLiters(location.stock) }}
+                {{ formatTons(location.stockTons) }}
               </div>
-              <div class="text-xs text-gray-500">{{ formatLiters(location.capacity) }}</div>
+              <div class="text-xs text-gray-500">{{ formatTons(location.capacityTons) }}</div>
             </div>
           </div>
         </div>
@@ -113,6 +113,8 @@ const currentLocations = computed(() => {
   return stationStockData.value.map(station => {
     const stockLiters = parseFloat(station.total_stock_liters || 0);
     const capacityLiters = parseFloat(station.total_capacity_liters || 0);
+    const stockTons = parseFloat(station.total_stock_tons || 0);
+    const capacityTons = parseFloat(station.total_capacity_tons || 0);
     const fillPercentage = parseFloat(station.avg_fill_percentage || 0);
 
     return {
@@ -120,6 +122,8 @@ const currentLocations = computed(() => {
       name: station.station_name || station.station_code,
       stock: stockLiters,
       capacity: capacityLiters,
+      stockTons: stockTons,
+      capacityTons: capacityTons,
       fillPercentage: fillPercentage
     };
   });
@@ -182,6 +186,15 @@ const getBarStyle = (location) => {
     background: gradient,
     boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.2), inset 0 -2px 4px rgba(0,0,0,0.1)',
   };
+};
+
+const formatTons = (tons) => {
+  if (!tons) return '0 t';
+  const num = parseFloat(tons);
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'K t';
+  }
+  return num.toFixed(1) + ' t';
 };
 
 const formatLiters = (liters) => {

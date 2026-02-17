@@ -69,9 +69,9 @@
             <div class="text-center">
               <div class="text-xs font-semibold text-gray-700">{{ tank.product_name }}</div>
               <div class="text-xs font-bold" :style="{ color: getBarColor(tank.fuel_type_id) }">
-                {{ formatLiters(tank.current_stock_liters) }}
+                {{ formatTons(tank.current_stock_tons) }}
               </div>
-              <div class="text-xs text-gray-500">{{ formatLiters(tank.tank_capacity_liters) }}</div>
+              <div class="text-xs text-gray-500">{{ formatTons(tank.capacity_tons) }}</div>
             </div>
           </div>
         </div>
@@ -126,12 +126,16 @@ const currentStationTanks = computed(() => {
         fuel_type_code: tank.fuel_type_code,
         tank_capacity_liters: 0,
         current_stock_liters: 0,
+        capacity_tons: 0,
+        current_stock_tons: 0,
         tank_count: 0
       };
     }
 
     groupedByFuel[fuelId].tank_capacity_liters += tank.tank_capacity_liters;
     groupedByFuel[fuelId].current_stock_liters += tank.current_stock_liters;
+    groupedByFuel[fuelId].capacity_tons += tank.capacity_tons;
+    groupedByFuel[fuelId].current_stock_tons += tank.current_stock_tons;
     groupedByFuel[fuelId].tank_count++;
   });
 
@@ -214,6 +218,15 @@ const getBarColor = (fuelTypeId) => {
   }
 };
 
+const formatTons = (tons) => {
+  if (!tons) return '0 t';
+  const num = parseFloat(tons);
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'K t';
+  }
+  return num.toFixed(1) + ' t';
+};
+
 const formatLiters = (liters) => {
   if (!liters) return '0 L';
   const num = parseFloat(liters);
@@ -258,8 +271,11 @@ const loadStationTanks = async (stationId) => {
         fuel_type_id: tank.fuel_type_id,
         product_name: tank.fuel_type_name, // Map fuel_type_name to product_name for template
         fuel_type_code: tank.fuel_type_code,
+        density: parseFloat(tank.density || 0),
         tank_capacity_liters: parseFloat(tank.capacity_liters || 0),
         current_stock_liters: parseFloat(tank.current_stock_liters || 0),
+        capacity_tons: parseFloat(tank.capacity_tons || 0),
+        current_stock_tons: parseFloat(tank.current_stock_tons || 0),
         fill_percentage: parseFloat(tank.fill_percentage || 0),
       }));
 

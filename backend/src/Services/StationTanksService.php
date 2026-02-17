@@ -31,6 +31,7 @@ class StationTanksService
                     ft.density,
                     dt.capacity_liters,
                     dt.current_stock_liters,
+                    ROUND(dt.capacity_liters * ft.density / 1000, 2) as capacity_tons,
                     ROUND(dt.current_stock_liters * ft.density / 1000, 2) as current_stock_tons,
                     ROUND((dt.current_stock_liters / NULLIF(dt.capacity_liters, 0)) * 100, 1) as fill_percentage,
                     dt.is_active

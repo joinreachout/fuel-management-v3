@@ -24,14 +24,16 @@ class FuelStockService
                     s.id as station_id,
                     s.name as station_name,
                     s.code as station_code,
+                    ft.density,
                     COUNT(DISTINCT dt.id) as tank_count,
                     SUM(dt.capacity_liters) as total_capacity_liters,
                     SUM(dt.current_stock_liters) as total_stock_liters,
+                    ROUND(SUM(dt.capacity_liters * ft.density) / 1000, 2) as total_capacity_tons,
                     ROUND(SUM(dt.current_stock_liters * ft.density) / 1000, 2) as total_stock_tons,
                     ROUND(
                         (SUM(dt.current_stock_liters) / NULLIF(SUM(dt.capacity_liters), 0)) * 100,
                         1
-                    ) as fill_percentage
+                    ) as avg_fill_percentage
                 FROM depot_tanks dt
                 JOIN depots d ON dt.depot_id = d.id
                 JOIN stations s ON d.station_id = s.id
