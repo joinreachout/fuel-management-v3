@@ -89,4 +89,14 @@ export const regionalComparisonApi = {
   get: () => api.get('/regional-comparison'),
 };
 
+// Procurement Advisor API
+export const procurementApi = {
+  getUpcomingShortages: (days = 14) => api.get('/procurement/upcoming-shortages', { params: { days } }),
+  getSummary: () => api.get('/procurement/summary'),
+  getSupplierRecommendations: (fuelTypeId, requiredTons, urgency = 'NORMAL') =>
+    api.get('/procurement/supplier-recommendations', {
+      params: { fuel_type_id: fuelTypeId, required_tons: requiredTons, urgency }
+    }),
+};
+
 export default api;
