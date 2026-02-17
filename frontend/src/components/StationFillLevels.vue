@@ -58,9 +58,17 @@
 
                 <!-- Percentage Label on Bar -->
                 <div v-if="tank.fill_percentage > 15"
-                     class="absolute top-2 left-0 right-0 text-center text-white text-xs font-bold">
+                     class="absolute top-2 left-0 right-0 text-center text-white text-xs font-bold drop-shadow">
                   {{ tank.fill_percentage.toFixed(0) }}%
                 </div>
+              </div>
+
+              <!-- Current Stock Label at Fill Level (REV 2.0 style) -->
+              <div
+                v-if="tank.fill_percentage > 5"
+                class="absolute left-full ml-2 text-xs font-bold text-gray-800 whitespace-nowrap pointer-events-none"
+                :style="{ bottom: `${tank.fill_percentage}%`, transform: 'translateY(50%)' }">
+                {{ formatLiters(tank.current_stock_liters) }}
               </div>
             </div>
 
