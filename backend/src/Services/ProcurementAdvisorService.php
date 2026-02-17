@@ -195,22 +195,16 @@ class ProcurementAdvisorService
                 s.departure_station,
                 s.priority,
                 s.auto_score,
-                s.avg_delivery_days,
-                sp.price_per_ton,
-                sp.currency
+                s.avg_delivery_days
             FROM suppliers s
-            LEFT JOIN supplier_prices sp ON s.id = sp.supplier_id
-                AND sp.fuel_type_id = ?
-                AND sp.is_active = 1
             WHERE s.is_active = 1
             ORDER BY
                 s.priority ASC,
-                s.auto_score DESC,
-                sp.price_per_ton ASC
+                s.auto_score DESC
             LIMIT 1
         ";
 
-        $result = Database::fetchAll($sql, [$fuelTypeId]);
+        $result = Database::fetchAll($sql);
 
         if (empty($result)) {
             return null;
@@ -225,8 +219,8 @@ class ProcurementAdvisorService
             'priority' => $supplier['priority'],
             'score' => (float)$supplier['auto_score'],
             'avg_delivery_days' => (int)$supplier['avg_delivery_days'],
-            'price_per_ton' => $supplier['price_per_ton'] ? (float)$supplier['price_per_ton'] : null,
-            'currency' => $supplier['currency']
+            'price_per_ton' => null,
+            'currency' => null
         ];
     }
 
@@ -307,25 +301,15 @@ class ProcurementAdvisorService
                 s.departure_station,
                 s.priority,
                 s.auto_score,
-                s.avg_delivery_days,
-                sp.price_per_ton,
-                sp.currency,
-                sp.min_quantity_tons,
-                sp.max_quantity_tons
+                s.avg_delivery_days
             FROM suppliers s
-            LEFT JOIN supplier_prices sp ON s.id = sp.supplier_id
-                AND sp.fuel_type_id = ?
-                AND sp.is_active = 1
             WHERE s.is_active = 1
-                AND (sp.min_quantity_tons IS NULL OR sp.min_quantity_tons <= ?)
-                AND (sp.max_quantity_tons IS NULL OR sp.max_quantity_tons >= ?)
             ORDER BY
                 s.priority ASC,
-                s.auto_score DESC,
-                sp.price_per_ton ASC
+                s.auto_score DESC
         ";
 
-        $results = Database::fetchAll($sql, [$fuelTypeId, $requiredTons, $requiredTons]);
+        $results = Database::fetchAll($sql);
 
         $recommendations = [];
         foreach ($results as $supplier) {
@@ -343,8 +327,8 @@ class ProcurementAdvisorService
                 'priority' => $supplier['priority'],
                 'auto_score' => (float)$supplier['auto_score'],
                 'avg_delivery_days' => (int)$supplier['avg_delivery_days'],
-                'price_per_ton' => $supplier['price_per_ton'] ? (float)$supplier['price_per_ton'] : null,
-                'currency' => $supplier['currency'],
+                'price_per_ton' => null,
+                'currency' => null,
                 'composite_score' => round($compositeScore, 2),
                 'is_recommended' => $compositeScore >= 50
             ];
