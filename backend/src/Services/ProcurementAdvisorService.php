@@ -88,8 +88,8 @@ class ProcurementAdvisorService
             $recommendedOrderLiters = max(0, $targetLevel - $currentStockLiters);
             $recommendedOrderTons = $recommendedOrderLiters * $density / 1000;
 
-            // Get best supplier for this fuel type
-            $bestSupplier = self::getBestSupplier($row['fuel_type_id'], $urgency);
+            // Get best supplier for this fuel type and station
+            $bestSupplier = self::getBestSupplier($row['fuel_type_id'], $row['station_id'], $urgency);
 
             // Calculate critical date and last order date
             $criticalDate = null;
@@ -178,16 +178,18 @@ class ProcurementAdvisorService
     }
 
     /**
-     * Get best supplier for fuel type based on ranking
+     * Get best supplier for fuel type and station based on ranking
      *
      * @param int $fuelTypeId Fuel type ID
+     * @param int $stationId Station ID
      * @param string $urgency Urgency level
-     * @return array|null Best supplier info
+     * @return array|null Best supplier info with specific delivery time and price
      */
-    private static function getBestSupplier(int $fuelTypeId, string $urgency): ?array
+    private static function getBestSupplier(int $fuelTypeId, int $stationId, string $urgency): ?array
     {
-        // Get active suppliers sorted by priority and auto_score
+        // Get active suppliers with their offers to this specific station
         // Priority: 1 = highest, auto_score: higher = better
+        // Now includes actual delivery_days and prices for the specific route
         $sql = "
             SELECT
                 s.id,
@@ -195,16 +197,27 @@ class ProcurementAdvisorService
                 s.departure_station,
                 s.priority,
                 s.auto_score,
-                s.avg_delivery_days
+                sso.delivery_days,
+                sso.price_diesel_b7,
+                sso.price_diesel_b10,
+                sso.price_gas_92,
+                sso.price_gas_95,
+                sso.price_gas_98,
+                sso.currency
             FROM suppliers s
-            WHERE s.is_active = 1
+            INNER JOIN supplier_station_offers sso
+                ON s.id = sso.supplier_id
+            WHERE sso.station_id = ?
+              AND sso.is_active = 1
+              AND s.is_active = 1
             ORDER BY
                 s.priority ASC,
+                sso.delivery_days ASC,
                 s.auto_score DESC
             LIMIT 1
         ";
 
-        $result = Database::fetchAll($sql);
+        $result = Database::fetchAll($sql, [$stationId]);
 
         if (empty($result)) {
             return null;
@@ -212,15 +225,36 @@ class ProcurementAdvisorService
 
         $supplier = $result[0];
 
+        // Determine correct price based on fuel_type_id
+        $pricePerTon = null;
+        switch ($fuelTypeId) {
+            case 25: // Diesel B7
+                $pricePerTon = $supplier['price_diesel_b7'];
+                break;
+            case 33: // Diesel B10
+                $pricePerTon = $supplier['price_diesel_b10'];
+                break;
+            case 23: // A-92
+                $pricePerTon = $supplier['price_gas_92'];
+                break;
+            case 31: // A-95
+                $pricePerTon = $supplier['price_gas_95'];
+                break;
+            case 32: // A-98
+                $pricePerTon = $supplier['price_gas_98'];
+                break;
+            // Add more fuel types as needed
+        }
+
         return [
             'id' => $supplier['id'],
             'name' => $supplier['name'],
             'departure_station' => $supplier['departure_station'],
             'priority' => $supplier['priority'],
             'score' => (float)$supplier['auto_score'],
-            'avg_delivery_days' => (int)$supplier['avg_delivery_days'],
-            'price_per_ton' => null,
-            'currency' => null
+            'avg_delivery_days' => (int)$supplier['delivery_days'], // Now actual delivery time for this route!
+            'price_per_ton' => $pricePerTon ? (float)$pricePerTon : null,
+            'currency' => $supplier['currency']
         ];
     }
 
@@ -283,6 +317,7 @@ class ProcurementAdvisorService
 
     /**
      * Get supplier recommendations ranked by multiple factors
+     * Note: This version returns general supplier ranking without station-specific info
      *
      * @param int $fuelTypeId Fuel type ID
      * @param float $requiredTons Required quantity in tons
@@ -294,6 +329,8 @@ class ProcurementAdvisorService
         float $requiredTons,
         string $urgency
     ): array {
+        // Get general supplier ranking
+        // For station-specific recommendations, use getBestSupplier() with station_id
         $sql = "
             SELECT
                 s.id,
@@ -301,9 +338,16 @@ class ProcurementAdvisorService
                 s.departure_station,
                 s.priority,
                 s.auto_score,
-                s.avg_delivery_days
+                AVG(sso.delivery_days) as avg_delivery_days,
+                AVG(sso.price_diesel_b7) as avg_price_diesel_b7,
+                AVG(sso.price_gas_92) as avg_price_gas_92,
+                AVG(sso.price_gas_95) as avg_price_gas_95,
+                sso.currency
             FROM suppliers s
+            LEFT JOIN supplier_station_offers sso ON s.id = sso.supplier_id
+                AND sso.is_active = 1
             WHERE s.is_active = 1
+            GROUP BY s.id, s.name, s.departure_station, s.priority, s.auto_score, sso.currency
             ORDER BY
                 s.priority ASC,
                 s.auto_score DESC
@@ -313,12 +357,30 @@ class ProcurementAdvisorService
 
         $recommendations = [];
         foreach ($results as $supplier) {
+            $avgDeliveryDays = $supplier['avg_delivery_days'] ? (int)$supplier['avg_delivery_days'] : 14;
+
             // Calculate composite score
             $priorityScore = (10 - (int)$supplier['priority']) * 10; // Higher priority = higher score
             $autoScore = (float)$supplier['auto_score'] * 10;
-            $urgencyScore = self::getUrgencyScore($urgency, (int)$supplier['avg_delivery_days']);
+            $urgencyScore = self::getUrgencyScore($urgency, $avgDeliveryDays);
 
             $compositeScore = $priorityScore + $autoScore + $urgencyScore;
+
+            // Select price based on fuel type
+            $pricePerTon = null;
+            switch ($fuelTypeId) {
+                case 25: // Diesel B7
+                case 33: // Diesel B10
+                    $pricePerTon = $supplier['avg_price_diesel_b7'];
+                    break;
+                case 23: // A-92
+                    $pricePerTon = $supplier['avg_price_gas_92'];
+                    break;
+                case 31: // A-95
+                case 32: // A-98
+                    $pricePerTon = $supplier['avg_price_gas_95'];
+                    break;
+            }
 
             $recommendations[] = [
                 'id' => $supplier['id'],
@@ -326,9 +388,9 @@ class ProcurementAdvisorService
                 'departure_station' => $supplier['departure_station'],
                 'priority' => $supplier['priority'],
                 'auto_score' => (float)$supplier['auto_score'],
-                'avg_delivery_days' => (int)$supplier['avg_delivery_days'],
-                'price_per_ton' => null,
-                'currency' => null,
+                'avg_delivery_days' => $avgDeliveryDays,
+                'price_per_ton' => $pricePerTon ? (float)$pricePerTon : null,
+                'currency' => $supplier['currency'],
                 'composite_score' => round($compositeScore, 2),
                 'is_recommended' => $compositeScore >= 50
             ];
