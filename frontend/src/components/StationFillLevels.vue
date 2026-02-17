@@ -90,37 +90,25 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { stationsApi, dashboardApi } from '../services/api';
+import { stationsApi } from '../services/api';
 
 const loading = ref(true);
 const stations = ref([]);
-const tanks = ref([]);
+const allTanks = ref([]); // Store all tanks from API
 const activeStationId = ref(null);
 
-// Fixed tank types - same for all stations (like Stock by Fuel Type uses same stations for all fuels)
-const fixedTankTypes = [
-  { name: 'Diesel', capacity: 100000 },
-  { name: 'Petrol 95', capacity: 100000 },
-  { name: 'Petrol 98', capacity: 100000 }
-];
-
+// Get tanks for currently selected station from real data
 const currentStationTanks = computed(() => {
-  if (!activeStationId.value) return [];
+  if (!activeStationId.value || allTanks.value.length === 0) return [];
 
-  // Generate NEW random data for fixed tank types - exactly like Stock by Fuel Type
-  return fixedTankTypes.map((tankType, idx) => {
-    const fillPercentage = Math.random() * 70 + 20; // 20-90%
-    const currentStock = tankType.capacity * (fillPercentage / 100);
+  const stationTanks = allTanks.value.filter(tank => tank.station_id === activeStationId.value);
 
-    return {
-      tank_id: idx, // Fixed ID based on tank type position (0, 1, 2)
-      station_id: activeStationId.value,
-      product_name: tankType.name,
-      fuel_type_id: 25 + idx,
-      tank_capacity_liters: tankType.capacity,
-      current_stock_liters: currentStock,
-      fill_percentage: fillPercentage
-    };
+  // Sort by depot name, then fuel type name
+  return stationTanks.sort((a, b) => {
+    if (a.depot_name !== b.depot_name) {
+      return a.depot_name.localeCompare(b.depot_name);
+    }
+    return a.product_name.localeCompare(b.product_name);
   });
 });
 
@@ -129,11 +117,11 @@ const getTabStyle = (station) => {
     return {}; // Active tab uses CSS class styling
   }
 
-  // Calculate average fill percentage for this station
-  const stationTanks = tanks.value.filter(t => t.station_id === station.station_id);
+  // Calculate average fill percentage for this station from real data
+  const stationTanks = allTanks.value.filter(t => t.station_id === station.station_id);
   if (stationTanks.length === 0) return { background: '#e5e7eb' };
 
-  const avgFill = stationTanks.reduce((sum, t) => sum + t.fill_percentage, 0) / stationTanks.length;
+  const avgFill = stationTanks.reduce((sum, t) => sum + parseFloat(t.fill_percentage || 0), 0) / stationTanks.length;
 
   // Color based on fill level (same logic as REV 2.0)
   if (avgFill < 30) {
@@ -180,57 +168,68 @@ const formatLiters = (liters) => {
   return num.toFixed(0) + ' L';
 };
 
-const selectStation = (stationId) => {
+const selectStation = async (stationId) => {
   activeStationId.value = stationId;
+
+  // Load tanks for this station if not already loaded
+  const hasStationTanks = allTanks.value.some(t => t.station_id === stationId);
+  if (!hasStationTanks) {
+    await loadStationTanks(stationId);
+  }
+};
+
+const loadStationTanks = async (stationId) => {
+  try {
+    const response = await stationsApi.getTanks(stationId);
+
+    if (response.data.success && response.data.data) {
+      const tanks = response.data.data;
+
+      // Transform tank data to match template expectations
+      const transformedTanks = tanks.map(tank => ({
+        tank_id: tank.tank_id,
+        station_id: stationId,
+        depot_id: tank.depot_id,
+        depot_name: tank.depot_name,
+        tank_number: tank.tank_number,
+        fuel_type_id: tank.fuel_type_id,
+        product_name: tank.fuel_type_name, // Map fuel_type_name to product_name for template
+        fuel_type_code: tank.fuel_type_code,
+        tank_capacity_liters: parseFloat(tank.capacity_liters || 0),
+        current_stock_liters: parseFloat(tank.current_stock_liters || 0),
+        fill_percentage: parseFloat(tank.fill_percentage || 0),
+      }));
+
+      // Add to allTanks (remove existing tanks for this station first)
+      allTanks.value = allTanks.value.filter(t => t.station_id !== stationId);
+      allTanks.value.push(...transformedTanks);
+    }
+  } catch (error) {
+    console.error(`Error loading tanks for station ${stationId}:`, error);
+  }
 };
 
 const loadData = async () => {
   try {
     loading.value = true;
 
-    const [stationsRes, criticalTanksRes] = await Promise.all([
-      stationsApi.getAll(),
-      dashboardApi.getCriticalTanks(),
-    ]);
+    // Load all stations
+    const stationsRes = await stationsApi.getAll();
 
     if (stationsRes.data.success) {
       const stationsData = stationsRes.data.data || [];
 
-      // Transform stations data to match template expectations
+      // Transform stations data
       stations.value = stationsData.map(s => ({
         station_id: s.id,
         station_name: s.name,
         station_code: s.code
       }));
 
+      // Load tanks for first station
       if (stations.value.length > 0) {
         activeStationId.value = stations.value[0].station_id;
-
-        // Generate mock tank data for each station
-        stations.value.forEach(station => {
-          // Create 3 tanks per station (Diesel, Petrol 95, Petrol 98)
-          const fuelTypes = [
-            { id: 25, name: 'Diesel', fill: Math.random() * 70 + 30 },
-            { id: 26, name: 'Petrol 95', fill: Math.random() * 60 + 20 },
-            { id: 27, name: 'Petrol 98', fill: Math.random() * 80 + 10 }
-          ];
-
-          fuelTypes.forEach((fuel, idx) => {
-            const capacity = 50000 + Math.random() * 50000;
-            const fillPercentage = fuel.fill;
-            const currentStock = capacity * (fillPercentage / 100);
-
-            tanks.value.push({
-              tank_id: `${station.station_id}-${idx}`,
-              station_id: station.station_id,
-              product_name: fuel.name,
-              fuel_type_id: fuel.id,
-              tank_capacity_liters: capacity,
-              current_stock_liters: currentStock,
-              fill_percentage: fillPercentage
-            });
-          });
-        });
+        await loadStationTanks(stations.value[0].station_id);
       }
     }
   } catch (error) {

@@ -23,6 +23,7 @@ export const stationsApi = {
   getAll: () => api.get('/stations'),
   getById: (id) => api.get(`/stations/${id}`),
   getDepots: (id) => api.get(`/stations/${id}/depots`),
+  getTanks: (id) => api.get(`/stations/${id}/tanks`),
 };
 
 // Depots API
@@ -39,6 +40,7 @@ export const fuelTypesApi = {
   getAll: () => api.get('/fuel-types'),
   getById: (id) => api.get(`/fuel-types/${id}`),
   getTotalStock: (id) => api.get(`/fuel-types/${id}/total-stock`),
+  getStationsByFuelType: (id) => api.get(`/fuel-types/${id}/stations`),
 };
 
 // Suppliers API

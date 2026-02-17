@@ -93,30 +93,30 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { fuelTypesApi, stationsApi } from '../services/api';
+import { ref, computed, onMounted, watch } from 'vue';
+import { fuelTypesApi } from '../services/api';
 
 const loading = ref(true);
 const fuelTypes = ref([]);
-const stations = ref([]);
+const stationStockData = ref([]); // Real stock data from API
 const activeFuelId = ref(null);
 const viewMode = ref('stations'); // 'stations' or 'regions'
 
 const currentLocations = computed(() => {
-  if (!activeFuelId.value || stations.value.length === 0) return [];
+  if (!activeFuelId.value || stationStockData.value.length === 0) return [];
 
-  // Mock data for current fuel type at each station
-  return stations.value.slice(0, 8).map((station, idx) => {
-    const stock = Math.random() * 80000 + 20000;
-    const capacity = 100000;
-    const fillPercentage = (stock / capacity) * 100;
+  // Use REAL data from API
+  return stationStockData.value.map(station => {
+    const stockLiters = parseFloat(station.total_stock_liters || 0);
+    const capacityLiters = parseFloat(station.total_capacity_liters || 0);
+    const fillPercentage = parseFloat(station.avg_fill_percentage || 0);
 
     return {
-      id: station.id,
-      name: station.name || station.code,
-      stock,
-      capacity,
-      fillPercentage
+      id: station.station_id,
+      name: station.station_name || station.station_code,
+      stock: stockLiters,
+      capacity: capacityLiters,
+      fillPercentage: fillPercentage
     };
   });
 });
@@ -168,33 +168,43 @@ const formatLiters = (liters) => {
   return num.toFixed(0) + ' L';
 };
 
-const selectFuel = (fuelId) => {
+const selectFuel = async (fuelId) => {
   activeFuelId.value = fuelId;
+  await loadStockForFuel(fuelId);
+};
+
+const loadStockForFuel = async (fuelId) => {
+  try {
+    loading.value = true;
+
+    const response = await fuelTypesApi.getStationsByFuelType(fuelId);
+
+    if (response.data.success) {
+      stationStockData.value = response.data.data || [];
+    }
+  } catch (error) {
+    console.error(`Error loading stock for fuel type ${fuelId}:`, error);
+    stationStockData.value = [];
+  } finally {
+    loading.value = false;
+  }
 };
 
 const loadData = async () => {
   try {
     loading.value = true;
 
-    const [fuelTypesRes, stationsRes] = await Promise.all([
-      fuelTypesApi.getAll(),
-      stationsApi.getAll(),
-    ]);
+    // Load all fuel types
+    const fuelTypesRes = await fuelTypesApi.getAll();
 
     if (fuelTypesRes.data.success) {
-      const allFuels = fuelTypesRes.data.data || [];
-      // Filter to main fuel types (Diesel and Petrol variants)
-      fuelTypes.value = allFuels.filter(f =>
-        f.name.includes('Diesel') || f.name.includes('Petrol')
-      );
+      fuelTypes.value = fuelTypesRes.data.data || [];
 
+      // Select first fuel type and load its stock data
       if (fuelTypes.value.length > 0) {
         activeFuelId.value = fuelTypes.value[0].id;
+        await loadStockForFuel(fuelTypes.value[0].id);
       }
-    }
-
-    if (stationsRes.data.success) {
-      stations.value = stationsRes.data.data || [];
     }
   } catch (error) {
     console.error('Error loading fuel stock data:', error);
