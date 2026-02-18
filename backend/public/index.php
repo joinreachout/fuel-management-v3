@@ -43,6 +43,7 @@ require_once __DIR__ . '/../src/Services/RegionalComparisonService.php';
 require_once __DIR__ . '/../src/Services/StationTanksService.php';
 require_once __DIR__ . '/../src/Services/FuelStockService.php';
 require_once __DIR__ . '/../src/Services/ProcurementAdvisorService.php';
+require_once __DIR__ . '/../src/Services/ParametersService.php';
 
 // Load Controllers
 require_once __DIR__ . '/../src/Controllers/StationController.php';
@@ -56,6 +57,7 @@ require_once __DIR__ . '/../src/Controllers/ReportController.php';
 require_once __DIR__ . '/../src/Controllers/CostAnalysisController.php';
 require_once __DIR__ . '/../src/Controllers/RegionalComparisonController.php';
 require_once __DIR__ . '/../src/Controllers/ProcurementAdvisorController.php';
+require_once __DIR__ . '/../src/Controllers/ParametersController.php';
 
 use App\Core\Response;
 use App\Controllers\StationController;
@@ -69,6 +71,7 @@ use App\Controllers\ReportController;
 use App\Controllers\CostAnalysisController;
 use App\Controllers\RegionalComparisonController;
 use App\Controllers\ProcurementAdvisorController;
+use App\Controllers\ParametersController;
 
 // Simple router
 try {
@@ -95,6 +98,7 @@ try {
     $costAnalysisController = new CostAnalysisController();
     $regionalComparisonController = new RegionalComparisonController();
     $procurementAdvisorController = new ProcurementAdvisorController();
+    $parametersController = new ParametersController();
 
     // ==================== STATIONS ====================
     if ($requestMethod === 'GET' && $path === '/api/stations') {
@@ -235,6 +239,40 @@ try {
 
     } elseif ($requestMethod === 'GET' && $path === '/api/procurement/supplier-recommendations') {
         $procurementAdvisorController->getSupplierRecommendations();
+
+    // ==================== PARAMETERS ====================
+    } elseif ($requestMethod === 'GET' && $path === '/api/parameters/system') {
+        $parametersController->getSystemParameters();
+
+    } elseif ($requestMethod === 'PUT' && preg_match('#^/api/parameters/system/([a-z0-9_]+)$#', $path, $matches)) {
+        $parametersController->updateSystemParameter($matches[1]);
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/parameters/fuel-types') {
+        $parametersController->getFuelTypes();
+
+    } elseif ($requestMethod === 'PUT' && preg_match('#^/api/parameters/fuel-types/(\d+)$#', $path, $matches)) {
+        $parametersController->updateFuelType((int)$matches[1]);
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/parameters/sales-params') {
+        $parametersController->getSalesParams();
+
+    } elseif ($requestMethod === 'PUT' && preg_match('#^/api/parameters/sales-params/(\d+)$#', $path, $matches)) {
+        $parametersController->updateSalesParam((int)$matches[1]);
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/parameters/stock-policies') {
+        $parametersController->getStockPolicies();
+
+    } elseif ($requestMethod === 'PUT' && preg_match('#^/api/parameters/stock-policies/(\d+)$#', $path, $matches)) {
+        $parametersController->updateStockPolicy((int)$matches[1]);
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/parameters/supplier-offers') {
+        $parametersController->getSupplierOffers();
+
+    } elseif ($requestMethod === 'PUT' && preg_match('#^/api/parameters/supplier-offers/(\d+)$#', $path, $matches)) {
+        $parametersController->updateSupplierOffer((int)$matches[1]);
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/parameters/depot-tanks') {
+        $parametersController->getDepotTanks();
 
     } else {
         // 404 Not Found

@@ -99,4 +99,21 @@ export const procurementApi = {
     }),
 };
 
+// Parameters API
+export const parametersApi = {
+  // GET
+  getSystem:         () => api.get('/parameters/system'),
+  getFuelTypes:      () => api.get('/parameters/fuel-types'),
+  getSalesParams:    () => api.get('/parameters/sales-params'),
+  getStockPolicies:  () => api.get('/parameters/stock-policies'),
+  getSupplierOffers: () => api.get('/parameters/supplier-offers'),
+  getDepotTanks:     () => api.get('/parameters/depot-tanks'),
+  // PUT
+  updateSystem:         (key, value)   => api.put(`/parameters/system/${key}`, { value }),
+  updateFuelType:       (id, data)     => api.put(`/parameters/fuel-types/${id}`, data),
+  updateSalesParam:     (id, data)     => api.put(`/parameters/sales-params/${id}`, data),
+  updateStockPolicy:    (id, data)     => api.put(`/parameters/stock-policies/${id}`, data),
+  updateSupplierOffer:  (id, data)     => api.put(`/parameters/supplier-offers/${id}`, data),
+};
+
 export default api;

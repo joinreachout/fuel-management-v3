@@ -20,25 +20,32 @@
       <div class="max-w-[1920px] mx-auto">
 
         <!-- Page Header -->
-        <div class="mb-6">
-          <h1 class="text-3xl font-bold text-gray-900">System Parameters</h1>
-          <p class="text-gray-600 mt-2">View and manage system configuration data</p>
+        <div class="mb-6 flex items-center justify-between">
+          <div>
+            <h1 class="text-3xl font-bold text-gray-900">System Parameters</h1>
+            <p class="text-gray-600 mt-1">All values come from the database — click any value to edit inline</p>
+          </div>
+          <div v-if="saveStatus" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+               :class="saveStatus === 'saved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+            <i :class="saveStatus === 'saved' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle'"></i>
+            {{ saveStatus === 'saved' ? 'Saved' : 'Error saving' }}
+          </div>
         </div>
 
         <!-- Tabs -->
         <div class="bg-white rounded-t-xl border-b border-gray-200">
-          <div class="flex gap-1 px-6">
+          <div class="flex gap-1 px-6 overflow-x-auto">
             <button
               v-for="tab in tabs"
               :key="tab.id"
               @click="activeTab = tab.id"
-              class="px-6 py-4 text-sm font-medium transition-all border-b-2"
+              class="px-5 py-4 text-sm font-medium transition-all border-b-2 whitespace-nowrap"
               :class="activeTab === tab.id
                 ? 'text-blue-600 border-blue-600'
                 : 'text-gray-600 border-transparent hover:text-gray-900'">
               <i :class="tab.icon" class="mr-2"></i>
               {{ tab.name }}
-              <span v-if="tab.count !== null" class="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-100">
+              <span v-if="tab.count !== undefined" class="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-100">
                 {{ tab.count }}
               </span>
             </button>
@@ -53,230 +60,512 @@
             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
 
-          <!-- Stations Tab -->
-          <div v-else-if="activeTab === 'stations'">
-            <div class="overflow-x-auto">
+          <!-- ═══════════════════════════════════════════════
+               TAB 1 — SYSTEM PARAMETERS
+               ═══════════════════════════════════════════════ -->
+          <div v-else-if="activeTab === 'system'">
+            <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+              <i class="fas fa-cogs mr-2"></i>
+              These are global planning thresholds used by the Procurement Advisor and alert system.
+              Changes take effect immediately on next API call.
+            </div>
+
+            <div v-for="(params, category) in systemParams" :key="category" class="mb-8">
+              <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 border-b pb-2">
+                {{ formatCategory(category) }}
+              </h3>
               <table class="w-full">
                 <thead class="bg-gray-50 border-b">
                   <tr>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">ID</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Name</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Code</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Region</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Status</th>
+                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 w-64">Parameter</th>
+                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600 w-32">Value</th>
+                    <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Description</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y">
-                  <tr v-for="item in stations" :key="item.id" class="hover:bg-gray-50">
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ item.id }}</td>
-                    <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ item.name }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">{{ item.code }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">{{ item.region_name }}</td>
-                    <td class="px-4 py-3 text-sm">
-                      <span :class="item.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
-                            class="px-2 py-1 rounded-full text-xs font-medium">
-                        {{ item.is_active ? 'Active' : 'Inactive' }}
-                      </span>
+                  <tr v-for="p in params" :key="p.key" class="hover:bg-gray-50">
+                    <td class="px-4 py-2 text-sm font-mono text-gray-700">{{ p.key }}</td>
+                    <td class="px-4 py-2">
+                      <InlineEdit
+                        :value="p.raw_value"
+                        :type="p.type === 'integer' ? 'number' : (p.type === 'float' ? 'number' : 'text')"
+                        :step="p.type === 'float' ? '0.01' : '1'"
+                        @save="val => saveSystemParam(p.key, val)"
+                      />
                     </td>
+                    <td class="px-4 py-2 text-sm text-gray-500">{{ p.description }}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </div>
 
-          <!-- Fuel Types Tab -->
+          <!-- ═══════════════════════════════════════════════
+               TAB 2 — FUEL TYPES
+               ═══════════════════════════════════════════════ -->
           <div v-else-if="activeTab === 'fuel-types'">
-            <div class="overflow-x-auto">
-              <table class="w-full">
-                <thead class="bg-gray-50 border-b">
-                  <tr>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">ID</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Name</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Density (kg/L)</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Status</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y">
-                  <tr v-for="item in fuelTypes" :key="item.id" class="hover:bg-gray-50">
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ item.id }}</td>
-                    <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ item.name }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">{{ item.density }}</td>
-                    <td class="px-4 py-3 text-sm">
-                      <span :class="item.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
-                            class="px-2 py-1 rounded-full text-xs font-medium">
-                        {{ item.is_active ? 'Active' : 'Inactive' }}
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+              <i class="fas fa-exclamation-triangle mr-2"></i>
+              <strong>Density</strong> (kg/L) is used to convert between litres and tons.
+              <strong>Cost/ton</strong> is the base purchase price updated manually (may change daily or weekly).
             </div>
+            <table class="w-full">
+              <thead class="bg-gray-50 border-b">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Fuel Type</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Code</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Density (kg/L)</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Cost per Ton (KGS)</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Status</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                <tr v-for="ft in fuelTypes" :key="ft.id" class="hover:bg-gray-50">
+                  <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ ft.name }}</td>
+                  <td class="px-4 py-3 text-sm font-mono text-gray-600">{{ ft.code }}</td>
+                  <td class="px-4 py-3">
+                    <InlineEdit
+                      :value="ft.density"
+                      type="number"
+                      step="0.001"
+                      suffix=" kg/L"
+                      @save="val => saveFuelType(ft.id, { density: val, cost_per_ton: ft.cost_per_ton })"
+                    />
+                  </td>
+                  <td class="px-4 py-3">
+                    <InlineEdit
+                      :value="ft.cost_per_ton"
+                      type="number"
+                      step="100"
+                      suffix=" ₸/т"
+                      placeholder="not set"
+                      @save="val => saveFuelType(ft.id, { density: ft.density, cost_per_ton: val })"
+                    />
+                  </td>
+                  <td class="px-4 py-3">
+                    <span :class="ft.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'"
+                          class="px-2 py-1 rounded-full text-xs font-medium">
+                      {{ ft.is_active ? 'Active' : 'Inactive' }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
-          <!-- Sales Params Tab -->
+          <!-- ═══════════════════════════════════════════════
+               TAB 3 — SALES PARAMS (daily consumption)
+               ═══════════════════════════════════════════════ -->
           <div v-else-if="activeTab === 'sales-params'">
-            <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p class="text-sm text-blue-800">
-                <i class="fas fa-info-circle mr-2"></i>
-                <strong>Sales Parameters</strong> define daily consumption rates (liters_per_day) used for forecast calculations.
-                Missing sales params will prevent forecast display for that depot/fuel combination.
-              </p>
+            <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+              <i class="fas fa-chart-line mr-2"></i>
+              <strong>Sales Parameters</strong> define the daily consumption rate (litres/day) used for
+              stock forecasting and procurement planning. Only active records are shown.
             </div>
-            <div class="overflow-x-auto">
-              <table class="w-full">
-                <thead class="bg-gray-50 border-b">
-                  <tr>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Depot ID</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Fuel Type</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Liters/Day</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Effective From</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Effective To</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y">
-                  <tr v-for="(item, idx) in salesParams" :key="idx" class="hover:bg-gray-50">
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ item.depot_id }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ item.fuel_type_id }}</td>
-                    <td class="px-4 py-3 text-sm font-medium text-blue-600">{{ item.liters_per_day }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">{{ item.effective_from }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">{{ item.effective_to || 'Ongoing' }}</td>
-                  </tr>
-                  <tr v-if="salesParams.length === 0">
-                    <td colspan="5" class="px-4 py-8 text-center text-gray-500">
-                      No sales parameters configured
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <table class="w-full">
+              <thead class="bg-gray-50 border-b">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Station</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Depot</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Fuel Type</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Litres / Day</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Effective From</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Effective To</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                <tr v-for="sp in salesParams" :key="sp.id" class="hover:bg-gray-50">
+                  <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ sp.station_name }}</td>
+                  <td class="px-4 py-3 text-sm text-gray-700">{{ sp.depot_name }}</td>
+                  <td class="px-4 py-3 text-sm">
+                    <span class="px-2 py-0.5 bg-gray-100 rounded text-xs font-mono">{{ sp.fuel_type_code }}</span>
+                    {{ sp.fuel_type_name }}
+                  </td>
+                  <td class="px-4 py-3">
+                    <InlineEdit
+                      :value="sp.liters_per_day"
+                      type="number"
+                      step="100"
+                      suffix=" L/day"
+                      @save="val => saveSalesParam(sp.id, val)"
+                    />
+                  </td>
+                  <td class="px-4 py-3 text-sm text-gray-500">{{ sp.effective_from }}</td>
+                  <td class="px-4 py-3 text-sm text-gray-500">{{ sp.effective_to || '—' }}</td>
+                </tr>
+                <tr v-if="salesParams.length === 0">
+                  <td colspan="6" class="px-4 py-8 text-center text-gray-500">No sales parameters configured</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
-          <!-- Depot Tanks Tab -->
-          <div v-else-if="activeTab === 'depot-tanks'">
-            <div class="overflow-x-auto">
-              <table class="w-full">
-                <thead class="bg-gray-50 border-b">
-                  <tr>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Tank ID</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Depot ID</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Fuel Type</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Current Stock (L)</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Capacity (L)</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Fill %</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y">
-                  <tr v-for="item in depotTanks" :key="item.id" class="hover:bg-gray-50">
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ item.id }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">{{ item.depot_id }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ item.fuel_type_id }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ formatNumber(item.current_stock_liters) }}</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">{{ formatNumber(item.capacity_liters) }}</td>
-                    <td class="px-4 py-3 text-sm">
-                      <div class="flex items-center gap-2">
-                        <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden max-w-[100px]">
-                          <div class="h-full bg-blue-600 rounded-full"
-                               :style="{ width: item.fill_percentage + '%' }"></div>
-                        </div>
-                        <span class="text-xs font-medium">{{ item.fill_percentage }}%</span>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+          <!-- ═══════════════════════════════════════════════
+               TAB 4 — STOCK POLICIES (per depot thresholds)
+               ═══════════════════════════════════════════════ -->
+          <div v-else-if="activeTab === 'stock-policies'">
+            <div class="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-lg text-sm text-purple-800">
+              <i class="fas fa-layer-group mr-2"></i>
+              <strong>Stock Policies</strong> define per-depot alert thresholds (litres).
+              These override global system parameters when set.
             </div>
+            <table class="w-full">
+              <thead class="bg-gray-50 border-b">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Station</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Depot</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Fuel</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Tank Capacity (L)</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Critical Level (L)</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Min Level (L)</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Target Level (L)</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                <tr v-for="pol in stockPolicies" :key="pol.id" class="hover:bg-gray-50">
+                  <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ pol.station_name }}</td>
+                  <td class="px-4 py-3 text-sm text-gray-700">{{ pol.depot_name }}</td>
+                  <td class="px-4 py-3 text-sm">
+                    <span class="px-2 py-0.5 bg-gray-100 rounded text-xs font-mono">{{ pol.fuel_type_code }}</span>
+                  </td>
+                  <td class="px-4 py-3 text-sm text-gray-500">{{ formatNum(pol.capacity_liters) }}</td>
+                  <td class="px-4 py-3">
+                    <InlineEdit
+                      :value="pol.critical_level_liters"
+                      type="number" step="1000"
+                      suffix=" L"
+                      @save="val => saveStockPolicy(pol.id, { critical_level_liters: val, min_level_liters: pol.min_level_liters, target_level_liters: pol.target_level_liters })"
+                    />
+                  </td>
+                  <td class="px-4 py-3">
+                    <InlineEdit
+                      :value="pol.min_level_liters"
+                      type="number" step="1000"
+                      suffix=" L"
+                      @save="val => saveStockPolicy(pol.id, { min_level_liters: val, critical_level_liters: pol.critical_level_liters, target_level_liters: pol.target_level_liters })"
+                    />
+                  </td>
+                  <td class="px-4 py-3">
+                    <InlineEdit
+                      :value="pol.target_level_liters"
+                      type="number" step="1000"
+                      suffix=" L"
+                      @save="val => saveStockPolicy(pol.id, { target_level_liters: val, min_level_liters: pol.min_level_liters, critical_level_liters: pol.critical_level_liters })"
+                    />
+                  </td>
+                </tr>
+                <tr v-if="stockPolicies.length === 0">
+                  <td colspan="7" class="px-4 py-8 text-center text-gray-500">No stock policies configured</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ═══════════════════════════════════════════════
+               TAB 5 — SUPPLIER OFFERS (price_per_ton)
+               ═══════════════════════════════════════════════ -->
+          <div v-else-if="activeTab === 'supplier-offers'">
+            <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+              <i class="fas fa-handshake mr-2"></i>
+              <strong>Supplier Offers</strong>: price per ton and delivery days per
+              supplier → station → fuel type route. Update prices as quotes arrive.
+            </div>
+            <table class="w-full">
+              <thead class="bg-gray-50 border-b">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Supplier</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Delivers To</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Fuel</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Price / Ton</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Delivery Days</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Currency</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Status</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                <tr v-for="offer in supplierOffers" :key="offer.id" class="hover:bg-gray-50">
+                  <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ offer.supplier_name }}</td>
+                  <td class="px-4 py-3 text-sm text-gray-700">{{ offer.station_name }}</td>
+                  <td class="px-4 py-3 text-sm">
+                    <span class="px-2 py-0.5 bg-gray-100 rounded text-xs font-mono">{{ offer.fuel_type_code }}</span>
+                    {{ offer.fuel_type_name }}
+                  </td>
+                  <td class="px-4 py-3">
+                    <InlineEdit
+                      :value="offer.price_per_ton"
+                      type="number" step="100"
+                      suffix=" ₸/т"
+                      @save="val => saveSupplierOffer(offer.id, { price_per_ton: val, delivery_days: offer.delivery_days })"
+                    />
+                  </td>
+                  <td class="px-4 py-3">
+                    <InlineEdit
+                      :value="offer.delivery_days"
+                      type="number" step="1"
+                      suffix=" days"
+                      @save="val => saveSupplierOffer(offer.id, { delivery_days: val, price_per_ton: offer.price_per_ton })"
+                    />
+                  </td>
+                  <td class="px-4 py-3 text-sm text-gray-600">{{ offer.currency }}</td>
+                  <td class="px-4 py-3">
+                    <span :class="offer.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'"
+                          class="px-2 py-1 rounded-full text-xs font-medium">
+                      {{ offer.is_active ? 'Active' : 'Inactive' }}
+                    </span>
+                  </td>
+                </tr>
+                <tr v-if="supplierOffers.length === 0">
+                  <td colspan="7" class="px-4 py-8 text-center text-gray-500">No supplier offers configured</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ═══════════════════════════════════════════════
+               TAB 6 — DEPOT TANKS (reference, read-only)
+               ═══════════════════════════════════════════════ -->
+          <div v-else-if="activeTab === 'depot-tanks'">
+            <div class="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+              <i class="fas fa-database mr-2"></i>
+              Physical tank inventory — reference data. Current stock and capacity in litres.
+            </div>
+            <table class="w-full">
+              <thead class="bg-gray-50 border-b">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Station</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Depot</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Fuel</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600">Current Stock (L)</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600">Capacity (L)</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 w-40">Fill %</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y">
+                <tr v-for="tank in depotTanks" :key="tank.id" class="hover:bg-gray-50">
+                  <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ tank.station_name }}</td>
+                  <td class="px-4 py-3 text-sm text-gray-700">{{ tank.depot_name }}</td>
+                  <td class="px-4 py-3 text-sm">
+                    <span class="px-2 py-0.5 bg-gray-100 rounded text-xs font-mono">{{ tank.fuel_type_code }}</span>
+                  </td>
+                  <td class="px-4 py-3 text-sm text-right font-mono text-gray-900">{{ formatNum(tank.current_stock_liters) }}</td>
+                  <td class="px-4 py-3 text-sm text-right font-mono text-gray-500">{{ formatNum(tank.capacity_liters) }}</td>
+                  <td class="px-4 py-3">
+                    <div class="flex items-center gap-2">
+                      <div class="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all"
+                             :class="fillColor(tank.fill_pct)"
+                             :style="{ width: Math.min(tank.fill_pct, 100) + '%' }"></div>
+                      </div>
+                      <span class="text-xs font-medium w-10 text-right">{{ tank.fill_pct }}%</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
         </div>
-
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import { stationsApi, fuelTypesApi, depotsApi } from '../services/api';
+import { ref, computed, onMounted } from 'vue';
+import { parametersApi } from '../services/api';
 
-const loading = ref(false);
-const activeTab = ref('stations');
+// ─── Inline Edit Component (defined locally, no external dep) ───────────────
+const InlineEdit = {
+  props: {
+    value: { default: null },
+    type: { default: 'text' },
+    step: { default: '1' },
+    suffix: { default: '' },
+    placeholder: { default: '—' },
+  },
+  emits: ['save'],
+  setup(props, { emit }) {
+    const editing = ref(false);
+    const draft = ref('');
 
-const stations = ref([]);
-const fuelTypes = ref([]);
-const salesParams = ref([]);
-const depotTanks = ref([]);
+    const display = computed(() => {
+      if (props.value === null || props.value === undefined || props.value === '') {
+        return props.placeholder;
+      }
+      return props.value + (props.suffix || '');
+    });
 
-const tabs = computed(() => [
-  { id: 'stations', name: 'Stations', icon: 'fas fa-map-marker-alt', count: stations.value.length },
-  { id: 'fuel-types', name: 'Fuel Types', icon: 'fas fa-oil-can', count: fuelTypes.value.length },
-  { id: 'sales-params', name: 'Sales Parameters', icon: 'fas fa-chart-line', count: salesParams.value.length },
-  { id: 'depot-tanks', name: 'Depot Tanks', icon: 'fas fa-gas-pump', count: depotTanks.value.length },
-]);
+    function startEdit() {
+      draft.value = props.value ?? '';
+      editing.value = true;
+    }
+    function cancel() {
+      editing.value = false;
+    }
+    function save() {
+      editing.value = false;
+      const val = props.type === 'number' ? parseFloat(draft.value) : draft.value;
+      if (val !== props.value) emit('save', val);
+    }
+    function onKey(e) {
+      if (e.key === 'Enter') save();
+      if (e.key === 'Escape') cancel();
+    }
 
-const formatNumber = (num) => {
-  if (!num) return '0';
-  return parseFloat(num).toLocaleString();
+    return { editing, draft, display, startEdit, cancel, save, onKey };
+  },
+  template: `
+    <div class="inline-flex items-center group">
+      <template v-if="!editing">
+        <span class="text-sm font-medium text-gray-900 cursor-pointer hover:text-blue-600 hover:underline"
+              :class="{ 'text-gray-400 italic': value === null || value === undefined || value === '' }"
+              @click="startEdit">{{ display }}</span>
+        <button @click="startEdit"
+                class="ml-1 text-gray-300 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+          </svg>
+        </button>
+      </template>
+      <template v-else>
+        <input
+          v-model="draft"
+          :type="type"
+          :step="step"
+          @blur="save"
+          @keydown="onKey"
+          class="w-28 px-2 py-1 text-sm border border-blue-400 rounded focus:outline-none focus:ring-2 focus:ring-blue-300"
+          ref="inputRef"
+          autofocus
+        />
+        <span v-if="suffix" class="ml-1 text-xs text-gray-500">{{ suffix }}</span>
+        <button @click="save"   class="ml-1 text-green-600 hover:text-green-800"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></button>
+        <button @click="cancel" class="ml-1 text-gray-400 hover:text-gray-600"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+      </template>
+    </div>
+  `,
 };
 
-const loadData = async () => {
+// ─── State ───────────────────────────────────────────────────────────────────
+
+const loading    = ref(false);
+const saveStatus = ref('');
+const activeTab  = ref('system');
+
+const systemParams    = ref({});
+const fuelTypes       = ref([]);
+const salesParams     = ref([]);
+const stockPolicies   = ref([]);
+const supplierOffers  = ref([]);
+const depotTanks      = ref([]);
+
+// ─── Tabs ────────────────────────────────────────────────────────────────────
+
+const tabs = computed(() => [
+  { id: 'system',          name: 'System Parameters', icon: 'fas fa-cogs' },
+  { id: 'fuel-types',      name: 'Fuel Types',        icon: 'fas fa-oil-can',       count: fuelTypes.value.length },
+  { id: 'sales-params',    name: 'Sales Params',      icon: 'fas fa-chart-line',    count: salesParams.value.length },
+  { id: 'stock-policies',  name: 'Stock Policies',    icon: 'fas fa-layer-group',   count: stockPolicies.value.length },
+  { id: 'supplier-offers', name: 'Supplier Offers',   icon: 'fas fa-handshake',     count: supplierOffers.value.length },
+  { id: 'depot-tanks',     name: 'Depot Tanks',       icon: 'fas fa-gas-pump',      count: depotTanks.value.length },
+]);
+
+// ─── Load ────────────────────────────────────────────────────────────────────
+
+const loadAll = async () => {
+  loading.value = true;
   try {
-    loading.value = true;
-
-    // Load stations
-    const stationsRes = await stationsApi.getAll();
-    if (stationsRes.data.success) {
-      stations.value = stationsRes.data.data || [];
-    }
-
-    // Load fuel types
-    const fuelTypesRes = await fuelTypesApi.getAll();
-    if (fuelTypesRes.data.success) {
-      fuelTypes.value = fuelTypesRes.data.data || [];
-    }
-
-    // Load depot tanks (from first depot as example)
-    const depotsRes = await depotsApi.getAll();
-    if (depotsRes.data.success) {
-      const depots = depotsRes.data.data || [];
-
-      // Load tanks from all depots
-      for (const depot of depots.slice(0, 10)) {
-        try {
-          const tanksRes = await depotsApi.getTanks(depot.id);
-          if (tanksRes.data.success) {
-            const tanks = tanksRes.data.data || [];
-            tanks.forEach(tank => {
-              const fillPercentage = tank.capacity_liters > 0
-                ? Math.round((tank.current_stock_liters / tank.capacity_liters) * 100)
-                : 0;
-
-              depotTanks.value.push({
-                ...tank,
-                fill_percentage: fillPercentage
-              });
-            });
-          }
-        } catch (err) {
-          console.error(`Error loading tanks for depot ${depot.id}:`, err);
-        }
-      }
-    }
-
-    // Mock sales params (since we don't have API endpoint for this yet)
-    salesParams.value = [
-      { depot_id: 165, fuel_type_id: 25, liters_per_day: 85000, effective_from: '2026-01-01', effective_to: null },
-      { depot_id: 165, fuel_type_id: 26, liters_per_day: 4469, effective_from: '2026-01-01', effective_to: null },
-      { depot_id: 166, fuel_type_id: 25, liters_per_day: 75000, effective_from: '2026-01-01', effective_to: null },
-    ];
-
-  } catch (error) {
-    console.error('Error loading parameters:', error);
+    const [sysRes, ftRes, spRes, polRes, offRes, tankRes] = await Promise.all([
+      parametersApi.getSystem(),
+      parametersApi.getFuelTypes(),
+      parametersApi.getSalesParams(),
+      parametersApi.getStockPolicies(),
+      parametersApi.getSupplierOffers(),
+      parametersApi.getDepotTanks(),
+    ]);
+    if (sysRes.data.success)  systemParams.value   = sysRes.data.data;
+    if (ftRes.data.success)   fuelTypes.value      = ftRes.data.data;
+    if (spRes.data.success)   salesParams.value    = spRes.data.data;
+    if (polRes.data.success)  stockPolicies.value  = polRes.data.data;
+    if (offRes.data.success)  supplierOffers.value = offRes.data.data;
+    if (tankRes.data.success) depotTanks.value     = tankRes.data.data;
+  } catch (e) {
+    console.error('Parameters load error:', e);
   } finally {
     loading.value = false;
   }
 };
 
-onMounted(() => {
-  loadData();
-});
+onMounted(loadAll);
+
+// ─── Save helpers ────────────────────────────────────────────────────────────
+
+let saveTimer = null;
+const flashSave = (ok) => {
+  saveStatus.value = ok ? 'saved' : 'error';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { saveStatus.value = ''; }, 2500);
+};
+
+const saveSystemParam = async (key, value) => {
+  try {
+    const res = await parametersApi.updateSystem(key, String(value));
+    flashSave(res.data.success);
+    // Update local cache
+    for (const cat of Object.values(systemParams.value)) {
+      const p = cat.find(x => x.key === key);
+      if (p) { p.raw_value = String(value); p.value = value; }
+    }
+  } catch { flashSave(false); }
+};
+
+const saveFuelType = async (id, data) => {
+  try {
+    const res = await parametersApi.updateFuelType(id, data);
+    flashSave(res.data.success);
+    const ft = fuelTypes.value.find(x => x.id === id);
+    if (ft) { ft.density = data.density; ft.cost_per_ton = data.cost_per_ton; }
+  } catch { flashSave(false); }
+};
+
+const saveSalesParam = async (id, litersPerDay) => {
+  try {
+    const res = await parametersApi.updateSalesParam(id, { liters_per_day: litersPerDay });
+    flashSave(res.data.success);
+    const sp = salesParams.value.find(x => x.id === id);
+    if (sp) sp.liters_per_day = litersPerDay;
+  } catch { flashSave(false); }
+};
+
+const saveStockPolicy = async (id, data) => {
+  try {
+    const res = await parametersApi.updateStockPolicy(id, data);
+    flashSave(res.data.success);
+    const pol = stockPolicies.value.find(x => x.id === id);
+    if (pol) Object.assign(pol, data);
+  } catch { flashSave(false); }
+};
+
+const saveSupplierOffer = async (id, data) => {
+  try {
+    const res = await parametersApi.updateSupplierOffer(id, data);
+    flashSave(res.data.success);
+    const offer = supplierOffers.value.find(x => x.id === id);
+    if (offer) Object.assign(offer, data);
+  } catch { flashSave(false); }
+};
+
+// ─── Formatting ──────────────────────────────────────────────────────────────
+
+const formatNum = (n) => n ? parseFloat(n).toLocaleString() : '0';
+
+const formatCategory = (cat) => cat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+const fillColor = (pct) => {
+  if (pct >= 80) return 'bg-green-500';
+  if (pct >= 40) return 'bg-yellow-400';
+  if (pct >= 20) return 'bg-orange-500';
+  return 'bg-red-600';
+};
 </script>
