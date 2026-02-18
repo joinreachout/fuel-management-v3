@@ -115,7 +115,7 @@
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Fuel Type</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Code</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Density (kg/L)</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Cost per Ton (KGS)</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Cost per Ton (USD)</th>
                 </tr>
               </thead>
               <tbody class="divide-y">
@@ -136,7 +136,7 @@
                       :value="ft.cost_per_ton"
                       type="number"
                       step="100"
-                      suffix=" ₸/т"
+                      suffix=" $/ton"
                       placeholder="not set"
                       @save="val => saveFuelType(ft.id, { density: ft.density, cost_per_ton: val })"
                     />
@@ -269,7 +269,7 @@
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Supplier</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Delivers To</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Fuel</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Price / Ton</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Price / Ton (USD)</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Delivery Days</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Currency</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Status</th>
@@ -287,7 +287,7 @@
                     <InlineEdit
                       :value="offer.price_per_ton"
                       type="number" step="100"
-                      suffix=" ₸/т"
+                      suffix=" $/ton"
                       @save="val => saveSupplierOffer(offer.id, { price_per_ton: val, delivery_days: offer.delivery_days })"
                     />
                   </td>
