@@ -153,8 +153,8 @@
           <div v-else-if="activeTab === 'sales-params'">
             <div class="mb-5 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
               <i class="fas fa-chart-line mr-2"></i>
-              <strong>Sales Parameters</strong> — суточный расход (л/день) по каждому депо и виду топлива.
-              Используется для прогнозирования запасов и планирования закупок. Нажмите на значение для редактирования.
+              <strong>Sales Parameters</strong> — daily consumption rate (L/day) per depot and fuel type.
+              Used for stock forecasting and procurement planning. Click any value to edit.
             </div>
 
             <!-- Empty state -->
@@ -173,7 +173,7 @@
                 <div class="bg-gray-900 px-4 py-3 flex items-center gap-2">
                   <i class="fas fa-map-marker-alt text-blue-400"></i>
                   <span class="text-white font-semibold text-sm">{{ station.station_name }}</span>
-                  <span class="ml-auto text-xs text-gray-400">{{ station.rows.length }} записей</span>
+                  <span class="ml-auto text-xs text-gray-400">{{ station.rows.length }} rows</span>
                 </div>
 
                 <!-- Rows table inside card -->
@@ -580,7 +580,7 @@ const saveFuelType = async (id, data) => {
     flashSave(res.data.success);
     const ft = fuelTypes.value.find(x => x.id === id);
     if (ft) ft.density = data.density;
-  } catch { flashSave(false); }
+  } catch (e) { console.error('saveFuelType error:', e.response?.data || e); flashSave(false); }
 };
 
 const saveSalesParam = async (id, litersPerDay) => {
@@ -589,7 +589,7 @@ const saveSalesParam = async (id, litersPerDay) => {
     flashSave(res.data.success);
     const sp = salesParams.value.find(x => x.id === id);
     if (sp) sp.liters_per_day = litersPerDay;
-  } catch { flashSave(false); }
+  } catch (e) { console.error('saveSalesParam error:', e.response?.data || e); flashSave(false); }
 };
 
 const saveStockPolicy = async (id, data) => {
@@ -598,7 +598,7 @@ const saveStockPolicy = async (id, data) => {
     flashSave(res.data.success);
     const pol = stockPolicies.value.find(x => x.id === id);
     if (pol) Object.assign(pol, data);
-  } catch { flashSave(false); }
+  } catch (e) { console.error('saveStockPolicy error:', e.response?.data || e); flashSave(false); }
 };
 
 // ─── Supplier offers — grouped for card display ───────────────────────────────

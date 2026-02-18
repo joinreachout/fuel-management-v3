@@ -80,8 +80,8 @@ class ParametersService
      */
     public static function updateFuelType(int $id, float $density): bool
     {
-        if ($density <= 0 || $density > 2) {
-            throw new \InvalidArgumentException("Density must be between 0 and 2 kg/L");
+        if ($density <= 0 || $density > 5) {
+            throw new \InvalidArgumentException("Density must be between 0 and 5 kg/L");
         }
         $affected = Database::execute(
             "UPDATE fuel_types SET density = ? WHERE id = ?",
