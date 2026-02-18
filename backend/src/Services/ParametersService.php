@@ -25,21 +25,21 @@ class ParametersService
      */
     public static function getSystemParameters(): array
     {
+        // Real schema: parameter_name, parameter_value, data_type, description (no category)
         $rows = Database::fetchAll(
-            "SELECT param_key, param_value, param_type, description, category
+            "SELECT parameter_name, parameter_value, data_type, description
              FROM system_parameters
-             ORDER BY category, param_key"
+             ORDER BY parameter_name"
         );
 
-        // Group by category for easier rendering
-        $grouped = [];
+        // Flat list (no category in this schema version)
+        $grouped = ['general' => []];
         foreach ($rows as $row) {
-            $cat = $row['category'] ?? 'general';
-            $grouped[$cat][] = [
-                'key'         => $row['param_key'],
-                'value'       => self::castValue($row['param_value'], $row['param_type']),
-                'raw_value'   => $row['param_value'],
-                'type'        => $row['param_type'],
+            $grouped['general'][] = [
+                'key'         => $row['parameter_name'],
+                'value'       => self::castValue($row['parameter_value'], $row['data_type']),
+                'raw_value'   => $row['parameter_value'],
+                'type'        => $row['data_type'],
                 'description' => $row['description'],
             ];
         }
@@ -52,7 +52,7 @@ class ParametersService
     public static function updateSystemParameter(string $key, string $value): bool
     {
         $affected = Database::execute(
-            "UPDATE system_parameters SET param_value = ? WHERE param_key = ?",
+            "UPDATE system_parameters SET parameter_value = ? WHERE parameter_name = ?",
             [$value, $key]
         );
         return $affected > 0;
@@ -67,8 +67,9 @@ class ParametersService
      */
     public static function getFuelTypes(): array
     {
+        // Real schema: no is_active column in fuel_types
         return Database::fetchAll(
-            "SELECT id, name, code, density, cost_per_ton, is_active
+            "SELECT id, name, code, density, cost_per_ton
              FROM fuel_types
              ORDER BY name"
         );

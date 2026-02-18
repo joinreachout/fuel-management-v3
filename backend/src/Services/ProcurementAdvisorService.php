@@ -23,10 +23,11 @@ class ProcurementAdvisorService
     private static function getParams(): array
     {
         if (self::$params === null) {
-            $rows = Database::fetchAll("SELECT param_key, param_value FROM system_parameters");
+            // Real schema uses parameter_name / parameter_value
+            $rows = Database::fetchAll("SELECT parameter_name, parameter_value FROM system_parameters");
             self::$params = [];
             foreach ($rows as $row) {
-                self::$params[$row['param_key']] = $row['param_value'];
+                self::$params[$row['parameter_name']] = $row['parameter_value'];
             }
         }
         return self::$params;
