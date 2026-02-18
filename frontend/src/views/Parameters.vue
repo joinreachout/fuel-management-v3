@@ -322,7 +322,14 @@
           </div>
 
           <!-- ═══════════════════════════════════════════════
-               TAB 6 — DEPOT TANKS (reference, read-only)
+               TAB 6 — INFRASTRUCTURE (Hierarchy Manager)
+               ═══════════════════════════════════════════════ -->
+          <div v-else-if="activeTab === 'infrastructure'">
+            <HierarchyManager />
+          </div>
+
+          <!-- ═══════════════════════════════════════════════
+               TAB 7 — DEPOT TANKS (reference, read-only)
                ═══════════════════════════════════════════════ -->
           <div v-else-if="activeTab === 'depot-tanks'">
             <div class="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
@@ -373,6 +380,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { parametersApi } from '../services/api';
+import HierarchyManager from '../components/HierarchyManager.vue';
 
 // ─── Inline Edit Component (defined locally, no external dep) ───────────────
 const InlineEdit = {
@@ -467,8 +475,9 @@ const tabs = computed(() => [
   { id: 'fuel-types',      name: 'Fuel Types',        icon: 'fas fa-oil-can',       count: fuelTypes.value.length },
   { id: 'sales-params',    name: 'Sales Params',      icon: 'fas fa-chart-line',    count: salesParams.value.length },
   { id: 'stock-policies',  name: 'Stock Policies',    icon: 'fas fa-layer-group',   count: stockPolicies.value.length },
-  { id: 'supplier-offers', name: 'Supplier Offers',   icon: 'fas fa-handshake',     count: supplierOffers.value.length },
-  { id: 'depot-tanks',     name: 'Depot Tanks',       icon: 'fas fa-gas-pump',      count: depotTanks.value.length },
+  { id: 'supplier-offers',  name: 'Supplier Offers',   icon: 'fas fa-handshake',    count: supplierOffers.value.length },
+  { id: 'infrastructure',   name: 'Infrastructure',    icon: 'fas fa-sitemap' },
+  { id: 'depot-tanks',      name: 'Depot Tanks',       icon: 'fas fa-gas-pump',     count: depotTanks.value.length },
 ]);
 
 // ─── Load ────────────────────────────────────────────────────────────────────

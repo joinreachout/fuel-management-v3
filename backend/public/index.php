@@ -44,6 +44,7 @@ require_once __DIR__ . '/../src/Services/StationTanksService.php';
 require_once __DIR__ . '/../src/Services/FuelStockService.php';
 require_once __DIR__ . '/../src/Services/ProcurementAdvisorService.php';
 require_once __DIR__ . '/../src/Services/ParametersService.php';
+require_once __DIR__ . '/../src/Services/InfrastructureService.php';
 
 // Load Controllers
 require_once __DIR__ . '/../src/Controllers/StationController.php';
@@ -58,6 +59,7 @@ require_once __DIR__ . '/../src/Controllers/CostAnalysisController.php';
 require_once __DIR__ . '/../src/Controllers/RegionalComparisonController.php';
 require_once __DIR__ . '/../src/Controllers/ProcurementAdvisorController.php';
 require_once __DIR__ . '/../src/Controllers/ParametersController.php';
+require_once __DIR__ . '/../src/Controllers/InfrastructureController.php';
 
 use App\Core\Response;
 use App\Controllers\StationController;
@@ -72,6 +74,7 @@ use App\Controllers\CostAnalysisController;
 use App\Controllers\RegionalComparisonController;
 use App\Controllers\ProcurementAdvisorController;
 use App\Controllers\ParametersController;
+use App\Controllers\InfrastructureController;
 
 // Simple router
 try {
@@ -99,6 +102,7 @@ try {
     $regionalComparisonController = new RegionalComparisonController();
     $procurementAdvisorController = new ProcurementAdvisorController();
     $parametersController = new ParametersController();
+    $infrastructureController = new InfrastructureController();
 
     // ==================== STATIONS ====================
     if ($requestMethod === 'GET' && $path === '/api/stations') {
@@ -273,6 +277,22 @@ try {
 
     } elseif ($requestMethod === 'GET' && $path === '/api/parameters/depot-tanks') {
         $parametersController->getDepotTanks();
+
+    // ==================== INFRASTRUCTURE ====================
+    } elseif ($requestMethod === 'GET' && $path === '/api/infrastructure/hierarchy') {
+        $infrastructureController->getHierarchy();
+
+    } elseif ($requestMethod === 'PUT' && preg_match('#^/api/infrastructure/stations/(\d+)$#', $path, $matches)) {
+        $infrastructureController->updateStation((int)$matches[1]);
+
+    } elseif ($requestMethod === 'PUT' && preg_match('#^/api/infrastructure/depots/(\d+)$#', $path, $matches)) {
+        $infrastructureController->updateDepot((int)$matches[1]);
+
+    } elseif ($requestMethod === 'PUT' && preg_match('#^/api/infrastructure/tanks/(\d+)$#', $path, $matches)) {
+        $infrastructureController->updateTank((int)$matches[1]);
+
+    } elseif ($requestMethod === 'POST' && $path === '/api/infrastructure/tanks') {
+        $infrastructureController->addTank();
 
     } else {
         // 404 Not Found

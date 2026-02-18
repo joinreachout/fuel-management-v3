@@ -116,4 +116,13 @@ export const parametersApi = {
   updateSupplierOffer:  (id, data)     => api.put(`/parameters/supplier-offers/${id}`, data),
 };
 
+// Infrastructure (Hierarchy Manager) API
+export const infrastructureApi = {
+  getHierarchy:    ()         => api.get('/infrastructure/hierarchy'),
+  updateStation:   (id, data) => api.put(`/infrastructure/stations/${id}`, data),
+  updateDepot:     (id, data) => api.put(`/infrastructure/depots/${id}`, data),
+  updateTank:      (id, data) => api.put(`/infrastructure/tanks/${id}`, data),
+  addTank:         (data)     => api.post('/infrastructure/tanks', data),
+};
+
 export default api;
