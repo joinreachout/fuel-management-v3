@@ -7,7 +7,7 @@ use App\Core\Database;
 /**
  * Forecast Service
  * Calculates fuel consumption predictions and days until empty
- * Uses sales_params.tons_per_day for actual consumption data (metric tons/day)
+ * Uses sales_params.liters_per_day for actual consumption data
  */
 class ForecastService
 {
@@ -46,12 +46,11 @@ class ForecastService
 
         // Get consumption rate from sales_params (ACTUAL data)
         $salesParam = Database::fetchAll("
-            SELECT sp.tons_per_day, ft.density
-            FROM sales_params sp
-            JOIN fuel_types ft ON sp.fuel_type_id = ft.id
-            WHERE sp.depot_id = ? AND sp.fuel_type_id = ?
-            AND (sp.effective_to IS NULL OR sp.effective_to >= CURDATE())
-            ORDER BY sp.effective_from DESC
+            SELECT liters_per_day
+            FROM sales_params
+            WHERE depot_id = ? AND fuel_type_id = ?
+            AND (effective_to IS NULL OR effective_to >= CURDATE())
+            ORDER BY effective_from DESC
             LIMIT 1
         ", [$tank['depot_id'], $tank['fuel_type_id']]);
 
@@ -62,15 +61,13 @@ class ForecastService
                 'fuel_type_name' => $tank['fuel_type_name'],
                 'current_stock_liters' => (float)$tank['current_stock_liters'],
                 'capacity_liters' => (float)$tank['capacity_liters'],
-                'daily_consumption_tons' => null,
+                'daily_consumption_liters' => null,
                 'days_until_empty' => null,
                 'warning' => 'No sales_params configured for this depot/fuel type'
             ];
         }
 
-        $tonsPerDay = (float)$salesParam[0]['tons_per_day'];
-        $density = (float)$salesParam[0]['density'];
-        $dailyConsumption = $tonsPerDay * 1000 / $density; // L/day for internal calcs
+        $dailyConsumption = (float)$salesParam[0]['liters_per_day'];
         $currentStock = (float)$tank['current_stock_liters'];
 
         $daysUntilEmpty = $dailyConsumption > 0 ? $currentStock / $dailyConsumption : null;
@@ -91,7 +88,7 @@ class ForecastService
             'fuel_type_name' => $tank['fuel_type_name'],
             'current_stock_liters' => $currentStock,
             'capacity_liters' => (float)$tank['capacity_liters'],
-            'daily_consumption_tons' => $tonsPerDay,
+            'daily_consumption_liters' => $dailyConsumption,
             'days_until_empty' => $daysUntilEmpty ? round($daysUntilEmpty, 1) : null
         ];
 
@@ -162,10 +159,10 @@ class ForecastService
                 dt.fuel_type_id,
                 ft.name as fuel_type_name,
                 dt.current_stock_liters,
-                sp.tons_per_day as daily_consumption_tons,
+                sp.liters_per_day as daily_consumption_liters,
                 pol.critical_level_liters,
                 pol.min_level_liters,
-                ROUND(dt.current_stock_liters / (sp.tons_per_day * 1000 / ft.density), 1) as days_until_empty
+                ROUND(dt.current_stock_liters / sp.liters_per_day, 1) as days_until_empty
             FROM depot_tanks dt
             LEFT JOIN depots d ON dt.depot_id = d.id
             LEFT JOIN fuel_types ft ON dt.fuel_type_id = ft.id
@@ -174,10 +171,10 @@ class ForecastService
                 AND (sp.effective_to IS NULL OR sp.effective_to >= CURDATE())
             LEFT JOIN stock_policies pol ON dt.depot_id = pol.depot_id
                 AND dt.fuel_type_id = pol.fuel_type_id
-            WHERE sp.tons_per_day > 0
+            WHERE sp.liters_per_day > 0
             AND (
                 dt.current_stock_liters < pol.critical_level_liters
-                OR (dt.current_stock_liters / (sp.tons_per_day * 1000 / ft.density)) < 7
+                OR (dt.current_stock_liters / sp.liters_per_day) < 7
             )
         ";
 
@@ -213,9 +210,8 @@ class ForecastService
 
         // Get consumption rate from sales_params
         $salesParam = Database::fetchAll("
-            SELECT sp.tons_per_day, ft.density
+            SELECT sp.liters_per_day
             FROM sales_params sp
-            JOIN fuel_types ft ON sp.fuel_type_id = ft.id
             WHERE sp.depot_id = ? AND sp.fuel_type_id = ?
             AND (sp.effective_to IS NULL OR sp.effective_to >= CURDATE())
             ORDER BY sp.effective_from DESC
@@ -230,9 +226,7 @@ class ForecastService
             ];
         }
 
-        $tonsPerDay = (float)$salesParam[0]['tons_per_day'];
-        $density = (float)$salesParam[0]['density'];
-        $dailyConsumption = $tonsPerDay * 1000 / $density; // L/day
+        $dailyConsumption = (float)$salesParam[0]['liters_per_day']; // L/day
 
         // Get stock policy thresholds
         $policy = Database::fetchAll("
@@ -251,7 +245,7 @@ class ForecastService
                 'depot_id' => $depotId,
                 'fuel_type_id' => $fuelTypeId,
                 'total_stock_liters' => $totalStock,
-                'daily_consumption_tons' => $tonsPerDay,
+                'daily_consumption_liters' => $dailyConsumption,
                 'days_until_empty' => $daysUntilEmpty ? round($daysUntilEmpty, 1) : null,
                 'urgency' => $daysUntilEmpty && $daysUntilEmpty < 7 ? 'MUST_ORDER' : 'NORMAL',
                 'warning' => 'No stock_policies configured - using 7 days threshold'
@@ -279,7 +273,7 @@ class ForecastService
             'depot_id' => $depotId,
             'fuel_type_id' => $fuelTypeId,
             'total_stock_liters' => $totalStock,
-            'daily_consumption_tons' => $tonsPerDay,
+            'daily_consumption_liters' => $dailyConsumption,
             'min_level_liters' => $minLevel,
             'critical_level_liters' => $criticalLevel,
             'days_until_minimum' => $daysUntilMin ? round($daysUntilMin, 1) : null,
@@ -319,8 +313,7 @@ class ForecastService
                 dt.fuel_type_id,
                 ft.name as fuel_type_name,
                 dt.current_stock_liters,
-                sp.tons_per_day,
-                ft.density
+                sp.liters_per_day
             FROM stations s
             LEFT JOIN regions r ON s.region_id = r.id
             LEFT JOIN depots d ON s.id = d.station_id
@@ -349,7 +342,7 @@ class ForecastService
             $params[] = $fuelTypeId;
         }
 
-        $sql .= " AND sp.tons_per_day > 0 ORDER BY s.name, ft.name";
+        $sql .= " AND sp.liters_per_day > 0 ORDER BY s.name, ft.name";
 
         $tanks = Database::fetchAll($sql, $params);
 
@@ -387,11 +380,8 @@ class ForecastService
             }
 
             $groupedData[$key]['current_stock'] += (float)$tank['current_stock_liters'];
-            // Convert tons/day → L/day for projection, then accumulate
-            $density = (float)$tank['density'];
-            $groupedData[$key]['daily_consumption'] += $density > 0
-                ? (float)$tank['tons_per_day'] * 1000 / $density
-                : 0;
+            // Accumulate liters/day directly
+            $groupedData[$key]['daily_consumption'] += (float)$tank['liters_per_day'];
         }
 
         // Generate datasets with forecast projection
@@ -408,8 +398,8 @@ class ForecastService
 
         foreach ($groupedData as $label => $data) {
             $stockData = [];
-            $currentStock = $data['current_stock'] / 1000; // L → tons for chart display
-            $dailyConsumption = $data['daily_consumption'] / 1000; // L/day → t/day for chart
+            $currentStock = $data['current_stock'] / 1000; // L → kL for chart display
+            $dailyConsumption = $data['daily_consumption'] / 1000; // L/day → kL/day for chart
 
             // Generate forecast points
             for ($i = 0; $i <= $days; $i++) {

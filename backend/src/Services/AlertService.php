@@ -149,16 +149,16 @@ class AlertService
                 dt.fuel_type_id,
                 ft.name as fuel_type_name,
                 SUM(dt.current_stock_liters) as total_stock_liters,
-                sp.tons_per_day as daily_consumption_tons,
-                ROUND(SUM(dt.current_stock_liters) / (sp.tons_per_day * 1000 / ft.density), 1) as days_until_empty
+                sp.liters_per_day as daily_consumption,
+                ROUND(SUM(dt.current_stock_liters) / sp.liters_per_day, 1) as days_until_empty
             FROM depot_tanks dt
             LEFT JOIN depots d ON dt.depot_id = d.id
             LEFT JOIN fuel_types ft ON dt.fuel_type_id = ft.id
             LEFT JOIN sales_params sp ON dt.depot_id = sp.depot_id
                 AND dt.fuel_type_id = sp.fuel_type_id
                 AND (sp.effective_to IS NULL OR sp.effective_to >= CURDATE())
-            WHERE sp.tons_per_day > 0
-            GROUP BY dt.depot_id, dt.fuel_type_id, d.name, ft.name, sp.tons_per_day, ft.density
+            WHERE sp.liters_per_day > 0
+            GROUP BY dt.depot_id, dt.fuel_type_id, d.name, ft.name, sp.liters_per_day
             HAVING days_until_empty < 7
             AND days_until_empty > 0
         ");

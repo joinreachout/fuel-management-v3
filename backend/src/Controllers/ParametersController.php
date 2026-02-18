@@ -15,7 +15,7 @@ use App\Services\ParametersService;
  *   GET  /api/parameters/fuel-types      → fuel_types (density, cost_per_ton)
  *   PUT  /api/parameters/fuel-types/:id  → update density + cost_per_ton
  *   GET  /api/parameters/sales-params    → sales_params with names
- *   PUT  /api/parameters/sales-params/:id → update tons_per_day
+ *   PUT  /api/parameters/sales-params/:id → update liters_per_day
  *   GET  /api/parameters/stock-policies  → stock_policies with names + capacity
  *   PUT  /api/parameters/stock-policies/:id → update thresholds
  *   GET  /api/parameters/supplier-offers → supplier_station_offers with names
@@ -128,10 +128,10 @@ class ParametersController
     {
         try {
             $body = $this->parseBody();
-            if (!isset($body['tons_per_day'])) {
-                throw new \InvalidArgumentException("Missing field: tons_per_day");
+            if (!isset($body['liters_per_day'])) {
+                throw new \InvalidArgumentException("Missing field: liters_per_day");
             }
-            $updated = ParametersService::updateSalesParam($id, (float)$body['tons_per_day']);
+            $updated = ParametersService::updateSalesParam($id, (float)$body['liters_per_day']);
             $this->ok(['updated' => $updated, 'id' => $id]);
         } catch (\InvalidArgumentException $e) {
             $this->badRequest($e->getMessage());

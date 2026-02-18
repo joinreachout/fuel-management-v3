@@ -108,7 +108,7 @@ class ParametersService
                 sp.fuel_type_id,
                 ft.name AS fuel_type_name,
                 ft.code AS fuel_type_code,
-                sp.tons_per_day,
+                sp.liters_per_day,
                 sp.effective_from,
                 sp.effective_to
              FROM sales_params sp
@@ -121,16 +121,16 @@ class ParametersService
     }
 
     /**
-     * UPDATE tons_per_day for a specific sales_param row
+     * UPDATE liters_per_day for a specific sales_param row
      */
-    public static function updateSalesParam(int $id, float $tonsPerDay): bool
+    public static function updateSalesParam(int $id, float $litersPerDay): bool
     {
-        if ($tonsPerDay < 0) {
-            throw new \InvalidArgumentException("tons_per_day cannot be negative");
+        if ($litersPerDay < 0) {
+            throw new \InvalidArgumentException("liters_per_day cannot be negative");
         }
         $affected = Database::execute(
-            "UPDATE sales_params SET tons_per_day = ? WHERE id = ?",
-            [$tonsPerDay, $id]
+            "UPDATE sales_params SET liters_per_day = ? WHERE id = ?",
+            [$litersPerDay, $id]
         );
         return $affected > 0;
     }

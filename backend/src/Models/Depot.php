@@ -121,14 +121,14 @@ class Depot
                 ft.id as fuel_type_id,
                 ft.name as fuel_type_name,
                 ft.code as fuel_type_code,
-                sp.tons_per_day,
+                sp.liters_per_day,
                 SUM(dt.current_stock_liters) as current_stock_liters,
-                ROUND(SUM(dt.current_stock_liters) / (sp.tons_per_day * 1000 / ft.density), 1) as days_until_stockout
+                ROUND(SUM(dt.current_stock_liters) / sp.liters_per_day, 1) as days_until_stockout
             FROM sales_params sp
             LEFT JOIN fuel_types ft ON sp.fuel_type_id = ft.id
             LEFT JOIN depot_tanks dt ON dt.depot_id = sp.depot_id AND dt.fuel_type_id = sp.fuel_type_id
             WHERE sp.depot_id = ?
-            GROUP BY ft.id, ft.name, ft.code, ft.density, sp.tons_per_day
+            GROUP BY ft.id, ft.name, ft.code, ft.density, sp.liters_per_day
             ORDER BY ft.name
         ", [$depotId]);
     }

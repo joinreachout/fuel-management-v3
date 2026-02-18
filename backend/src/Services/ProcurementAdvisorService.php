@@ -65,14 +65,12 @@ class ProcurementAdvisorService
                 ft.density,
                 SUM(dt.current_stock_liters) as current_stock_liters,
                 SUM(dt.capacity_liters) as capacity_liters,
-                sp.tons_per_day,
+                sp.liters_per_day as daily_consumption_liters,
                 pol.min_level_liters,
                 pol.critical_level_liters,
                 pol.target_level_liters,
                 ROUND(SUM(dt.current_stock_liters) / dt.capacity_liters * 100, 1) as fill_percentage,
-                -- days_until_empty: stock(L) / daily_consumption(L/day)
-                -- daily_consumption(L/day) = tons_per_day * 1000 / density(kg/L)
-                ROUND(SUM(dt.current_stock_liters) / (sp.tons_per_day * 1000 / ft.density), 1) as days_until_empty
+                ROUND(SUM(dt.current_stock_liters) / sp.liters_per_day, 1) as days_until_empty
             FROM depot_tanks dt
             INNER JOIN depots d ON dt.depot_id = d.id
             INNER JOIN stations s ON d.station_id = s.id
@@ -82,9 +80,9 @@ class ProcurementAdvisorService
                 AND (sp.effective_to IS NULL OR sp.effective_to >= CURDATE())
             LEFT JOIN stock_policies pol ON dt.depot_id = pol.depot_id
                 AND dt.fuel_type_id = pol.fuel_type_id
-            WHERE sp.tons_per_day > 0
+            WHERE sp.liters_per_day > 0
             GROUP BY s.id, s.name, s.code, d.id, d.name, dt.fuel_type_id, ft.name, ft.code, ft.density,
-                     sp.tons_per_day, pol.min_level_liters, pol.critical_level_liters, pol.target_level_liters
+                     sp.liters_per_day, pol.min_level_liters, pol.critical_level_liters, pol.target_level_liters
             HAVING days_until_empty <= ?
                 OR current_stock_liters <= IFNULL(pol.min_level_liters, 0)
             ORDER BY days_until_empty ASC
@@ -96,13 +94,12 @@ class ProcurementAdvisorService
         foreach ($results as $row) {
             $currentStockLiters = (float)$row['current_stock_liters'];
             $capacityLiters = (float)$row['capacity_liters'];
-            $dailyConsumptionTons = (float)$row['tons_per_day'];  // stored in tons
+            $dailyConsumption = (float)$row['daily_consumption_liters']; // L/day
             $density = (float)$row['density'];
             $daysLeft = (float)$row['days_until_empty'];
 
-            // Convert between units using density
-            // tons → litres: L = t * 1000 / density(kg/L)
-            $dailyConsumption = $dailyConsumptionTons * 1000 / $density; // L/day for internal calcs
+            // Convert to tons for output only (order quantities, costs)
+            $dailyConsumptionTons = $dailyConsumption * $density / 1000;
             $currentStockTons = $currentStockLiters * $density / 1000;
             $capacityTons = $capacityLiters * $density / 1000;
 
