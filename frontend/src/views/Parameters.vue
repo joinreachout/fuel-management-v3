@@ -185,7 +185,10 @@
                   >
                     <div class="flex items-center gap-2 min-w-0">
                       <span class="flex-shrink-0 px-2 py-0.5 rounded text-xs font-mono font-bold bg-gray-200 text-gray-700">{{ row.fuel_type_code }}</span>
-                      <span class="text-xs text-gray-500 truncate">{{ row.depot_name }}</span>
+                      <div class="min-w-0">
+                        <div class="text-xs font-medium text-gray-700 truncate">{{ row.fuel_type_name }}</div>
+                        <div class="text-xs text-gray-400 truncate">{{ row.depot_name }}</div>
+                      </div>
                     </div>
                     <InlineEdit
                       :value="row.liters_per_day"

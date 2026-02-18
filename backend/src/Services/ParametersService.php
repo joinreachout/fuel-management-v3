@@ -51,10 +51,10 @@ class ParametersService
      */
     public static function updateSystemParameter(string $key, string $value): bool
     {
-        $affected = Database::execute(
+        $affected = Database::query(
             "UPDATE system_parameters SET parameter_value = ? WHERE parameter_name = ?",
             [$value, $key]
-        );
+        )->rowCount();
         return $affected > 0;
     }
 
@@ -83,10 +83,10 @@ class ParametersService
         if ($density <= 0 || $density > 5) {
             throw new \InvalidArgumentException("Density must be between 0 and 5 kg/L");
         }
-        $affected = Database::execute(
+        $affected = Database::query(
             "UPDATE fuel_types SET density = ? WHERE id = ?",
             [$density, $id]
-        );
+        )->rowCount();
         return $affected > 0;
     }
 
@@ -127,10 +127,10 @@ class ParametersService
         if ($litersPerDay < 0) {
             throw new \InvalidArgumentException("liters_per_day cannot be negative");
         }
-        $affected = Database::execute(
+        $affected = Database::query(
             "UPDATE sales_params SET liters_per_day = ? WHERE id = ?",
             [$litersPerDay, $id]
-        );
+        )->rowCount();
         return $affected > 0;
     }
 
@@ -177,12 +177,12 @@ class ParametersService
         ?float $criticalLevel,
         ?float $targetLevel
     ): bool {
-        $affected = Database::execute(
+        $affected = Database::query(
             "UPDATE stock_policies
              SET min_level_liters = ?, critical_level_liters = ?, target_level_liters = ?
              WHERE id = ?",
             [$minLevel, $criticalLevel, $targetLevel, $id]
-        );
+        )->rowCount();
         return $affected > 0;
     }
 
@@ -231,12 +231,12 @@ class ParametersService
         if ($deliveryDays < 1 || $deliveryDays > 90) {
             throw new \InvalidArgumentException("delivery_days must be between 1 and 90");
         }
-        $affected = Database::execute(
+        $affected = Database::query(
             "UPDATE supplier_station_offers
              SET price_per_ton = ?, delivery_days = ?
              WHERE id = ?",
             [$pricePerTon, $deliveryDays, $id]
-        );
+        )->rowCount();
         return $affected > 0;
     }
 
