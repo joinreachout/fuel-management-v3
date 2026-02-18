@@ -14,6 +14,33 @@ use App\Core\Database;
  */
 class ProcurementAdvisorService
 {
+    /** @var array|null Cached system parameters to avoid repeated DB queries */
+    private static ?array $params = null;
+
+    /**
+     * Load system parameters from DB (cached per request)
+     */
+    private static function getParams(): array
+    {
+        if (self::$params === null) {
+            $rows = Database::fetchAll("SELECT param_key, param_value FROM system_parameters");
+            self::$params = [];
+            foreach ($rows as $row) {
+                self::$params[$row['param_key']] = $row['param_value'];
+            }
+        }
+        return self::$params;
+    }
+
+    /**
+     * Get a single system parameter as float (with fallback default)
+     */
+    private static function param(string $key, float $default): float
+    {
+        $params = self::getParams();
+        return isset($params[$key]) ? (float)$params[$key] : $default;
+    }
+
     /**
      * Get upcoming shortages - stations/depots that will run out soon
      * Returns list sorted by urgency
@@ -75,21 +102,30 @@ class ProcurementAdvisorService
             $capacityTons = $capacityLiters * $density / 1000;
             $dailyConsumptionTons = $dailyConsumption * $density / 1000;
 
-            // Determine urgency level
+            // Determine urgency level (thresholds from system_parameters)
             $urgency = self::calculateUrgency(
                 $currentStockLiters,
                 (float)($row['min_level_liters'] ?? 0),
                 (float)($row['critical_level_liters'] ?? 0),
-                $daysLeft
+                $daysLeft,
+                (int)self::param('urgency_days_catastrophe', 1),
+                (int)self::param('urgency_days_critical', 2),
+                (int)self::param('urgency_days_must_order', 5),
+                (int)self::param('urgency_days_warning', 7)
             );
 
             // Get best supplier for this fuel type and station (needed for delivery time calculation)
             $bestSupplier = self::getBestSupplier($row['fuel_type_id'], $row['station_id'], $urgency);
 
+            // All thresholds come from system_parameters (no hardcoding)
+            $plannedFillPct   = self::param('planned_fill_pct', 0.80);   // Target fill level
+            $maxFillPct       = self::param('max_fill_pct', 0.95);        // Max safe fill level
+            $safetyBufferDays = (int)self::param('safety_buffer_days', 2); // Extra days for delivery delays
+            $defaultLeadDays  = (int)self::param('default_lead_days', 7);  // Fallback if no supplier found
+
             // Calculate recommended order quantity with proper logic
-            $targetLevel = (float)($row['target_level_liters'] ?? $capacityLiters * 0.8);
-            $deliveryDays = $bestSupplier['avg_delivery_days'] ?? 7;
-            $safetyBufferDays = 2; // Extra buffer days for delays
+            $targetLevel = (float)($row['target_level_liters'] ?? $capacityLiters * $plannedFillPct);
+            $deliveryDays = $bestSupplier['avg_delivery_days'] ?? $defaultLeadDays;
 
             // Calculate consumption during delivery period
             $consumptionDuringDelivery = $dailyConsumption * ($deliveryDays + $safetyBufferDays);
@@ -100,10 +136,10 @@ class ProcurementAdvisorService
                 $targetLevel + $consumptionDuringDelivery - $currentStockLiters
             );
 
-            // Check if order exceeds capacity - cap at max useful volume (95% per spec)
-            // After delivery: current - consumption + order <= capacity × 0.95
-            // Therefore: order <= (capacity × 0.95) - (current - consumption)
-            $maxUsefulCapacity = $capacityLiters * 0.95; // Don't fill tanks above 95%
+            // Check if order exceeds capacity - cap at max useful volume (from system_parameters)
+            // After delivery: current - consumption + order <= capacity × max_fill_pct
+            // Therefore: order <= (capacity × max_fill_pct) - (current - consumption)
+            $maxUsefulCapacity = $capacityLiters * $maxFillPct;
             $stockAfterConsumption = max(0, $currentStockLiters - $consumptionDuringDelivery);
             $maxOrderLiters = max(0, $maxUsefulCapacity - $stockAfterConsumption);
             $recommendedOrderLiters = min($recommendedOrderLiters, $maxOrderLiters);
@@ -167,7 +203,8 @@ class ProcurementAdvisorService
                     'capped_at_capacity' => ($recommendedOrderLiters >= $maxOrderLiters),
                     'delivery_days' => $deliveryDays,
                     'safety_buffer_days' => $safetyBufferDays,
-                    'formula' => 'recommended = min((target + consumption - current), max_order_capacity)'
+                    'max_fill_pct' => $maxFillPct,
+                    'formula' => 'recommended = min((target + consumption_during_delivery - current), (capacity × max_fill_pct) - (current - consumption))'
                 ],
                 'best_supplier' => $bestSupplier,
                 'created_at' => date('Y-m-d H:i:s')
@@ -179,45 +216,55 @@ class ProcurementAdvisorService
 
     /**
      * Calculate urgency level based on stock and time
+     * All day thresholds come from system_parameters via caller (no hardcoding here)
      *
      * @param float $currentStock Current stock in liters
      * @param float $minLevel Minimum level threshold
      * @param float $criticalLevel Critical level threshold
      * @param float $daysLeft Days until empty
+     * @param int $daysCatastrophe Days threshold for CATASTROPHE (default 1)
+     * @param int $daysCritical Days threshold for CRITICAL (default 2)
+     * @param int $daysMustOrder Days threshold for MUST_ORDER (default 5)
+     * @param int $daysWarning Days threshold for WARNING (default 7)
      * @return string Urgency level
      */
     private static function calculateUrgency(
         float $currentStock,
         float $minLevel,
         float $criticalLevel,
-        float $daysLeft
+        float $daysLeft,
+        int $daysCatastrophe = 1,
+        int $daysCritical = 2,
+        int $daysMustOrder = 5,
+        int $daysWarning = 7
     ): string {
-        // CATASTROPHE - already below critical level
-        if ($criticalLevel > 0 && $currentStock <= $criticalLevel) {
+        // CATASTROPHE - already below critical level or almost no days left
+        if (($criticalLevel > 0 && $currentStock <= $criticalLevel) || $daysLeft <= $daysCatastrophe) {
             return 'CATASTROPHE';
         }
 
-        // CRITICAL - below minimum or less than 2 days left
-        if (($minLevel > 0 && $currentStock <= $minLevel) || $daysLeft <= 2) {
+        // CRITICAL - below minimum or within critical days
+        if (($minLevel > 0 && $currentStock <= $minLevel) || $daysLeft <= $daysCritical) {
             return 'CRITICAL';
         }
 
-        // MUST_ORDER - less than 5 days left
-        if ($daysLeft <= 5) {
+        // MUST_ORDER - must act now
+        if ($daysLeft <= $daysMustOrder) {
             return 'MUST_ORDER';
         }
 
-        // WARNING - less than 7 days left
-        if ($daysLeft <= 7) {
+        // WARNING - getting low
+        if ($daysLeft <= $daysWarning) {
             return 'WARNING';
         }
 
-        // PLANNED - within 14 days
+        // PLANNED - within planning horizon
         return 'PLANNED';
     }
 
     /**
      * Get best supplier for fuel type and station based on ranking
+     * Uses normalized supplier_station_offers: one row per (supplier, station, fuel_type)
      *
      * @param int $fuelTypeId Fuel type ID
      * @param int $stationId Station ID
@@ -226,9 +273,8 @@ class ProcurementAdvisorService
      */
     private static function getBestSupplier(int $fuelTypeId, int $stationId, string $urgency): ?array
     {
-        // Get active suppliers with their offers to this specific station
-        // Priority: 1 = highest, auto_score: higher = better
-        // Now includes actual delivery_days and prices for the specific route
+        // Normalized table: filter by both station_id AND fuel_type_id
+        // price_per_ton is directly available — no switch/case needed
         $sql = "
             SELECT
                 s.id,
@@ -237,16 +283,13 @@ class ProcurementAdvisorService
                 s.priority,
                 s.auto_score,
                 sso.delivery_days,
-                sso.price_diesel_b7,
-                sso.price_diesel_b10,
-                sso.price_gas_92,
-                sso.price_gas_95,
-                sso.price_gas_98,
+                sso.price_per_ton,
                 sso.currency
             FROM suppliers s
             INNER JOIN supplier_station_offers sso
                 ON s.id = sso.supplier_id
             WHERE sso.station_id = ?
+              AND sso.fuel_type_id = ?
               AND sso.is_active = 1
               AND s.is_active = 1
             ORDER BY
@@ -256,7 +299,7 @@ class ProcurementAdvisorService
             LIMIT 1
         ";
 
-        $result = Database::fetchAll($sql, [$stationId]);
+        $result = Database::fetchAll($sql, [$stationId, $fuelTypeId]);
 
         if (empty($result)) {
             return null;
@@ -264,35 +307,14 @@ class ProcurementAdvisorService
 
         $supplier = $result[0];
 
-        // Determine correct price based on fuel_type_id
-        $pricePerTon = null;
-        switch ($fuelTypeId) {
-            case 25: // Diesel B7
-                $pricePerTon = $supplier['price_diesel_b7'];
-                break;
-            case 33: // Diesel B10
-                $pricePerTon = $supplier['price_diesel_b10'];
-                break;
-            case 23: // A-92
-                $pricePerTon = $supplier['price_gas_92'];
-                break;
-            case 31: // A-95
-                $pricePerTon = $supplier['price_gas_95'];
-                break;
-            case 32: // A-98
-                $pricePerTon = $supplier['price_gas_98'];
-                break;
-            // Add more fuel types as needed
-        }
-
         return [
             'id' => $supplier['id'],
             'name' => $supplier['name'],
             'departure_station' => $supplier['departure_station'],
             'priority' => $supplier['priority'],
             'score' => (float)$supplier['auto_score'],
-            'avg_delivery_days' => (int)$supplier['delivery_days'], // Now actual delivery time for this route!
-            'price_per_ton' => $pricePerTon ? (float)$pricePerTon : null,
+            'avg_delivery_days' => (int)$supplier['delivery_days'],
+            'price_per_ton' => $supplier['price_per_ton'] !== null ? (float)$supplier['price_per_ton'] : null,
             'currency' => $supplier['currency']
         ];
     }
@@ -355,8 +377,8 @@ class ProcurementAdvisorService
     }
 
     /**
-     * Get supplier recommendations ranked by multiple factors
-     * Note: This version returns general supplier ranking without station-specific info
+     * Get supplier recommendations ranked by multiple factors for a specific fuel type
+     * Uses normalized supplier_station_offers: price_per_ton per (supplier, station, fuel_type)
      *
      * @param int $fuelTypeId Fuel type ID
      * @param float $requiredTons Required quantity in tons
@@ -368,8 +390,8 @@ class ProcurementAdvisorService
         float $requiredTons,
         string $urgency
     ): array {
-        // Get general supplier ranking
-        // For station-specific recommendations, use getBestSupplier() with station_id
+        // Normalized table: filter by fuel_type_id directly — no switch/case needed
+        // AVG across all stations the supplier serves for this fuel type
         $sql = "
             SELECT
                 s.id,
@@ -378,12 +400,11 @@ class ProcurementAdvisorService
                 s.priority,
                 s.auto_score,
                 AVG(sso.delivery_days) as avg_delivery_days,
-                AVG(sso.price_diesel_b7) as avg_price_diesel_b7,
-                AVG(sso.price_gas_92) as avg_price_gas_92,
-                AVG(sso.price_gas_95) as avg_price_gas_95,
+                AVG(sso.price_per_ton) as avg_price_per_ton,
                 sso.currency
             FROM suppliers s
             LEFT JOIN supplier_station_offers sso ON s.id = sso.supplier_id
+                AND sso.fuel_type_id = ?
                 AND sso.is_active = 1
             WHERE s.is_active = 1
             GROUP BY s.id, s.name, s.departure_station, s.priority, s.auto_score, sso.currency
@@ -392,7 +413,7 @@ class ProcurementAdvisorService
                 s.auto_score DESC
         ";
 
-        $results = Database::fetchAll($sql);
+        $results = Database::fetchAll($sql, [$fuelTypeId]);
 
         $recommendations = [];
         foreach ($results as $supplier) {
@@ -405,22 +426,6 @@ class ProcurementAdvisorService
 
             $compositeScore = $priorityScore + $autoScore + $urgencyScore;
 
-            // Select price based on fuel type
-            $pricePerTon = null;
-            switch ($fuelTypeId) {
-                case 25: // Diesel B7
-                case 33: // Diesel B10
-                    $pricePerTon = $supplier['avg_price_diesel_b7'];
-                    break;
-                case 23: // A-92
-                    $pricePerTon = $supplier['avg_price_gas_92'];
-                    break;
-                case 31: // A-95
-                case 32: // A-98
-                    $pricePerTon = $supplier['avg_price_gas_95'];
-                    break;
-            }
-
             $recommendations[] = [
                 'id' => $supplier['id'],
                 'name' => $supplier['name'],
@@ -428,7 +433,7 @@ class ProcurementAdvisorService
                 'priority' => $supplier['priority'],
                 'auto_score' => (float)$supplier['auto_score'],
                 'avg_delivery_days' => $avgDeliveryDays,
-                'price_per_ton' => $pricePerTon ? (float)$pricePerTon : null,
+                'price_per_ton' => $supplier['avg_price_per_ton'] !== null ? (float)$supplier['avg_price_per_ton'] : null,
                 'currency' => $supplier['currency'],
                 'composite_score' => round($compositeScore, 2),
                 'is_recommended' => $compositeScore >= 50
