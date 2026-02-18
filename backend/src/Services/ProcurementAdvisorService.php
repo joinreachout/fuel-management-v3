@@ -110,6 +110,16 @@ class ProcurementAdvisorService
 
             $recommendedOrderTons = $recommendedOrderLiters * $density / 1000;
 
+            // Check if single order is insufficient (will still run out even with max order)
+            $stockAfterDelivery = $currentStockLiters + $recommendedOrderLiters - $consumptionDuringDelivery;
+            $insufficientCapacity = $stockAfterDelivery < 0;
+            $additionalOrderNeeded = 0;
+
+            if ($insufficientCapacity) {
+                // Calculate how much additional capacity is needed
+                $additionalOrderNeeded = abs($stockAfterDelivery) * $density / 1000;
+            }
+
             // Calculate critical date and last order date
             $criticalDate = null;
             $lastOrderDate = null;
@@ -146,11 +156,14 @@ class ProcurementAdvisorService
                 'daily_consumption_tons' => round($dailyConsumptionTons, 2),
                 'recommended_order_tons' => round($recommendedOrderTons, 2),
                 'recommended_order_liters' => round($recommendedOrderLiters, 2),
+                'insufficient_capacity_warning' => $insufficientCapacity,
+                'additional_order_needed_tons' => $insufficientCapacity ? round($additionalOrderNeeded, 2) : 0,
                 'calculation_details' => [
                     'target_level_tons' => round($targetLevel * $density / 1000, 2),
                     'consumption_during_delivery_tons' => round($consumptionDuringDelivery * $density / 1000, 2),
                     'max_order_tons' => round($maxOrderLiters * $density / 1000, 2),
                     'max_useful_capacity_tons' => round($maxUsefulCapacity * $density / 1000, 2),
+                    'stock_after_delivery_tons' => round($stockAfterDelivery * $density / 1000, 2),
                     'capped_at_capacity' => ($recommendedOrderLiters >= $maxOrderLiters),
                     'delivery_days' => $deliveryDays,
                     'safety_buffer_days' => $safetyBufferDays,
