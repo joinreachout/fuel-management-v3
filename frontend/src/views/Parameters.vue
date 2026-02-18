@@ -244,63 +244,81 @@
           </div>
 
           <!-- ═══════════════════════════════════════════════
-               TAB 5 — SUPPLIER OFFERS (price_per_ton)
+               TAB 5 — SUPPLIER OFFERS (cards layout)
                ═══════════════════════════════════════════════ -->
           <div v-else-if="activeTab === 'supplier-offers'">
-            <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+            <div class="mb-5 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
               <i class="fas fa-handshake mr-2"></i>
-              <strong>Supplier Offers</strong>: price per ton and delivery days per
-              supplier → station → fuel type route. Update prices as quotes arrive.
+              <strong>Supplier Offers</strong>: one price per fuel type (applies to all stations).
+              Delivery days are per route (supplier → station). Click any value to edit.
             </div>
-            <table class="w-full">
-              <thead class="bg-gray-50 border-b">
-                <tr>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Supplier</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Delivers To</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Fuel</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Price / Ton (USD)</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Delivery Days</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Currency</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Status</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y">
-                <tr v-for="offer in supplierOffers" :key="offer.id" class="hover:bg-gray-50">
-                  <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ offer.supplier_name }}</td>
-                  <td class="px-4 py-3 text-sm text-gray-700">{{ offer.station_name }}</td>
-                  <td class="px-4 py-3 text-sm">
-                    <span class="px-2 py-0.5 bg-gray-100 rounded text-xs font-mono">{{ offer.fuel_type_code }}</span>
-                    {{ offer.fuel_type_name }}
-                  </td>
-                  <td class="px-4 py-3">
-                    <InlineEdit
-                      :value="offer.price_per_ton"
-                      type="number" step="100"
-                      suffix=" $/ton"
-                      @save="val => saveSupplierOffer(offer.id, { price_per_ton: val, delivery_days: offer.delivery_days })"
-                    />
-                  </td>
-                  <td class="px-4 py-3">
-                    <InlineEdit
-                      :value="offer.delivery_days"
-                      type="number" step="1"
-                      suffix=" days"
-                      @save="val => saveSupplierOffer(offer.id, { delivery_days: val, price_per_ton: offer.price_per_ton })"
-                    />
-                  </td>
-                  <td class="px-4 py-3 text-sm text-gray-600">{{ offer.currency }}</td>
-                  <td class="px-4 py-3">
-                    <span :class="offer.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'"
-                          class="px-2 py-1 rounded-full text-xs font-medium">
-                      {{ offer.is_active ? 'Active' : 'Inactive' }}
-                    </span>
-                  </td>
-                </tr>
-                <tr v-if="supplierOffers.length === 0">
-                  <td colspan="7" class="px-4 py-8 text-center text-gray-500">No supplier offers configured</td>
-                </tr>
-              </tbody>
-            </table>
+
+            <!-- Empty state -->
+            <div v-if="groupedOffers.length === 0" class="py-12 text-center text-gray-500">
+              No supplier offers configured
+            </div>
+
+            <!-- Supplier cards grid -->
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              <div
+                v-for="supplier in groupedOffers"
+                :key="supplier.supplier_id"
+                class="border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+              >
+                <!-- Card header -->
+                <div class="bg-gray-900 px-4 py-3 flex items-center gap-2">
+                  <i class="fas fa-truck text-blue-400"></i>
+                  <span class="text-white font-semibold text-sm">{{ supplier.supplier_name }}</span>
+                  <span class="ml-auto text-xs text-gray-400">{{ supplier.fuelTypes.length }} fuel types · {{ supplier.stations.length }} stations</span>
+                </div>
+
+                <!-- Fuel prices section -->
+                <div class="p-4 border-b border-gray-100">
+                  <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                    <i class="fas fa-dollar-sign mr-1"></i> Prices (USD/ton)
+                  </div>
+                  <div class="grid grid-cols-2 gap-1.5">
+                    <div
+                      v-for="ft in supplier.fuelTypes"
+                      :key="ft.fuel_type_id"
+                      class="flex items-center justify-between bg-gray-50 rounded-lg px-2.5 py-1.5"
+                    >
+                      <span class="text-xs font-mono text-gray-500 mr-1">{{ ft.fuel_type_code }}</span>
+                      <InlineEdit
+                        :value="ft.price_per_ton"
+                        type="number"
+                        step="1"
+                        suffix=" $"
+                        @save="val => saveOfferPrice(supplier.supplier_id, ft.fuel_type_id, val)"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Delivery days section -->
+                <div class="p-4">
+                  <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                    <i class="fas fa-clock mr-1"></i> Delivery Days per Station
+                  </div>
+                  <div class="space-y-1">
+                    <div
+                      v-for="st in supplier.stations"
+                      :key="st.station_id"
+                      class="flex items-center justify-between"
+                    >
+                      <span class="text-xs text-gray-600 truncate mr-2">{{ st.station_name }}</span>
+                      <InlineEdit
+                        :value="st.delivery_days"
+                        type="number"
+                        step="1"
+                        suffix=" days"
+                        @save="val => saveOfferDays(supplier.supplier_id, st.station_id, val)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- ═══════════════════════════════════════════════
@@ -466,12 +484,77 @@ const saveStockPolicy = async (id, data) => {
   } catch { flashSave(false); }
 };
 
-const saveSupplierOffer = async (id, data) => {
+// ─── Supplier offers — grouped for card display ───────────────────────────────
+
+const groupedOffers = computed(() => {
+  const map = {};
+  for (const o of supplierOffers.value) {
+    if (!map[o.supplier_id]) {
+      map[o.supplier_id] = {
+        supplier_id:   o.supplier_id,
+        supplier_name: o.supplier_name,
+        // keyed maps, converted to arrays below
+        _fuelMap:    {},
+        _stationMap: {},
+      };
+    }
+    const s = map[o.supplier_id];
+
+    // Fuel type: take first occurrence (price is same across stations)
+    if (!s._fuelMap[o.fuel_type_id]) {
+      s._fuelMap[o.fuel_type_id] = {
+        fuel_type_id:   o.fuel_type_id,
+        fuel_type_code: o.fuel_type_code,
+        fuel_type_name: o.fuel_type_name,
+        price_per_ton:  o.price_per_ton,
+      };
+    }
+
+    // Station: one entry per station with delivery_days
+    if (!s._stationMap[o.station_id]) {
+      s._stationMap[o.station_id] = {
+        station_id:    o.station_id,
+        station_name:  o.station_name,
+        delivery_days: o.delivery_days,
+      };
+    }
+  }
+
+  return Object.values(map)
+    .map(s => ({
+      supplier_id:   s.supplier_id,
+      supplier_name: s.supplier_name,
+      fuelTypes:     Object.values(s._fuelMap).sort((a, b) => a.fuel_type_code.localeCompare(b.fuel_type_code)),
+      stations:      Object.values(s._stationMap).sort((a, b) => a.station_name.localeCompare(b.station_name)),
+    }))
+    .sort((a, b) => a.supplier_name.localeCompare(b.supplier_name));
+});
+
+// Save price for a fuel type → updates ALL rows for this supplier+fuel across all stations
+const saveOfferPrice = async (supplierId, fuelTypeId, newPrice) => {
+  const targets = supplierOffers.value.filter(
+    o => o.supplier_id === supplierId && o.fuel_type_id === fuelTypeId
+  );
   try {
-    const res = await parametersApi.updateSupplierOffer(id, data);
-    flashSave(res.data.success);
-    const offer = supplierOffers.value.find(x => x.id === id);
-    if (offer) Object.assign(offer, data);
+    await Promise.all(targets.map(o =>
+      parametersApi.updateSupplierOffer(o.id, { price_per_ton: Number(newPrice), delivery_days: o.delivery_days })
+        .then(() => { o.price_per_ton = Number(newPrice); })
+    ));
+    flashSave(true);
+  } catch { flashSave(false); }
+};
+
+// Save delivery days for a station → updates ALL rows for this supplier+station across all fuel types
+const saveOfferDays = async (supplierId, stationId, newDays) => {
+  const targets = supplierOffers.value.filter(
+    o => o.supplier_id === supplierId && o.station_id === stationId
+  );
+  try {
+    await Promise.all(targets.map(o =>
+      parametersApi.updateSupplierOffer(o.id, { price_per_ton: o.price_per_ton, delivery_days: Number(newDays) })
+        .then(() => { o.delivery_days = Number(newDays); })
+    ));
+    flashSave(true);
   } catch { flashSave(false); }
 };
 
