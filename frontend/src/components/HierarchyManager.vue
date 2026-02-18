@@ -5,8 +5,8 @@
     <div class="flex items-center justify-between mb-5">
       <div>
         <p class="text-sm text-gray-500 mt-0.5">
-          {{ totalStats.regions }} регионов · {{ totalStats.stations }} станций ·
-          {{ totalStats.depots }} депо · {{ totalStats.tanks }} резервуаров
+          {{ totalStats.regions }} regions · {{ totalStats.stations }} stations ·
+          {{ totalStats.depots }} depots · {{ totalStats.tanks }} tanks
         </p>
       </div>
       <div class="flex items-center gap-2">
@@ -15,18 +15,18 @@
           <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
           <input
             v-model="search"
-            placeholder="Поиск станции или депо..."
+            placeholder="Search station or depot..."
             class="pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg w-52 focus:outline-none focus:ring-2 focus:ring-blue-300"
           />
         </div>
         <!-- Expand/Collapse all -->
         <button @click="expandAll"
                 class="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
-          Развернуть всё
+          Expand all
         </button>
         <button @click="collapseAll"
                 class="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
-          Свернуть
+          Collapse
         </button>
       </div>
     </div>
@@ -50,9 +50,9 @@
                :class="openRegions.has(region.id) ? 'rotate-90' : ''"></i>
             <span class="font-semibold tracking-wide text-sm uppercase">{{ region.name }}</span>
             <div class="ml-auto flex items-center gap-4 text-xs text-gray-400">
-              <span>{{ region.stations_count }} ст.</span>
-              <span>{{ region.depots_count }} депо</span>
-              <span>{{ region.tanks_count }} рез.</span>
+              <span>{{ region.stations_count }} st.</span>
+              <span>{{ region.depots_count }} depots</span>
+              <span>{{ region.tanks_count }} tanks</span>
               <FillBar :pct="region.fill_pct" class="w-24" />
               <span class="text-gray-300 font-mono">{{ region.fill_pct }}%</span>
             </div>
@@ -91,8 +91,8 @@
 
                 <!-- Station stats -->
                 <div class="flex items-center gap-4 text-xs text-gray-400 ml-auto">
-                  <span>{{ station.depots_count }} депо</span>
-                  <span>{{ station.tanks_count }} рез.</span>
+                  <span>{{ station.depots_count }} depots</span>
+                  <span>{{ station.tanks_count }} tanks</span>
                   <span class="font-mono text-gray-600">{{ fmtL(station.total_capacity_liters) }} L cap.</span>
                   <FillBar :pct="station.fill_pct" class="w-20" />
                   <span class="font-mono w-10 text-right" :class="fillTextColor(station.fill_pct)">
@@ -136,7 +136,7 @@
 
                     <!-- Depot stats -->
                     <div class="flex items-center gap-3 text-xs text-gray-400 ml-auto">
-                      <span>{{ depot.tanks_count }} рез.</span>
+                      <span>{{ depot.tanks_count }} tanks</span>
                       <FillBar :pct="depot.fill_pct" class="w-16" />
                       <span class="font-mono w-10 text-right" :class="fillTextColor(depot.fill_pct)">
                         {{ depot.fill_pct }}%
@@ -152,10 +152,10 @@
                     <table class="w-full text-xs">
                       <thead>
                         <tr class="text-gray-400 border-b border-gray-200">
-                          <th class="text-left py-1.5 font-medium">Топливо</th>
-                          <th class="text-right py-1.5 font-medium">Ёмкость (L)</th>
-                          <th class="text-right py-1.5 font-medium">Текущий сток (L)</th>
-                          <th class="py-1.5 w-32">Заполнение</th>
+                          <th class="text-left py-1.5 font-medium">Fuel</th>
+                          <th class="text-right py-1.5 font-medium">Capacity (L)</th>
+                          <th class="text-right py-1.5 font-medium">Current stock (L)</th>
+                          <th class="py-1.5 w-32">Fill</th>
                           <th class="py-1.5 w-8"></th>
                         </tr>
                       </thead>
@@ -225,21 +225,21 @@
                       <template v-if="addingTank === depot.id">
                         <div class="flex items-center gap-2 py-1">
                           <select v-model="newTank.fuel_type_id" class="text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-300">
-                            <option value="">— топливо —</option>
+                            <option value="">— fuel type —</option>
                             <option v-for="ft in fuelTypes" :key="ft.id" :value="ft.id">{{ ft.name }}</option>
                           </select>
-                          <input v-model.number="newTank.capacity_liters" type="number" placeholder="Ёмкость (L)"
+                          <input v-model.number="newTank.capacity_liters" type="number" placeholder="Capacity (L)"
                                  class="text-xs border border-gray-200 rounded px-2 py-1 w-32 focus:outline-none focus:ring-1 focus:ring-blue-300" />
-                          <input v-model.number="newTank.current_stock_liters" type="number" placeholder="Текущий сток (L)"
+                          <input v-model.number="newTank.current_stock_liters" type="number" placeholder="Current stock (L)"
                                  class="text-xs border border-gray-200 rounded px-2 py-1 w-32 focus:outline-none focus:ring-1 focus:ring-blue-300" />
-                          <button @click="saveTankAdd(depot.id)" class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">Добавить</button>
-                          <button @click="addingTank = null" class="text-xs text-gray-400 hover:text-gray-600">Отмена</button>
+                          <button @click="saveTankAdd(depot.id)" class="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">Add</button>
+                          <button @click="addingTank = null" class="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
                         </div>
                       </template>
                       <template v-else>
                         <button @click="addingTank = depot.id; newTank = { fuel_type_id: '', capacity_liters: null, current_stock_liters: 0 }"
                                 class="text-xs text-blue-500 hover:text-blue-700 flex items-center gap-1 py-1">
-                          <i class="fas fa-plus text-[10px]"></i> Добавить резервуар
+                          <i class="fas fa-plus text-[10px]"></i> Add tank
                         </button>
                       </template>
                     </div>
@@ -408,10 +408,10 @@ const saveEditing = async () => {
         }
       }
     }
-    showToast(true, 'Сохранено');
+    showToast(true, 'Saved');
     cancelEditing();
   } catch (err) {
-    showToast(false, err?.response?.data?.error ?? 'Ошибка сохранения');
+    showToast(false, err?.response?.data?.error ?? 'Save error');
   }
 };
 
@@ -419,7 +419,7 @@ const saveEditing = async () => {
 const saveTankAdd = async (depotId) => {
   const t = newTank.value;
   if (!t.fuel_type_id || !t.capacity_liters) {
-    showToast(false, 'Укажите тип топлива и ёмкость');
+    showToast(false, 'Specify fuel type and capacity');
     return;
   }
   try {
@@ -434,9 +434,9 @@ const saveTankAdd = async (depotId) => {
     addingTank.value = null;
     // Re-open the depot we were editing
     openDepots.value.add(depotId);
-    showToast(true, 'Резервуар добавлен');
+    showToast(true, 'Tank added');
   } catch (err) {
-    showToast(false, err?.response?.data?.error ?? 'Ошибка добавления');
+    showToast(false, err?.response?.data?.error ?? 'Add error');
   }
 };
 
@@ -454,7 +454,7 @@ const loadData = async () => {
       regions.value.forEach(r => openRegions.value.add(r.id));
     }
     if (ftRes.data.success) {
-      fuelTypes.value = ftRes.data.data.filter(ft => ft.is_active);
+      fuelTypes.value = ftRes.data.data;
     }
   } catch (e) {
     console.error('Infrastructure load error:', e);
@@ -466,7 +466,7 @@ const loadData = async () => {
 onMounted(loadData);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const fmtL = (n) => n ? Math.round(parseFloat(n)).toLocaleString('ru') : '0';
+const fmtL = (n) => n ? Math.round(parseFloat(n)).toLocaleString('en') : '0';
 
 const fillTextColor = (pct) => {
   if (pct >= 80) return 'text-green-600';
