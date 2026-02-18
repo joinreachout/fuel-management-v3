@@ -104,13 +104,12 @@ class ParametersService
                 sp.id,
                 sp.depot_id,
                 d.name  AS depot_name,
+                s.id    AS station_id,
                 s.name  AS station_name,
                 sp.fuel_type_id,
                 ft.name AS fuel_type_name,
                 ft.code AS fuel_type_code,
-                sp.liters_per_day,
-                sp.effective_from,
-                sp.effective_to
+                sp.liters_per_day
              FROM sales_params sp
              INNER JOIN depots d      ON sp.depot_id      = d.id
              INNER JOIN stations s    ON d.station_id     = s.id
