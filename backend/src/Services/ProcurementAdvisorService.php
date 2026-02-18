@@ -100,8 +100,12 @@ class ProcurementAdvisorService
                 $targetLevel + $consumptionDuringDelivery - $currentStockLiters
             );
 
-            // Check if order exceeds capacity - if so, cap at capacity
-            $maxOrderLiters = $capacityLiters - $currentStockLiters + $consumptionDuringDelivery;
+            // Check if order exceeds capacity - cap at max useful volume (95% per spec)
+            // After delivery: current - consumption + order <= capacity × 0.95
+            // Therefore: order <= (capacity × 0.95) - (current - consumption)
+            $maxUsefulCapacity = $capacityLiters * 0.95; // Don't fill tanks above 95%
+            $stockAfterConsumption = max(0, $currentStockLiters - $consumptionDuringDelivery);
+            $maxOrderLiters = max(0, $maxUsefulCapacity - $stockAfterConsumption);
             $recommendedOrderLiters = min($recommendedOrderLiters, $maxOrderLiters);
 
             $recommendedOrderTons = $recommendedOrderLiters * $density / 1000;
@@ -145,9 +149,12 @@ class ProcurementAdvisorService
                 'calculation_details' => [
                     'target_level_tons' => round($targetLevel * $density / 1000, 2),
                     'consumption_during_delivery_tons' => round($consumptionDuringDelivery * $density / 1000, 2),
+                    'max_order_tons' => round($maxOrderLiters * $density / 1000, 2),
+                    'max_useful_capacity_tons' => round($maxUsefulCapacity * $density / 1000, 2),
+                    'capped_at_capacity' => ($recommendedOrderLiters >= $maxOrderLiters),
                     'delivery_days' => $deliveryDays,
                     'safety_buffer_days' => $safetyBufferDays,
-                    'formula' => 'recommended = (target_level + consumption_during_delivery) - current_stock'
+                    'formula' => 'recommended = min((target + consumption - current), max_order_capacity)'
                 ],
                 'best_supplier' => $bestSupplier,
                 'created_at' => date('Y-m-d H:i:s')
