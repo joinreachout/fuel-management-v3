@@ -126,14 +126,14 @@
                 class="border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
               >
                 <!-- Card header -->
-                <div class="px-4 py-3 flex items-center justify-between"
-                     :class="fuelTypeColor(ft.code)">
-                  <span class="font-bold text-sm tracking-wide">{{ ft.code }}</span>
-                  <i class="fas fa-gas-pump text-sm opacity-60"></i>
+                <div class="bg-gray-800 px-4 py-3">
+                  <div class="flex items-center gap-2">
+                    <span class="bg-gray-600 text-gray-100 text-xs font-mono font-bold px-2 py-0.5 rounded">{{ ft.code }}</span>
+                  </div>
+                  <div class="text-white text-sm font-semibold mt-1 leading-tight">{{ ft.name }}</div>
                 </div>
                 <!-- Card body -->
                 <div class="p-4">
-                  <div class="text-sm font-semibold text-gray-800 mb-3">{{ ft.name }}</div>
                   <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Density</div>
                   <InlineEdit
                     :value="ft.density"
@@ -184,10 +184,7 @@
                     class="px-4 py-2.5 flex items-center justify-between gap-2 hover:bg-gray-50"
                   >
                     <div class="flex items-center gap-2 min-w-0">
-                      <span
-                        class="flex-shrink-0 px-2 py-0.5 rounded text-xs font-bold text-white"
-                        :class="fuelTypeColor(row.fuel_type_code)"
-                      >{{ row.fuel_type_code }}</span>
+                      <span class="flex-shrink-0 px-2 py-0.5 rounded text-xs font-mono font-bold bg-gray-200 text-gray-700">{{ row.fuel_type_code }}</span>
                       <span class="text-xs text-gray-500 truncate">{{ row.depot_name }}</span>
                     </div>
                     <InlineEdit
