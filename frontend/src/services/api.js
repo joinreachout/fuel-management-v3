@@ -51,6 +51,7 @@ export const suppliersApi = {
   getActive: () => api.get('/suppliers/active'),
   getOrders: (id) => api.get(`/suppliers/${id}/orders`),
   getPerformance: (id) => api.get(`/suppliers/${id}/performance`),
+  create: (name) => api.post('/suppliers', { name }),
 };
 
 // Orders API

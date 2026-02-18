@@ -85,6 +85,32 @@ class SupplierController
     }
 
     /**
+     * POST /api/suppliers
+     * Create a new supplier
+     */
+    public function create(): void
+    {
+        try {
+            $body = json_decode(file_get_contents('php://input'), true) ?? [];
+            $name = trim($body['name'] ?? '');
+
+            if ($name === '') {
+                Response::json(['success' => false, 'error' => 'Supplier name is required'], 400);
+                return;
+            }
+
+            $id = Supplier::create($name);
+
+            Response::json([
+                'success' => true,
+                'data'    => ['id' => $id, 'name' => $name, 'is_active' => 1],
+            ], 201);
+        } catch (\Exception $e) {
+            Response::json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * GET /api/suppliers/{id}/orders
      * Get all orders for a supplier
      */

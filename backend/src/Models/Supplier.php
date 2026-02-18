@@ -73,6 +73,18 @@ class Supplier
     }
 
     /**
+     * Create a new supplier
+     */
+    public static function create(string $name): int
+    {
+        Database::execute(
+            "INSERT INTO suppliers (name, is_active, created_at) VALUES (?, 1, NOW())",
+            [$name]
+        );
+        return (int) Database::lastInsertId();
+    }
+
+    /**
      * Get all orders for a supplier
      */
     public static function getOrders(int $supplierId): array

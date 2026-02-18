@@ -150,6 +150,9 @@ try {
         $fuelTypeController->regions((int) $matches[1]);
 
     // ==================== SUPPLIERS ====================
+    } elseif ($requestMethod === 'POST' && $path === '/api/suppliers') {
+        $supplierController->create();
+
     } elseif ($requestMethod === 'GET' && $path === '/api/suppliers') {
         $supplierController->index();
 

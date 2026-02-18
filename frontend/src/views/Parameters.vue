@@ -104,35 +104,38 @@
                TAB 2 — FUEL TYPES
                ═══════════════════════════════════════════════ -->
           <div v-else-if="activeTab === 'fuel-types'">
-            <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+            <div class="mb-5 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
               <i class="fas fa-info-circle mr-2"></i>
-              <strong>Density</strong> (kg/L) is used internally to convert stock volumes between litres and tons.
+              <strong>Density</strong> (kg/L) converts stock volumes between litres and tons.
               Pricing is managed per supplier in the <strong>Supply Offers</strong> tab.
             </div>
-            <table class="w-full">
-              <thead class="bg-gray-50 border-b">
-                <tr>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Fuel Type</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Code</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Density (kg/L)</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y">
-                <tr v-for="ft in fuelTypes" :key="ft.id" class="hover:bg-gray-50">
-                  <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ ft.name }}</td>
-                  <td class="px-4 py-3 text-sm font-mono text-gray-600">{{ ft.code }}</td>
-                  <td class="px-4 py-3">
-                    <InlineEdit
-                      :value="ft.density"
-                      type="number"
-                      step="0.001"
-                      suffix=" kg/L"
-                      @save="val => saveFuelType(ft.id, { density: val })"
-                    />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div
+                v-for="ft in fuelTypes"
+                :key="ft.id"
+                class="border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+              >
+                <!-- Card header -->
+                <div class="px-4 py-3 flex items-center justify-between"
+                     :class="fuelTypeColor(ft.code)">
+                  <span class="font-bold text-sm tracking-wide">{{ ft.code }}</span>
+                  <i class="fas fa-gas-pump text-sm opacity-60"></i>
+                </div>
+                <!-- Card body -->
+                <div class="p-4">
+                  <div class="text-sm font-semibold text-gray-800 mb-3">{{ ft.name }}</div>
+                  <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Density</div>
+                  <InlineEdit
+                    :value="ft.density"
+                    type="number"
+                    step="0.001"
+                    suffix=" kg/L"
+                    @save="val => saveFuelType(ft.id, { density: val })"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- ═══════════════════════════════════════════════
@@ -247,10 +250,19 @@
                TAB 5 — SUPPLIER OFFERS (cards layout)
                ═══════════════════════════════════════════════ -->
           <div v-else-if="activeTab === 'supplier-offers'">
-            <div class="mb-5 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
-              <i class="fas fa-handshake mr-2"></i>
-              <strong>Supplier Offers</strong>: one price per fuel type (applies to all stations).
-              Delivery days are per route (supplier → station). Click any value to edit.
+            <div class="mb-5 flex items-center justify-between gap-4">
+              <div class="flex-1 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+                <i class="fas fa-handshake mr-2"></i>
+                <strong>Supplier Offers</strong>: one price per fuel type (applies to all stations).
+                Delivery days are per route (supplier → station). Click any value to edit.
+              </div>
+              <button
+                @click="openAddSupplier"
+                class="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
+              >
+                <i class="fas fa-plus"></i>
+                Add Supplier
+              </button>
             </div>
 
             <!-- Empty state -->
@@ -374,12 +386,49 @@
         </div>
       </div>
     </div>
+
+    <!-- ═══ Add Supplier Modal ═══ -->
+    <div v-if="showAddSupplier" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm">
+        <div class="bg-gray-900 rounded-t-xl px-5 py-4 flex items-center justify-between">
+          <span class="text-white font-semibold"><i class="fas fa-truck mr-2 text-blue-400"></i>Add Supplier</span>
+          <button @click="showAddSupplier = false" class="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
+        </div>
+        <div class="p-5">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Name</label>
+          <input
+            v-model="newSupplierName"
+            @keyup.enter="submitNewSupplier"
+            ref="supplierNameInput"
+            type="text"
+            placeholder="e.g. ООО Лукоил-Пермь"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <p class="mt-2 text-xs text-gray-400">
+            After saving you can set prices and delivery days on the card.
+          </p>
+          <div v-if="addSupplierError" class="mt-2 text-xs text-red-600">{{ addSupplierError }}</div>
+        </div>
+        <div class="px-5 pb-5 flex gap-3 justify-end">
+          <button @click="showAddSupplier = false" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+          <button
+            @click="submitNewSupplier"
+            :disabled="addingSupplier"
+            class="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"
+          >
+            <i v-if="addingSupplier" class="fas fa-spinner fa-spin mr-1"></i>
+            {{ addingSupplier ? 'Saving…' : 'Add Supplier' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { parametersApi } from '../services/api';
+import { ref, computed, onMounted, nextTick } from 'vue';
+import { parametersApi, suppliersApi } from '../services/api';
 import HierarchyManager from '../components/HierarchyManager.vue';
 import InlineEdit from '../components/InlineEdit.vue';
 
@@ -558,6 +607,41 @@ const saveOfferDays = async (supplierId, stationId, newDays) => {
   } catch { flashSave(false); }
 };
 
+// ─── Add Supplier ─────────────────────────────────────────────────────────────
+
+const showAddSupplier   = ref(false);
+const newSupplierName   = ref('');
+const addingSupplier    = ref(false);
+const addSupplierError  = ref('');
+const supplierNameInput = ref(null);
+
+const openAddSupplier = async () => {
+  newSupplierName.value  = '';
+  addSupplierError.value = '';
+  showAddSupplier.value  = true;
+  await nextTick();
+  supplierNameInput.value?.focus();
+};
+
+const submitNewSupplier = async () => {
+  const name = newSupplierName.value.trim();
+  if (!name) { addSupplierError.value = 'Name is required'; return; }
+  addingSupplier.value   = true;
+  addSupplierError.value = '';
+  try {
+    await suppliersApi.create(name);
+    showAddSupplier.value = false;
+    // Reload supplier offers so new supplier card appears (empty)
+    const res = await parametersApi.getSupplierOffers();
+    if (res.data.success) supplierOffers.value = res.data.data;
+    flashSave(true);
+  } catch (e) {
+    addSupplierError.value = e.response?.data?.error || 'Failed to add supplier';
+  } finally {
+    addingSupplier.value = false;
+  }
+};
+
 // ─── Formatting ──────────────────────────────────────────────────────────────
 
 const formatNum = (n) => n ? parseFloat(n).toLocaleString() : '0';
@@ -569,5 +653,21 @@ const fillColor = (pct) => {
   if (pct >= 40) return 'bg-yellow-400';
   if (pct >= 20) return 'bg-orange-500';
   return 'bg-red-600';
+};
+
+const fuelTypeColor = (code) => {
+  if (!code) return 'bg-gray-700 text-white';
+  const c = code.toUpperCase();
+  if (c.includes('98'))        return 'bg-purple-700 text-white';
+  if (c.includes('95'))        return 'bg-blue-700 text-white';
+  if (c.includes('92EUR'))     return 'bg-blue-500 text-white';
+  if (c.includes('92'))        return 'bg-blue-600 text-white';
+  if (c.includes('80'))        return 'bg-cyan-600 text-white';
+  if (c.includes('DIESB10'))   return 'bg-yellow-700 text-white';
+  if (c.includes('DIES'))      return 'bg-yellow-600 text-white';
+  if (c.includes('JET'))       return 'bg-sky-700 text-white';
+  if (c.includes('GAZ') || c.includes('LPG')) return 'bg-green-600 text-white';
+  if (c.includes('MTBE'))      return 'bg-pink-700 text-white';
+  return 'bg-gray-700 text-white';
 };
 </script>
