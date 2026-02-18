@@ -380,7 +380,7 @@ import InlineEdit from '../components/InlineEdit.vue';
 
 const loading    = ref(false);
 const saveStatus = ref('');
-const activeTab  = ref('system');
+const activeTab  = ref('infrastructure');
 
 const systemParams    = ref({});
 const fuelTypes       = ref([]);
@@ -392,13 +392,13 @@ const depotTanks      = ref([]);
 // ─── Tabs ────────────────────────────────────────────────────────────────────
 
 const tabs = computed(() => [
-  { id: 'system',          name: 'System Parameters', icon: 'fas fa-cogs' },
-  { id: 'fuel-types',      name: 'Fuel Types',        icon: 'fas fa-oil-can',       count: fuelTypes.value.length },
+  { id: 'infrastructure',  name: 'Infrastructure',    icon: 'fas fa-sitemap' },
+  { id: 'supplier-offers', name: 'Supply Offers',     icon: 'fas fa-handshake',     count: supplierOffers.value.length },
   { id: 'sales-params',    name: 'Sales Params',      icon: 'fas fa-chart-line',    count: salesParams.value.length },
   { id: 'stock-policies',  name: 'Stock Policies',    icon: 'fas fa-layer-group',   count: stockPolicies.value.length },
-  { id: 'supplier-offers',  name: 'Supplier Offers',   icon: 'fas fa-handshake',    count: supplierOffers.value.length },
-  { id: 'infrastructure',   name: 'Infrastructure',    icon: 'fas fa-sitemap' },
-  { id: 'depot-tanks',      name: 'Depot Tanks',       icon: 'fas fa-gas-pump',     count: depotTanks.value.length },
+  { id: 'fuel-types',      name: 'Fuel Types',        icon: 'fas fa-oil-can',       count: fuelTypes.value.length },
+  { id: 'system',          name: 'System Parameters', icon: 'fas fa-cogs' },
+  { id: 'depot-tanks',     name: 'Depot Tanks',       icon: 'fas fa-gas-pump',      count: depotTanks.value.length },
 ]);
 
 // ─── Load ────────────────────────────────────────────────────────────────────
