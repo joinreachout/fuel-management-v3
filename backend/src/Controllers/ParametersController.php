@@ -12,8 +12,8 @@ use App\Services\ParametersService;
  * Routes:
  *   GET  /api/parameters/system          → system_parameters grouped by category
  *   PUT  /api/parameters/system/:key     → update one system_parameter
- *   GET  /api/parameters/fuel-types      → fuel_types (density, cost_per_ton)
- *   PUT  /api/parameters/fuel-types/:id  → update density + cost_per_ton
+ *   GET  /api/parameters/fuel-types      → fuel_types (density only — pricing in supplier_station_offers)
+ *   PUT  /api/parameters/fuel-types/:id  → update density only
  *   GET  /api/parameters/sales-params    → sales_params with names
  *   PUT  /api/parameters/sales-params/:id → update liters_per_day
  *   GET  /api/parameters/stock-policies  → stock_policies with names + capacity
@@ -113,8 +113,7 @@ class ParametersController
             }
             $updated = ParametersService::updateFuelType(
                 $id,
-                (float)$body['density'],
-                isset($body['cost_per_ton']) ? (float)$body['cost_per_ton'] : null
+                (float)$body['density']
             );
             $this->ok(['updated' => $updated, 'id' => $id]);
         } catch (\InvalidArgumentException $e) {

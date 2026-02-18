@@ -67,25 +67,25 @@ class ParametersService
      */
     public static function getFuelTypes(): array
     {
-        // Real schema: no is_active column in fuel_types
         return Database::fetchAll(
-            "SELECT id, name, code, density, cost_per_ton
+            "SELECT id, name, code, density
              FROM fuel_types
              ORDER BY name"
         );
     }
 
     /**
-     * UPDATE fuel type: only density and cost_per_ton are editable here
+     * UPDATE fuel type: only density is editable here
+     * Pricing is managed per-supplier in supplier_station_offers
      */
-    public static function updateFuelType(int $id, float $density, ?float $costPerTon): bool
+    public static function updateFuelType(int $id, float $density): bool
     {
         if ($density <= 0 || $density > 2) {
             throw new \InvalidArgumentException("Density must be between 0 and 2 kg/L");
         }
         $affected = Database::execute(
-            "UPDATE fuel_types SET density = ?, cost_per_ton = ? WHERE id = ?",
-            [$density, $costPerTon, $id]
+            "UPDATE fuel_types SET density = ? WHERE id = ?",
+            [$density, $id]
         );
         return $affected > 0;
     }

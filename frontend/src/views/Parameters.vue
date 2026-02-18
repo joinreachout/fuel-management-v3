@@ -104,10 +104,10 @@
                TAB 2 — FUEL TYPES
                ═══════════════════════════════════════════════ -->
           <div v-else-if="activeTab === 'fuel-types'">
-            <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-              <i class="fas fa-exclamation-triangle mr-2"></i>
-              <strong>Density</strong> (kg/L) is used to convert between litres and tons.
-              <strong>Cost/ton</strong> is the base purchase price updated manually (may change daily or weekly).
+            <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+              <i class="fas fa-info-circle mr-2"></i>
+              <strong>Density</strong> (kg/L) is used internally to convert stock volumes between litres and tons.
+              Pricing is managed per supplier in the <strong>Supply Offers</strong> tab.
             </div>
             <table class="w-full">
               <thead class="bg-gray-50 border-b">
@@ -115,7 +115,6 @@
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Fuel Type</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Code</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Density (kg/L)</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Cost per Ton (USD)</th>
                 </tr>
               </thead>
               <tbody class="divide-y">
@@ -128,17 +127,7 @@
                       type="number"
                       step="0.001"
                       suffix=" kg/L"
-                      @save="val => saveFuelType(ft.id, { density: val, cost_per_ton: ft.cost_per_ton })"
-                    />
-                  </td>
-                  <td class="px-4 py-3">
-                    <InlineEdit
-                      :value="ft.cost_per_ton"
-                      type="number"
-                      step="100"
-                      suffix=" $/ton"
-                      placeholder="not set"
-                      @save="val => saveFuelType(ft.id, { density: ft.density, cost_per_ton: val })"
+                      @save="val => saveFuelType(ft.id, { density: val })"
                     />
                   </td>
                 </tr>
@@ -455,7 +444,7 @@ const saveFuelType = async (id, data) => {
     const res = await parametersApi.updateFuelType(id, data);
     flashSave(res.data.success);
     const ft = fuelTypes.value.find(x => x.id === id);
-    if (ft) { ft.density = data.density; ft.cost_per_ton = data.cost_per_ton; }
+    if (ft) ft.density = data.density;
   } catch { flashSave(false); }
 };
 
