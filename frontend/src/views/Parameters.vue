@@ -161,7 +161,7 @@
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Station</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Depot</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Fuel Type</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Litres / Day</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Tons / Day</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Effective From</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Effective To</th>
                 </tr>
@@ -176,10 +176,10 @@
                   </td>
                   <td class="px-4 py-3">
                     <InlineEdit
-                      :value="sp.liters_per_day"
+                      :value="sp.tons_per_day"
                       type="number"
-                      step="100"
-                      suffix=" L/day"
+                      step="0.1"
+                      suffix=" t/day"
                       @save="val => saveSalesParam(sp.id, val)"
                     />
                   </td>
@@ -459,12 +459,12 @@ const saveFuelType = async (id, data) => {
   } catch { flashSave(false); }
 };
 
-const saveSalesParam = async (id, litersPerDay) => {
+const saveSalesParam = async (id, tonsPerDay) => {
   try {
-    const res = await parametersApi.updateSalesParam(id, { liters_per_day: litersPerDay });
+    const res = await parametersApi.updateSalesParam(id, { tons_per_day: tonsPerDay });
     flashSave(res.data.success);
     const sp = salesParams.value.find(x => x.id === id);
-    if (sp) sp.liters_per_day = litersPerDay;
+    if (sp) sp.tons_per_day = tonsPerDay;
   } catch { flashSave(false); }
 };
 

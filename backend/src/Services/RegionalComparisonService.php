@@ -87,7 +87,7 @@ class RegionalComparisonService
                 // Get total consumption in tons per day
                 $consumptionQuery = "
                     SELECT
-                        COALESCE(SUM((sp.liters_per_day * ft.density) / 1000), 0) as total_consumption_tons
+                        COALESCE(SUM(sp.tons_per_day), 0) as total_consumption_tons
                     FROM sales_params sp
                     JOIN depots d ON sp.depot_id = d.id
                     JOIN stations s ON d.station_id = s.id
