@@ -134,6 +134,9 @@ try {
         $depotController->forecast((int) $matches[1]);
 
     // ==================== FUEL TYPES ====================
+    } elseif ($requestMethod === 'POST' && $path === '/api/fuel-types') {
+        $fuelTypeController->create();
+
     } elseif ($requestMethod === 'GET' && $path === '/api/fuel-types') {
         $fuelTypeController->index();
 

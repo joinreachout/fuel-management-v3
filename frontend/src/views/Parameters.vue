@@ -104,10 +104,19 @@
                TAB 2 — FUEL TYPES
                ═══════════════════════════════════════════════ -->
           <div v-else-if="activeTab === 'fuel-types'">
-            <div class="mb-5 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-              <i class="fas fa-info-circle mr-2"></i>
-              <strong>Density</strong> (kg/L) converts stock volumes between litres and tons.
-              Pricing is managed per supplier in the <strong>Supply Offers</strong> tab.
+            <div class="mb-5 flex items-center justify-between gap-4">
+              <div class="flex-1 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                <i class="fas fa-info-circle mr-2"></i>
+                <strong>Density</strong> (kg/L) converts stock volumes between litres and tons.
+                Pricing is managed per supplier in the <strong>Supply Offers</strong> tab.
+              </div>
+              <button
+                @click="openAddFuelType"
+                class="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
+              >
+                <i class="fas fa-plus"></i>
+                Add Fuel Type
+              </button>
             </div>
 
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -142,47 +151,56 @@
                TAB 3 — SALES PARAMS (daily consumption)
                ═══════════════════════════════════════════════ -->
           <div v-else-if="activeTab === 'sales-params'">
-            <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+            <div class="mb-5 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
               <i class="fas fa-chart-line mr-2"></i>
-              <strong>Sales Parameters</strong> define the daily consumption rate (litres/day) used for
-              stock forecasting and procurement planning. Only active records are shown.
+              <strong>Sales Parameters</strong> — суточный расход (л/день) по каждому депо и виду топлива.
+              Используется для прогнозирования запасов и планирования закупок. Нажмите на значение для редактирования.
             </div>
-            <table class="w-full">
-              <thead class="bg-gray-50 border-b">
-                <tr>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Station</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Depot</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Fuel Type</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Litres / Day</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Effective From</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Effective To</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y">
-                <tr v-for="sp in salesParams" :key="sp.id" class="hover:bg-gray-50">
-                  <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ sp.station_name }}</td>
-                  <td class="px-4 py-3 text-sm text-gray-700">{{ sp.depot_name }}</td>
-                  <td class="px-4 py-3 text-sm">
-                    <span class="px-2 py-0.5 bg-gray-100 rounded text-xs font-mono">{{ sp.fuel_type_code }}</span>
-                    {{ sp.fuel_type_name }}
-                  </td>
-                  <td class="px-4 py-3">
+
+            <!-- Empty state -->
+            <div v-if="groupedSalesParams.length === 0" class="py-12 text-center text-gray-500">
+              No sales parameters configured
+            </div>
+
+            <!-- Station cards grid -->
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              <div
+                v-for="station in groupedSalesParams"
+                :key="station.station_id"
+                class="border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+              >
+                <!-- Card header -->
+                <div class="bg-gray-900 px-4 py-3 flex items-center gap-2">
+                  <i class="fas fa-map-marker-alt text-blue-400"></i>
+                  <span class="text-white font-semibold text-sm">{{ station.station_name }}</span>
+                  <span class="ml-auto text-xs text-gray-400">{{ station.rows.length }} записей</span>
+                </div>
+
+                <!-- Rows table inside card -->
+                <div class="divide-y divide-gray-100">
+                  <div
+                    v-for="row in station.rows"
+                    :key="row.id"
+                    class="px-4 py-2.5 flex items-center justify-between gap-2 hover:bg-gray-50"
+                  >
+                    <div class="flex items-center gap-2 min-w-0">
+                      <span
+                        class="flex-shrink-0 px-2 py-0.5 rounded text-xs font-bold text-white"
+                        :class="fuelTypeColor(row.fuel_type_code)"
+                      >{{ row.fuel_type_code }}</span>
+                      <span class="text-xs text-gray-500 truncate">{{ row.depot_name }}</span>
+                    </div>
                     <InlineEdit
-                      :value="sp.liters_per_day"
+                      :value="row.liters_per_day"
                       type="number"
                       step="1"
                       suffix=" L/day"
-                      @save="val => saveSalesParam(sp.id, val)"
+                      @save="val => saveSalesParam(row.id, val)"
                     />
-                  </td>
-                  <td class="px-4 py-3 text-sm text-gray-500">{{ sp.effective_from }}</td>
-                  <td class="px-4 py-3 text-sm text-gray-500">{{ sp.effective_to || '—' }}</td>
-                </tr>
-                <tr v-if="salesParams.length === 0">
-                  <td colspan="6" class="px-4 py-8 text-center text-gray-500">No sales parameters configured</td>
-                </tr>
-              </tbody>
-            </table>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- ═══════════════════════════════════════════════
@@ -387,6 +405,59 @@
       </div>
     </div>
 
+    <!-- ═══ Add Fuel Type Modal ═══ -->
+    <div v-if="showAddFuelType" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm">
+        <div class="bg-gray-900 rounded-t-xl px-5 py-4 flex items-center justify-between">
+          <span class="text-white font-semibold"><i class="fas fa-oil-can mr-2 text-yellow-400"></i>Add Fuel Type</span>
+          <button @click="showAddFuelType = false" class="text-gray-400 hover:text-white text-xl leading-none">&times;</button>
+        </div>
+        <div class="p-5 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
+            <input
+              v-model="newFuelType.name"
+              ref="fuelTypeNameInput"
+              type="text"
+              placeholder="e.g. Бензин АИ-98"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Code <span class="text-red-500">*</span></label>
+            <input
+              v-model="newFuelType.code"
+              type="text"
+              placeholder="e.g. A-98"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Density (kg/L) <span class="text-red-500">*</span></label>
+            <input
+              v-model="newFuelType.density"
+              type="number"
+              step="0.001"
+              placeholder="e.g. 0.750"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div v-if="addFuelTypeError" class="text-xs text-red-600">{{ addFuelTypeError }}</div>
+        </div>
+        <div class="px-5 pb-5 flex gap-3 justify-end">
+          <button @click="showAddFuelType = false" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">Cancel</button>
+          <button
+            @click="submitNewFuelType"
+            :disabled="addingFuelType"
+            class="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"
+          >
+            <i v-if="addingFuelType" class="fas fa-spinner fa-spin mr-1"></i>
+            {{ addingFuelType ? 'Saving…' : 'Add Fuel Type' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- ═══ Add Supplier Modal ═══ -->
     <div v-if="showAddSupplier" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm">
@@ -428,7 +499,7 @@
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue';
-import { parametersApi, suppliersApi } from '../services/api';
+import { parametersApi, suppliersApi, fuelTypesApi } from '../services/api';
 import HierarchyManager from '../components/HierarchyManager.vue';
 import InlineEdit from '../components/InlineEdit.vue';
 
@@ -605,6 +676,70 @@ const saveOfferDays = async (supplierId, stationId, newDays) => {
     ));
     flashSave(true);
   } catch { flashSave(false); }
+};
+
+// ─── Sales params — grouped by station ───────────────────────────────────────
+
+const groupedSalesParams = computed(() => {
+  const map = {};
+  for (const sp of salesParams.value) {
+    if (!map[sp.station_id]) {
+      map[sp.station_id] = {
+        station_id:   sp.station_id,
+        station_name: sp.station_name,
+        rows: [],
+      };
+    }
+    map[sp.station_id].rows.push(sp);
+  }
+  // sort stations by name, rows within each station by depot then fuel code
+  return Object.values(map)
+    .sort((a, b) => a.station_name.localeCompare(b.station_name))
+    .map(s => ({
+      ...s,
+      rows: s.rows.sort((a, b) => {
+        const d = (a.depot_name || '').localeCompare(b.depot_name || '');
+        return d !== 0 ? d : (a.fuel_type_code || '').localeCompare(b.fuel_type_code || '');
+      }),
+    }));
+});
+
+// ─── Add Fuel Type ────────────────────────────────────────────────────────────
+
+const showAddFuelType  = ref(false);
+const addingFuelType   = ref(false);
+const addFuelTypeError = ref('');
+const fuelTypeNameInput = ref(null);
+const newFuelType = ref({ name: '', code: '', density: '' });
+
+const openAddFuelType = async () => {
+  newFuelType.value  = { name: '', code: '', density: '' };
+  addFuelTypeError.value = '';
+  showAddFuelType.value  = true;
+  await nextTick();
+  fuelTypeNameInput.value?.focus();
+};
+
+const submitNewFuelType = async () => {
+  const { name, code, density } = newFuelType.value;
+  if (!name.trim())       { addFuelTypeError.value = 'Name is required'; return; }
+  if (!code.trim())       { addFuelTypeError.value = 'Code is required'; return; }
+  if (!density || Number(density) <= 0) { addFuelTypeError.value = 'Density must be > 0'; return; }
+
+  addingFuelType.value   = true;
+  addFuelTypeError.value = '';
+  try {
+    await fuelTypesApi.create(name.trim(), code.trim().toUpperCase(), Number(density));
+    showAddFuelType.value = false;
+    // Reload fuel types
+    const res = await parametersApi.getFuelTypes();
+    if (res.data.success) fuelTypes.value = res.data.data;
+    flashSave(true);
+  } catch (e) {
+    addFuelTypeError.value = e.response?.data?.error || 'Failed to add fuel type';
+  } finally {
+    addingFuelType.value = false;
+  }
 };
 
 // ─── Add Supplier ─────────────────────────────────────────────────────────────

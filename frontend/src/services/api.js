@@ -42,6 +42,7 @@ export const fuelTypesApi = {
   getTotalStock: (id) => api.get(`/fuel-types/${id}/total-stock`),
   getStationsByFuelType: (id) => api.get(`/fuel-types/${id}/stations`),
   getRegionsByFuelType: (id) => api.get(`/fuel-types/${id}/regions`),
+  create: (name, code, density) => api.post('/fuel-types', { name, code, density }),
 };
 
 // Suppliers API

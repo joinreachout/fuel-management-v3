@@ -64,6 +64,42 @@ class FuelTypeController
     }
 
     /**
+     * POST /api/fuel-types
+     * Create a new fuel type
+     */
+    public function create(): void
+    {
+        try {
+            $body = json_decode(file_get_contents('php://input'), true) ?? [];
+            $name    = trim($body['name']    ?? '');
+            $code    = trim($body['code']    ?? '');
+            $density = isset($body['density']) ? (float) $body['density'] : 0.0;
+
+            if ($name === '') {
+                Response::json(['success' => false, 'error' => 'Name is required'], 400);
+                return;
+            }
+            if ($code === '') {
+                Response::json(['success' => false, 'error' => 'Code is required'], 400);
+                return;
+            }
+            if ($density <= 0) {
+                Response::json(['success' => false, 'error' => 'Density must be greater than 0'], 400);
+                return;
+            }
+
+            $id = FuelType::create($name, $code, $density);
+
+            Response::json([
+                'success' => true,
+                'data'    => ['id' => $id, 'name' => $name, 'code' => $code, 'density' => $density],
+            ], 201);
+        } catch (\Exception $e) {
+            Response::json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * GET /api/fuel-types/{id}/stock
      * Get total stock for a fuel type across all depots
      */

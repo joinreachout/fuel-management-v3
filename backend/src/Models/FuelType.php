@@ -56,6 +56,18 @@ class FuelType
     }
 
     /**
+     * Create a new fuel type
+     */
+    public static function create(string $name, string $code, float $density): int
+    {
+        Database::execute(
+            "INSERT INTO fuel_types (name, code, density, unit, created_at) VALUES (?, ?, ?, 'liters', NOW())",
+            [$name, $code, $density]
+        );
+        return (int) Database::lastInsertId();
+    }
+
+    /**
      * Get total stock across all depots for this fuel type
      *
      * @param int $fuelTypeId Fuel type ID
