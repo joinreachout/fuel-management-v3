@@ -60,10 +60,10 @@ class TransferService
             $statsQuery = "
                 SELECT
                     COUNT(*) as total_transfers,
-                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_transfers,
-                    SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_transfers,
-                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_transfers,
-                    SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_transfers,
+                    COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) as pending_transfers,
+                    COALESCE(SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END), 0) as in_progress_transfers,
+                    COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) as completed_transfers,
+                    COALESCE(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END), 0) as cancelled_transfers,
                     COALESCE(SUM(transfer_amount_liters), 0) as total_amount
                 FROM transfers
                 {$whereClause}

@@ -193,8 +193,8 @@ const loadData = async () => {
     const raw = res.data?.data || [];
 
     suppliers.value = raw.map(s => ({
-      id: s.supplier_id,
-      name: s.supplier_name,
+      id: s.id,
+      name: s.name,
       location: s.location || '—',
       compositeScore: Math.round(s.composite_score ?? 0),
       deliveryScore: Math.round(s.delivery_score ?? 0),
