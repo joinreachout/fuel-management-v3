@@ -301,33 +301,32 @@
                     <!-- Specific message when station + fuel type both selected -->
                     <template v-if="chartFilters.station && chartFilters.fuelType">
                       <h4 class="text-lg font-bold text-gray-800 mb-2">
-                        Топливо не реализуется на этой станции
+                        Fuel type not available at this station
                       </h4>
                       <p class="text-sm text-gray-600 mb-4">
-                        <strong>{{ fuelTypes.find(f => f.id == chartFilters.fuelType)?.name || 'Выбранное топливо' }}</strong>
-                        не продаётся на
-                        <strong>{{ stations.find(s => s.id == chartFilters.station)?.name || 'этой станции' }}</strong>.
-                        <br>На данной станции нет танков с этим видом топлива.
+                        <strong>{{ fuelTypes.find(f => f.id == chartFilters.fuelType)?.name || 'Selected fuel' }}</strong>
+                        is not sold at
+                        <strong>{{ stations.find(s => s.id == chartFilters.station)?.name || 'this station' }}</strong>.
+                        <br>No active tanks with this fuel type were found at this station.
                       </p>
                     </template>
 
                     <!-- Only station selected, no fuel type -->
                     <template v-else-if="chartFilters.station && !chartFilters.fuelType">
                       <h4 class="text-lg font-bold text-gray-800 mb-2">
-                        Нет данных по станции
+                        No data for this station
                       </h4>
                       <p class="text-sm text-gray-600 mb-4">
-                        На
-                        <strong>{{ stations.find(s => s.id == chartFilters.station)?.name || 'этой станции' }}</strong>
-                        не найдено активных танков с данными о запасах.
+                        No active tanks with stock data found at
+                        <strong>{{ stations.find(s => s.id == chartFilters.station)?.name || 'this station' }}</strong>.
                       </p>
                     </template>
 
                     <!-- Generic fallback -->
                     <template v-else>
-                      <h4 class="text-lg font-bold text-gray-800 mb-2">Нет данных для прогноза</h4>
+                      <h4 class="text-lg font-bold text-gray-800 mb-2">No Forecast Data Available</h4>
                       <p class="text-sm text-gray-600 mb-4">
-                        {{ forecastMessage || 'Данные не найдены для выбранных фильтров.' }}
+                        {{ forecastMessage || 'No data found for the selected filters.' }}
                       </p>
                     </template>
 
