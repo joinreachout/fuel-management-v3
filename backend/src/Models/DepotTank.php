@@ -137,17 +137,17 @@ class DepotTank
         return Database::fetchAll("
             SELECT
                 sa.id,
-                sa.change_type,
+                sa.change_reason,
                 sa.old_stock_liters,
                 sa.new_stock_liters,
                 sa.change_liters,
                 ROUND(sa.change_liters * ft.density / 1000, 2) as change_tons,
-                sa.created_at
+                sa.changed_at
             FROM stock_audit sa
             LEFT JOIN depot_tanks dt ON sa.depot_tank_id = dt.id
             LEFT JOIN fuel_types ft ON dt.fuel_type_id = ft.id
             WHERE sa.depot_tank_id = ?
-            ORDER BY sa.created_at DESC
+            ORDER BY sa.changed_at DESC
             LIMIT ?
         ", [$tankId, $limit]);
     }

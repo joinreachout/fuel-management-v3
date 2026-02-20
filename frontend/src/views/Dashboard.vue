@@ -101,7 +101,7 @@
               </div>
             </div>
             <div class="flex items-center gap-3">
-              <div class="text-2xl font-bold text-white" id="kpi-low-stations">0</div>
+              <div class="text-2xl font-bold text-white" id="kpi-low-stations">{{ kpiLowStations }}</div>
               <div class="h-8 w-0.5 bg-white/40"></div>
               <div class="flex flex-col leading-tight">
                 <div class="text-white text-xs font-semibold">Low Stock</div>
@@ -115,7 +115,7 @@
         <div class="flex justify-end mb-4">
           <div class="flex items-center gap-10">
             <div class="flex items-center gap-3">
-              <div class="text-2xl font-bold text-white" id="kpi-mandatory-orders">2</div>
+              <div class="text-2xl font-bold text-white" id="kpi-mandatory-orders">{{ kpiMandatoryOrders }}</div>
               <div class="h-8 w-0.5 bg-white/40"></div>
               <div class="flex flex-col leading-tight">
                 <div class="text-white text-xs font-semibold">Mandatory</div>
@@ -123,7 +123,7 @@
               </div>
             </div>
             <div class="flex items-center gap-3">
-              <div class="text-2xl font-bold text-white" id="kpi-recommended-orders">0</div>
+              <div class="text-2xl font-bold text-white" id="kpi-recommended-orders">{{ kpiRecommendedOrders }}</div>
               <div class="h-8 w-0.5 bg-white/40"></div>
               <div class="flex flex-col leading-tight">
                 <div class="text-white text-xs font-semibold">Recommended</div>
@@ -131,7 +131,7 @@
               </div>
             </div>
             <div class="flex items-center gap-3">
-              <div class="text-2xl font-bold text-white" id="kpi-active-transfers">0</div>
+              <div class="text-2xl font-bold text-white" id="kpi-active-transfers">{{ kpiActiveTransfers }}</div>
               <div class="h-8 w-0.5 bg-white/40"></div>
               <div class="flex flex-col leading-tight">
                 <div class="text-white text-xs font-semibold">Active</div>
@@ -418,7 +418,7 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
-import { dashboardApi, stationsApi, fuelTypesApi } from '../services/api';
+import { dashboardApi, stationsApi, fuelTypesApi, procurementApi, transfersApi } from '../services/api';
 import Chart from 'chart.js/auto';
 import StationFillLevels from '../components/StationFillLevels.vue';
 import StockByFuelType from '../components/StockByFuelType.vue';
@@ -440,6 +440,11 @@ const summary = ref({});
 const alerts = ref([]);
 const criticalTanks = ref([]);
 const lastUpdated = ref('');
+
+// KPI refs — populated from API
+const kpiMandatoryOrders = ref(0);
+const kpiRecommendedOrders = ref(0);
+const kpiActiveTransfers = ref(0);
 const currentDateTime = ref('');
 
 // Filter data
@@ -462,6 +467,12 @@ const showLegend = ref(true);
 
 const criticalCount = computed(() => {
   return criticalTanks.value.length;
+});
+
+// KPI: unique stations with at least one critical/low-stock tank
+const kpiLowStations = computed(() => {
+  const stationNames = criticalTanks.value.map(t => t.station_name).filter(Boolean);
+  return new Set(stationNames).size;
 });
 
 const formatDateTime = () => {
@@ -504,10 +515,12 @@ const loadDashboard = async () => {
     loading.value = true;
     error.value = null;
 
-    const [summaryRes, alertsRes, criticalRes] = await Promise.all([
+    const [summaryRes, alertsRes, criticalRes, procurementRes, transfersRes] = await Promise.all([
       dashboardApi.getSummary(),
       dashboardApi.getAlerts(),
       dashboardApi.getCriticalTanks(),
+      procurementApi.getSummary(),
+      transfersApi.getAll(),
     ]);
 
     if (summaryRes.data.success) {
@@ -520,6 +533,17 @@ const loadDashboard = async () => {
 
     if (criticalRes.data.success) {
       criticalTanks.value = criticalRes.data.data || [];
+    }
+
+    if (procurementRes.data.success) {
+      const ps = procurementRes.data.data || {};
+      kpiMandatoryOrders.value = ps.mandatory_orders ?? ps.critical_shortages ?? 0;
+      kpiRecommendedOrders.value = ps.recommended_orders ?? ps.upcoming_shortages ?? 0;
+    }
+
+    if (transfersRes.data.success) {
+      const ts = transfersRes.data.stats || {};
+      kpiActiveTransfers.value = (parseInt(ts.in_progress_transfers) || 0) + (parseInt(ts.pending_transfers) || 0);
     }
 
     lastUpdated.value = formatDateTime();

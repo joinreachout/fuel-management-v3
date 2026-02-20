@@ -165,10 +165,10 @@ const loadData = async () => {
           id: t.id,
           from: t.from_station_name,
           to: t.to_station_name,
-          amount: formatAmount(t.transfer_amount),
+          amount: formatAmount(t.transfer_amount_liters),
           fuelType: t.fuel_type_name,
           status: t.status,
-          progress: t.status === 'in_progress' ? Math.floor(Math.random() * 40 + 40) : 0, // 40-80% for in_progress
+          progress: t.status === 'in_progress' ? 50 : 0, // in_progress = en route (~50%), pending = not started
           eta: t.estimated_delivery_date || 'N/A',
           driver: t.driver_name || 'N/A'
         }));
