@@ -297,10 +297,40 @@
                     <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-amber-100 flex items-center justify-center">
                       <i class="fas fa-chart-line text-4xl text-amber-600"></i>
                     </div>
-                    <h4 class="text-lg font-bold text-gray-800 mb-2">No Forecast Data Available</h4>
-                    <p class="text-sm text-gray-600 mb-4">
-                      {{ forecastMessage || 'No sales data (liters_per_day) found for selected filters.' }}
-                    </p>
+
+                    <!-- Specific message when station + fuel type both selected -->
+                    <template v-if="chartFilters.station && chartFilters.fuelType">
+                      <h4 class="text-lg font-bold text-gray-800 mb-2">
+                        Топливо не реализуется на этой станции
+                      </h4>
+                      <p class="text-sm text-gray-600 mb-4">
+                        <strong>{{ fuelTypes.find(f => f.id == chartFilters.fuelType)?.name || 'Выбранное топливо' }}</strong>
+                        не продаётся на
+                        <strong>{{ stations.find(s => s.id == chartFilters.station)?.name || 'этой станции' }}</strong>.
+                        <br>На данной станции нет танков с этим видом топлива.
+                      </p>
+                    </template>
+
+                    <!-- Only station selected, no fuel type -->
+                    <template v-else-if="chartFilters.station && !chartFilters.fuelType">
+                      <h4 class="text-lg font-bold text-gray-800 mb-2">
+                        Нет данных по станции
+                      </h4>
+                      <p class="text-sm text-gray-600 mb-4">
+                        На
+                        <strong>{{ stations.find(s => s.id == chartFilters.station)?.name || 'этой станции' }}</strong>
+                        не найдено активных танков с данными о запасах.
+                      </p>
+                    </template>
+
+                    <!-- Generic fallback -->
+                    <template v-else>
+                      <h4 class="text-lg font-bold text-gray-800 mb-2">Нет данных для прогноза</h4>
+                      <p class="text-sm text-gray-600 mb-4">
+                        {{ forecastMessage || 'Данные не найдены для выбранных фильтров.' }}
+                      </p>
+                    </template>
+
                     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
                       <p class="text-xs font-semibold text-blue-800 mb-2">
                         <i class="fas fa-info-circle mr-1"></i>
@@ -312,9 +342,6 @@
                         <li>• Current stock in <code class="bg-blue-100 px-1 rounded">depot_tanks</code></li>
                       </ul>
                     </div>
-                    <p class="text-xs text-gray-500 mt-4">
-                      Try selecting "All Stations" or "All Fuel Types" to see available data
-                    </p>
                   </div>
                 </div>
                 <canvas id="forecastChart"></canvas>
