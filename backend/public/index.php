@@ -33,6 +33,9 @@ require_once __DIR__ . '/../src/Models/Supplier.php';
 require_once __DIR__ . '/../src/Models/Order.php';
 require_once __DIR__ . '/../src/Models/Transfer.php';
 
+// Load Utils
+require_once __DIR__ . '/../src/Utils/UnitConverter.php';
+
 // Load Services
 require_once __DIR__ . '/../src/Services/ForecastService.php';
 require_once __DIR__ . '/../src/Services/AlertService.php';
