@@ -207,54 +207,73 @@
                TAB 4 — STOCK POLICIES (per depot thresholds)
                ═══════════════════════════════════════════════ -->
           <div v-else-if="activeTab === 'stock-policies'">
-            <div class="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-lg text-sm text-purple-800">
+            <div class="mb-5 p-4 bg-purple-50 border border-purple-200 rounded-lg text-sm text-purple-800">
               <i class="fas fa-layer-group mr-2"></i>
-              <strong>Stock Policies</strong> define per-depot alert thresholds (litres).
-              These override global system parameters when set.
+              <strong>Stock Policies</strong> — per-depot alert thresholds (litres).
+              Default values are calculated as % of tank capacity (Critical 20% / Min 40% / Target 80%).
+              Edit any value to override for a specific depot.
             </div>
-            <table class="w-full">
+            <table class="w-full text-sm">
               <thead class="bg-gray-50 border-b">
                 <tr>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Station</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Depot</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Fuel</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Tank Capacity (L)</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Critical Level (L)</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Min Level (L)</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600">Target Level (L)</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600">Capacity (L)</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-red-600">🔴 Critical (L)</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-orange-500">🟠 Min (L)</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-green-600">🟢 Target (L)</th>
                 </tr>
               </thead>
               <tbody class="divide-y">
                 <tr v-for="pol in stockPolicies" :key="pol.id" class="hover:bg-gray-50">
-                  <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ pol.station_name }}</td>
-                  <td class="px-4 py-3 text-sm text-gray-700">{{ pol.depot_name }}</td>
-                  <td class="px-4 py-3 text-sm">
+                  <td class="px-4 py-2.5 font-medium text-gray-900">{{ pol.station_name }}</td>
+                  <td class="px-4 py-2.5 text-gray-700">{{ pol.depot_name }}</td>
+                  <td class="px-4 py-2.5">
                     <span class="px-2 py-0.5 bg-gray-100 rounded text-xs font-mono">{{ pol.fuel_type_code }}</span>
                   </td>
-                  <td class="px-4 py-3 text-sm text-gray-500">{{ formatNum(pol.capacity_liters) }}</td>
-                  <td class="px-4 py-3">
-                    <InlineEdit
-                      :value="pol.critical_level_liters"
-                      type="number" step="1000"
-                      suffix=" L"
-                      @save="val => saveStockPolicy(pol.id, { critical_level_liters: val, min_level_liters: pol.min_level_liters, target_level_liters: pol.target_level_liters })"
-                    />
+                  <td class="px-4 py-2.5 text-right font-mono text-gray-500">{{ formatNum(pol.capacity_liters) }}</td>
+                  <!-- Critical -->
+                  <td class="px-4 py-2.5">
+                    <div class="flex items-center gap-1.5">
+                      <InlineEdit
+                        :value="pol.critical_level_liters"
+                        type="number" step="1000"
+                        suffix=" L"
+                        @save="val => saveStockPolicy(pol.id, { critical_level_liters: val, min_level_liters: pol.min_level_liters, target_level_liters: pol.target_level_liters })"
+                      />
+                      <span v-if="pol.capacity_liters" class="text-xs text-gray-400 w-10 text-right">
+                        {{ pct(pol.critical_level_liters, pol.capacity_liters) }}%
+                      </span>
+                    </div>
                   </td>
-                  <td class="px-4 py-3">
-                    <InlineEdit
-                      :value="pol.min_level_liters"
-                      type="number" step="1000"
-                      suffix=" L"
-                      @save="val => saveStockPolicy(pol.id, { min_level_liters: val, critical_level_liters: pol.critical_level_liters, target_level_liters: pol.target_level_liters })"
-                    />
+                  <!-- Min -->
+                  <td class="px-4 py-2.5">
+                    <div class="flex items-center gap-1.5">
+                      <InlineEdit
+                        :value="pol.min_level_liters"
+                        type="number" step="1000"
+                        suffix=" L"
+                        @save="val => saveStockPolicy(pol.id, { min_level_liters: val, critical_level_liters: pol.critical_level_liters, target_level_liters: pol.target_level_liters })"
+                      />
+                      <span v-if="pol.capacity_liters" class="text-xs text-gray-400 w-10 text-right">
+                        {{ pct(pol.min_level_liters, pol.capacity_liters) }}%
+                      </span>
+                    </div>
                   </td>
-                  <td class="px-4 py-3">
-                    <InlineEdit
-                      :value="pol.target_level_liters"
-                      type="number" step="1000"
-                      suffix=" L"
-                      @save="val => saveStockPolicy(pol.id, { target_level_liters: val, min_level_liters: pol.min_level_liters, critical_level_liters: pol.critical_level_liters })"
-                    />
+                  <!-- Target -->
+                  <td class="px-4 py-2.5">
+                    <div class="flex items-center gap-1.5">
+                      <InlineEdit
+                        :value="pol.target_level_liters"
+                        type="number" step="1000"
+                        suffix=" L"
+                        @save="val => saveStockPolicy(pol.id, { target_level_liters: val, min_level_liters: pol.min_level_liters, critical_level_liters: pol.critical_level_liters })"
+                      />
+                      <span v-if="pol.capacity_liters" class="text-xs text-gray-400 w-10 text-right">
+                        {{ pct(pol.target_level_liters, pol.capacity_liters) }}%
+                      </span>
+                    </div>
                   </td>
                 </tr>
                 <tr v-if="stockPolicies.length === 0">
@@ -780,6 +799,11 @@ const submitNewSupplier = async () => {
 // ─── Formatting ──────────────────────────────────────────────────────────────
 
 const formatNum = (n) => n ? parseFloat(n).toLocaleString() : '0';
+
+const pct = (value, capacity) => {
+  if (!capacity || !value) return 0;
+  return Math.round((parseFloat(value) / parseFloat(capacity)) * 100);
+};
 
 const formatCategory = (cat) => cat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 

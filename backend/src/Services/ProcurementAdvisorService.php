@@ -103,29 +103,42 @@ class ProcurementAdvisorService
             $currentStockTons = $currentStockLiters * $density / 1000;
             $capacityTons = $capacityLiters * $density / 1000;
 
+            // Global % fallbacks from system_parameters (used when no stock_policy row exists)
+            $criticalFillPct  = self::param('critical_fill_pct', 20.0) / 100; // % → fraction
+            $minFillPct       = self::param('min_fill_pct', 40.0)      / 100;
+            $plannedFillPct   = self::param('target_fill_pct', 80.0)   / 100;
+            $maxFillPct       = self::param('max_useful_volume_pct', 95.0) / 100;
+            $safetyBufferDays = (int)self::param('delivery_buffer_days', 2);
+            $defaultLeadDays  = (int)self::param('default_lead_days', 7);
+
+            // Use per-depot stock_policies if set; fall back to global % of capacity
+            $criticalLevel = $row['critical_level_liters'] !== null
+                ? (float)$row['critical_level_liters']
+                : $capacityLiters * $criticalFillPct;
+
+            $minLevel = $row['min_level_liters'] !== null
+                ? (float)$row['min_level_liters']
+                : $capacityLiters * $minFillPct;
+
+            $targetLevel = $row['target_level_liters'] !== null
+                ? (float)$row['target_level_liters']
+                : $capacityLiters * $plannedFillPct;
+
             // Determine urgency level (thresholds from system_parameters)
             $urgency = self::calculateUrgency(
                 $currentStockLiters,
-                (float)($row['min_level_liters'] ?? 0),
-                (float)($row['critical_level_liters'] ?? 0),
+                $minLevel,
+                $criticalLevel,
                 $daysLeft,
-                (int)self::param('urgency_days_catastrophe', 1),
-                (int)self::param('urgency_days_critical', 2),
-                (int)self::param('urgency_days_must_order', 5),
-                (int)self::param('urgency_days_warning', 7)
+                (int)self::param('catastrophe_threshold_days', 1),
+                (int)self::param('critical_threshold_days', 2),
+                (int)self::param('must_order_threshold_days', 5),
+                (int)self::param('warning_threshold_days', 7)
             );
 
             // Get best supplier for this fuel type and station (needed for delivery time calculation)
             $bestSupplier = self::getBestSupplier($row['fuel_type_id'], $row['station_id'], $urgency);
 
-            // All thresholds come from system_parameters (no hardcoding)
-            $plannedFillPct   = self::param('planned_fill_pct', 0.80);   // Target fill level
-            $maxFillPct       = self::param('max_fill_pct', 0.95);        // Max safe fill level
-            $safetyBufferDays = (int)self::param('safety_buffer_days', 2); // Extra days for delivery delays
-            $defaultLeadDays  = (int)self::param('default_lead_days', 7);  // Fallback if no supplier found
-
-            // Calculate recommended order quantity with proper logic
-            $targetLevel = (float)($row['target_level_liters'] ?? $capacityLiters * $plannedFillPct);
             $deliveryDays = $bestSupplier['avg_delivery_days'] ?? $defaultLeadDays;
 
             // Calculate consumption during delivery period
