@@ -312,7 +312,9 @@ class ForecastService
                 dt.id as tank_id,
                 dt.fuel_type_id,
                 ft.name as fuel_type_name,
+                ft.code as fuel_type_code,
                 dt.current_stock_liters,
+                dt.capacity_liters,
                 sp.liters_per_day
             FROM stations s
             LEFT JOIN regions r ON s.region_id = r.id
@@ -354,14 +356,16 @@ class ForecastService
             ];
         }
 
-        // Generate date labels
+        // Generate date labels and date strings for delivery lookup
         $labels = [];
+        $dateStrings = []; // 'Y-m-d' format for matching orders
         for ($i = 0; $i <= $days; $i++) {
-            $date = date('M d', strtotime("+{$i} days"));
-            $labels[] = $date;
+            $labels[] = date('M d', strtotime("+{$i} days"));
+            $dateStrings[] = date('Y-m-d', strtotime("+{$i} days"));
         }
 
         // Group tanks by fuel type or station
+        // Also track station_ids and fuel_type_ids for orders query
         $groupedData = [];
         foreach ($tanks as $tank) {
             if ($level === 'station') {
@@ -375,16 +379,27 @@ class ForecastService
                 $groupedData[$key] = [
                     'current_stock' => 0,
                     'daily_consumption' => 0,
-                    'fuel_type' => $tank['fuel_type_name']
+                    'capacity' => 0,
+                    'fuel_type' => $tank['fuel_type_name'],
+                    'station_ids' => [],
+                    'fuel_type_ids' => []
                 ];
             }
 
             $groupedData[$key]['current_stock'] += (float)$tank['current_stock_liters'];
-            // Accumulate liters/day directly
             $groupedData[$key]['daily_consumption'] += (float)$tank['liters_per_day'];
+            $groupedData[$key]['capacity'] += (float)$tank['capacity_liters'];
+
+            // Collect unique station_ids and fuel_type_ids for orders query
+            if (!in_array($tank['station_id'], $groupedData[$key]['station_ids'])) {
+                $groupedData[$key]['station_ids'][] = (int)$tank['station_id'];
+            }
+            if (!in_array($tank['fuel_type_id'], $groupedData[$key]['fuel_type_ids'])) {
+                $groupedData[$key]['fuel_type_ids'][] = (int)$tank['fuel_type_id'];
+            }
         }
 
-        // Generate datasets with forecast projection
+        // Generate datasets with forecast projection (including delivery bumps)
         $datasets = [];
         $colors = [
             'Diesel' => '#3b82f6',
@@ -399,12 +414,49 @@ class ForecastService
         foreach ($groupedData as $label => $data) {
             $stockData = [];
             $currentStock = $data['current_stock'] / 1000; // L → kL for chart display
-            $dailyConsumption = $data['daily_consumption'] / 1000; // L/day → kL/day for chart
+            $dailyConsumption = $data['daily_consumption'] / 1000; // L/day → kL/day
+            $capacityKL = $data['capacity'] > 0 ? $data['capacity'] / 1000 : PHP_FLOAT_MAX;
 
-            // Generate forecast points
+            // Build delivery map for this group: ['Y-m-d' => kL]
+            $deliveries = [];
+            if (!empty($data['station_ids']) && !empty($data['fuel_type_ids'])) {
+                $stationPlaceholders = implode(',', array_fill(0, count($data['station_ids']), '?'));
+                $fuelPlaceholders = implode(',', array_fill(0, count($data['fuel_type_ids']), '?'));
+
+                $orderParams = array_merge(
+                    $data['station_ids'],
+                    $data['fuel_type_ids'],
+                    [$days]
+                );
+
+                $orderRows = Database::fetchAll("
+                    SELECT
+                        DATE_FORMAT(o.delivery_date, '%Y-%m-%d') as delivery_date,
+                        SUM(o.quantity_liters) as total_liters
+                    FROM orders o
+                    WHERE o.station_id IN ({$stationPlaceholders})
+                      AND o.fuel_type_id IN ({$fuelPlaceholders})
+                      AND o.delivery_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL ? DAY)
+                      AND o.status IN ('confirmed', 'in_transit')
+                    GROUP BY o.delivery_date
+                ", $orderParams);
+
+                foreach ($orderRows as $row) {
+                    // Convert liters to kL for chart
+                    $deliveries[$row['delivery_date']] = (float)$row['total_liters'] / 1000;
+                }
+            }
+
+            // Day-by-day projection: Stock(day) = Stock(day-1) - consumption + delivery
+            $projectedStock = $currentStock;
             for ($i = 0; $i <= $days; $i++) {
-                $projectedStock = $currentStock - ($dailyConsumption * $i);
-                $stockData[] = max(0, round($projectedStock, 2));
+                if ($i > 0) {
+                    $deliveryToday = $deliveries[$dateStrings[$i]] ?? 0;
+                    $projectedStock = $projectedStock - $dailyConsumption + $deliveryToday;
+                    // Cap at 0 (can't go negative) and at capacity (can't overfill)
+                    $projectedStock = max(0, min($capacityKL, $projectedStock));
+                }
+                $stockData[] = round($projectedStock, 2);
             }
 
             // Get color for this fuel type
