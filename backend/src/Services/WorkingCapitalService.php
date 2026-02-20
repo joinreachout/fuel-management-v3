@@ -48,26 +48,7 @@ class WorkingCapitalService
                 }
             }
 
-            // Days of cover: AVG across all active depot+fuel_type with consumption
-            $coverData = Database::fetchOne("
-                SELECT
-                    AVG(
-                        CASE
-                            WHEN sp.liters_per_day > 0
-                            THEN SUM(dt.current_stock_liters) / sp.liters_per_day
-                            ELSE NULL
-                        END
-                    ) as avg_days_of_cover
-                FROM depot_tanks dt
-                JOIN sales_params sp ON dt.depot_id = sp.depot_id
-                    AND dt.fuel_type_id = sp.fuel_type_id
-                    AND (sp.effective_to IS NULL OR sp.effective_to >= CURDATE())
-                WHERE sp.liters_per_day > 0
-                  AND dt.is_active = 1
-                GROUP BY dt.depot_id, dt.fuel_type_id, sp.liters_per_day
-            ");
-
-            // Simpler approach: direct avg days per depot/fuel combination
+            // Days of cover: avg days per depot/fuel combination
             $coverRows = Database::fetchAll("
                 SELECT
                     dt.depot_id,
