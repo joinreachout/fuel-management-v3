@@ -350,22 +350,19 @@
           </div>
         </div>
 
-        <!-- Grid: Station Fill Levels + Stock by Fuel Type -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
-          <!-- WIDGET 2: Station Fill Levels -->
-          <div class="lg:col-span-2">
-            <StationFillLevels />
-          </div>
+        <!-- Station Fill Levels — full width -->
+        <div>
+          <StationFillLevels />
+        </div>
 
-          <!-- WIDGET 3: Stock by Fuel Type -->
-          <div class="lg:col-span-2">
-            <StockByFuelType />
-          </div>
+        <!-- Stock by Fuel Type — full width -->
+        <div>
+          <StockByFuelType />
+        </div>
 
-          <!-- WIDGET 4: Procurement Advisor -->
-          <div class="xl:col-span-3 lg:col-span-2">
-            <ProcurementAdvisor />
-          </div>
+        <!-- WIDGET 4: Procurement Advisor — full width -->
+        <div>
+          <ProcurementAdvisor />
         </div>
 
         <!-- Working Capital Optimization (Full Width) -->
