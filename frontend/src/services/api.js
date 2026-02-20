@@ -42,6 +42,7 @@ export const fuelTypesApi = {
   getTotalStock: (id) => api.get(`/fuel-types/${id}/total-stock`),
   getStationsByFuelType: (id) => api.get(`/fuel-types/${id}/stations`),
   getRegionsByFuelType: (id) => api.get(`/fuel-types/${id}/regions`),
+  getDistribution: () => api.get('/fuel-types/distribution'),
   create: (name, code, density) => api.post('/fuel-types', { name, code, density }),
 };
 
@@ -50,6 +51,7 @@ export const suppliersApi = {
   getAll: () => api.get('/suppliers'),
   getById: (id) => api.get(`/suppliers/${id}`),
   getActive: () => api.get('/suppliers/active'),
+  getTop: () => api.get('/suppliers/top'),
   getOrders: (id) => api.get(`/suppliers/${id}/orders`),
   getPerformance: (id) => api.get(`/suppliers/${id}/performance`),
   create: (name) => api.post('/suppliers', { name }),
@@ -84,6 +86,11 @@ export const reportsApi = {
 // Cost Analysis API
 export const costAnalysisApi = {
   get: () => api.get('/cost-analysis'),
+};
+
+// Working Capital API
+export const workingCapitalApi = {
+  get: () => api.get('/working-capital'),
 };
 
 // Regional Comparison API

@@ -61,7 +61,7 @@ class RegionalComparisonService
                             AND dt.fuel_type_id IS NOT NULL
                             AND dt.capacity_liters > 0
                           GROUP BY d.station_id, dt.fuel_type_id
-                          HAVING (SUM(dt.current_stock_liters) / SUM(dt.capacity_liters) * 100) < 30
+                          HAVING (SUM(dt.current_stock_liters) / NULLIF(SUM(dt.capacity_liters), 0) * 100) < 30
                       )
                 ";
 

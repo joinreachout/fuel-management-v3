@@ -179,63 +179,48 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { suppliersApi } from '../services/api.js';
 
-const loading = ref(false);
+const loading = ref(true);
 const expandedId = ref(null);
+const suppliers = ref([]);
 
-// Mock supplier data
-const suppliers = ref([
-  {
-    id: 1,
-    name: 'Premium Fuels Ltd.',
-    location: 'Regional Hub - North',
-    compositeScore: 94,
-    deliveryScore: 96,
-    pricingScore: 92,
-    avgLeadTime: 2,
-    onTimeRate: 98,
-    ordersYTD: 156,
-    reliabilityScore: 9.4,
-    qualityRating: 9.6,
-    paymentTerms: 'Net 30',
-    minOrderQty: '10,000'
-  },
-  {
-    id: 2,
-    name: 'Global Energy Supply Co.',
-    location: 'International Hub',
-    compositeScore: 89,
-    deliveryScore: 90,
-    pricingScore: 88,
-    avgLeadTime: 3,
-    onTimeRate: 95,
-    ordersYTD: 142,
-    reliabilityScore: 8.9,
-    qualityRating: 9.2,
-    paymentTerms: 'Net 45',
-    minOrderQty: '15,000'
-  },
-  {
-    id: 3,
-    name: 'FastTrack Petroleum',
-    location: 'Regional Hub - South',
-    compositeScore: 86,
-    deliveryScore: 88,
-    pricingScore: 84,
-    avgLeadTime: 3,
-    onTimeRate: 92,
-    ordersYTD: 128,
-    reliabilityScore: 8.5,
-    qualityRating: 8.8,
-    paymentTerms: 'Net 30',
-    minOrderQty: '12,000'
+const loadData = async () => {
+  loading.value = true;
+  try {
+    const res = await suppliersApi.getTop();
+    const raw = res.data?.data || [];
+
+    suppliers.value = raw.map(s => ({
+      id: s.supplier_id,
+      name: s.supplier_name,
+      location: s.location || '—',
+      compositeScore: Math.round(s.composite_score ?? 0),
+      deliveryScore: Math.round(s.delivery_score ?? 0),
+      pricingScore: Math.round(s.pricing_score ?? 0),
+      avgLeadTime: Math.round(s.avg_delivery_days ?? 0),
+      onTimeRate: Math.round(s.on_time_rate ?? 0),
+      ordersYTD: s.order_count ?? 0,
+      reliabilityScore: parseFloat(s.delivery_score / 10).toFixed(1),
+      qualityRating: '—',
+      paymentTerms: '—',
+      minOrderQty: '—',
+    }));
+  } catch (e) {
+    console.error('TopSuppliers: failed to load', e);
+  } finally {
+    loading.value = false;
   }
-]);
+};
 
 const toggleDetails = (id) => {
   expandedId.value = expandedId.value === id ? null : id;
 };
+
+onMounted(() => {
+  loadData();
+});
 </script>
 
 <style scoped>

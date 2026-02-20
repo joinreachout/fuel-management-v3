@@ -493,7 +493,6 @@ const loadFilterData = async () => {
 
     if (fuelTypesRes.data.success) {
       fuelTypes.value = fuelTypesRes.data.data || [];
-      console.log('Loaded fuel types:', fuelTypes.value); // Debug
     }
   } catch (err) {
     console.error('Filter data load error:', err);
@@ -553,8 +552,6 @@ const loadForecastData = async () => {
     if (chartFilters.value.fuelType && chartFilters.value.fuelType !== '') {
       params.fuel_type_id = parseInt(chartFilters.value.fuelType);
     }
-
-    console.log('Forecast params:', params); // Debug log
 
     const response = await dashboardApi.getForecast(params);
 

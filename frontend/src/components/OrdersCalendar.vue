@@ -132,6 +132,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { ordersApi } from '../services/api.js';
 
 const loading = ref(true);
 const currentMonth = ref(new Date());
@@ -141,27 +142,18 @@ const filters = ref({
   fuel: ''
 });
 
-const stations = ref(['Bishkek Central', 'Osh Terminal', 'Jalal-Abad', 'Karakol', 'Naryn']);
-const fuelTypes = ref(['Diesel', 'Petrol 95', 'Petrol 98']);
+const stations = ref([]);
+const fuelTypes = ref([]);
 
 const stats = ref({
-  total: 18,
-  scheduled: 8,
-  pending: 5,
-  confirmed: 5
+  total: 0,
+  scheduled: 0,
+  pending: 0,
+  confirmed: 0
 });
 
-// Mock orders data
-const orders = ref([
-  { date: 5, station: 'Bishkek', type: 'confirmed', description: 'Diesel - 15,000L' },
-  { date: 8, station: 'Osh', type: 'scheduled', description: 'Petrol 95 - 10,000L' },
-  { date: 12, station: 'Jalal-Abad', type: 'pending', description: 'Diesel - 12,000L' },
-  { date: 15, station: 'Karakol', type: 'confirmed', description: 'Petrol 98 - 5,000L' },
-  { date: 18, station: 'Naryn', type: 'scheduled', description: 'Diesel - 8,000L' },
-  { date: 22, station: 'Bishkek', type: 'pending', description: 'Petrol 95 - 18,000L' },
-  { date: 25, station: 'Osh', type: 'confirmed', description: 'Diesel - 20,000L' },
-  { date: 28, station: 'Jalal-Abad', type: 'scheduled', description: 'Petrol 98 - 6,000L' }
-]);
+// Orders from API — each: { fullDate: 'YYYY-MM-DD', date: day, station, type, description }
+const orders = ref([]);
 
 const currentMonthLabel = computed(() => {
   const months = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -190,9 +182,20 @@ const calendarDays = computed(() => {
     });
   }
 
+  // Build YYYY-MM prefix for current month to filter by full date
+  const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+
+  // Apply station/fuel filters
+  const filteredOrders = orders.value.filter(o => {
+    if (filters.value.station && o.station !== filters.value.station) return false;
+    if (filters.value.fuel && o.fuel !== filters.value.fuel) return false;
+    return true;
+  });
+
   // Current month days
   for (let i = 1; i <= lastDay.getDate(); i++) {
-    const dayOrders = orders.value.filter(o => o.date === i);
+    const dayStr = `${monthStr}-${String(i).padStart(2, '0')}`;
+    const dayOrders = filteredOrders.filter(o => o.fullDate === dayStr);
     days.push({
       date: i,
       isCurrentMonth: true,
@@ -240,12 +243,49 @@ const nextMonth = () => {
   currentMonth.value = new Date(currentMonth.value.getFullYear(), currentMonth.value.getMonth() + 1);
 };
 
-const loadData = () => {
-  loading.value = true;
+// Status → calendar type mapping
+const mapStatus = (status) => {
+  if (status === 'confirmed') return 'confirmed';
+  if (status === 'in_transit') return 'scheduled';
+  return 'pending'; // pending, planned, etc.
+};
 
-  setTimeout(() => {
+const loadData = async () => {
+  loading.value = true;
+  try {
+    const res = await ordersApi.getAll();
+    const rawOrders = res.data?.data || [];
+
+    // Map API orders to calendar event format
+    const mapped = rawOrders.map(o => ({
+      fullDate: o.delivery_date ? o.delivery_date.substring(0, 10) : '',
+      date: o.delivery_date ? parseInt(o.delivery_date.substring(8, 10)) : 0,
+      station: o.station_name || `Station ${o.station_id}`,
+      fuel: o.fuel_type_name || o.fuel_type_code || '',
+      type: mapStatus(o.status),
+      description: `${o.fuel_type_name || ''} — ${Math.round((o.quantity_liters || 0) / 1000)}K L`
+    })).filter(o => o.fullDate);
+
+    orders.value = mapped;
+
+    // Populate filter dropdowns
+    const stationSet = [...new Set(mapped.map(o => o.station))].sort();
+    const fuelSet = [...new Set(mapped.map(o => o.fuel).filter(Boolean))].sort();
+    stations.value = stationSet;
+    fuelTypes.value = fuelSet;
+
+    // Compute global stats (all orders, not filtered)
+    stats.value = {
+      total: mapped.length,
+      scheduled: mapped.filter(o => o.type === 'scheduled').length,
+      pending: mapped.filter(o => o.type === 'pending').length,
+      confirmed: mapped.filter(o => o.type === 'confirmed').length,
+    };
+  } catch (e) {
+    console.error('OrdersCalendar: failed to load orders', e);
+  } finally {
     loading.value = false;
-  }, 500);
+  }
 };
 
 onMounted(() => {

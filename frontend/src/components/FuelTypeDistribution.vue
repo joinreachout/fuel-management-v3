@@ -86,46 +86,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, nextTick } from 'vue';
 import Chart from 'chart.js/auto';
+import { fuelTypesApi } from '../services/api.js';
 
 const loading = ref(true);
-
-const fuelDistribution = ref([
-  {
-    name: 'Diesel',
-    volume: '428K L',
-    percentage: 52,
-    color: '#3b82f6',
-    stations: 9,
-    avgStock: '47.6K L',
-    dailyUsage: '12.3K L'
-  },
-  {
-    name: 'Petrol 95',
-    volume: '312K L',
-    percentage: 38,
-    color: '#10b981',
-    stations: 8,
-    avgStock: '39K L',
-    dailyUsage: '9.8K L'
-  },
-  {
-    name: 'Petrol 98',
-    volume: '82K L',
-    percentage: 10,
-    color: '#f59e0b',
-    stations: 5,
-    avgStock: '16.4K L',
-    dailyUsage: '2.4K L'
-  }
-]);
-
-const summary = ref({
-  totalVolume: '822K L',
-  fuelTypes: 3,
-  avgFill: '64%'
-});
+const fuelDistribution = ref([]);
+const summary = ref({ totalVolume: '—', fuelTypes: 0, avgFill: '—' });
 
 let distributionChartInstance = null;
 
@@ -184,13 +151,35 @@ const createDistributionChart = () => {
   });
 };
 
-const loadData = () => {
+const loadData = async () => {
   loading.value = true;
+  try {
+    const res = await fuelTypesApi.getDistribution();
+    const raw = res.data?.data || [];
+    const apiSummary = res.data?.summary || {};
 
-  setTimeout(() => {
-    createDistributionChart();
+    fuelDistribution.value = raw.map(f => ({
+      name: f.name,
+      volume: f.volume,
+      percentage: f.percentage,
+      color: f.color || '#94a3b8',
+      stations: f.stations,
+      avgStock: f.avg_stock,
+      dailyUsage: f.daily_usage,
+    }));
+
+    summary.value = {
+      totalVolume: apiSummary.total_volume || '—',
+      fuelTypes: apiSummary.fuel_types || raw.length,
+      avgFill: apiSummary.avg_fill || '—',
+    };
+  } catch (e) {
+    console.error('FuelTypeDistribution: failed to load', e);
+  } finally {
     loading.value = false;
-  }, 500);
+    await nextTick();
+    createDistributionChart();
+  }
 };
 
 onMounted(() => {

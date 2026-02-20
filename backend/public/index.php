@@ -48,6 +48,7 @@ require_once __DIR__ . '/../src/Services/FuelStockService.php';
 require_once __DIR__ . '/../src/Services/ProcurementAdvisorService.php';
 require_once __DIR__ . '/../src/Services/ParametersService.php';
 require_once __DIR__ . '/../src/Services/InfrastructureService.php';
+require_once __DIR__ . '/../src/Services/WorkingCapitalService.php';
 
 // Load Controllers
 require_once __DIR__ . '/../src/Controllers/StationController.php';
@@ -63,6 +64,7 @@ require_once __DIR__ . '/../src/Controllers/RegionalComparisonController.php';
 require_once __DIR__ . '/../src/Controllers/ProcurementAdvisorController.php';
 require_once __DIR__ . '/../src/Controllers/ParametersController.php';
 require_once __DIR__ . '/../src/Controllers/InfrastructureController.php';
+require_once __DIR__ . '/../src/Controllers/WorkingCapitalController.php';
 
 use App\Core\Response;
 use App\Controllers\StationController;
@@ -78,6 +80,7 @@ use App\Controllers\RegionalComparisonController;
 use App\Controllers\ProcurementAdvisorController;
 use App\Controllers\ParametersController;
 use App\Controllers\InfrastructureController;
+use App\Controllers\WorkingCapitalController;
 
 // Simple router
 try {
@@ -106,6 +109,7 @@ try {
     $procurementAdvisorController = new ProcurementAdvisorController();
     $parametersController = new ParametersController();
     $infrastructureController = new InfrastructureController();
+    $workingCapitalController = new WorkingCapitalController();
 
     // ==================== STATIONS ====================
     if ($requestMethod === 'GET' && $path === '/api/stations') {
@@ -155,6 +159,9 @@ try {
     } elseif ($requestMethod === 'GET' && preg_match('#^/api/fuel-types/(\d+)/regions$#', $path, $matches)) {
         $fuelTypeController->regions((int) $matches[1]);
 
+    } elseif ($requestMethod === 'GET' && $path === '/api/fuel-types/distribution') {
+        $fuelTypeController->distribution();
+
     // ==================== SUPPLIERS ====================
     } elseif ($requestMethod === 'POST' && $path === '/api/suppliers') {
         $supplierController->create();
@@ -164,6 +171,9 @@ try {
 
     } elseif ($requestMethod === 'GET' && $path === '/api/suppliers/active') {
         $supplierController->active();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/suppliers/top') {
+        $supplierController->top();
 
     } elseif ($requestMethod === 'GET' && preg_match('#^/api/suppliers/(\d+)$#', $path, $matches)) {
         $supplierController->show((int) $matches[1]);
@@ -238,6 +248,10 @@ try {
     // ==================== COST ANALYSIS ====================
     } elseif ($requestMethod === 'GET' && $path === '/api/cost-analysis') {
         $costAnalysisController->getCostAnalysis();
+
+    // ==================== WORKING CAPITAL ====================
+    } elseif ($requestMethod === 'GET' && $path === '/api/working-capital') {
+        $workingCapitalController->getSummary();
 
     // ==================== REGIONAL COMPARISON ====================
     } elseif ($requestMethod === 'GET' && $path === '/api/regional-comparison') {

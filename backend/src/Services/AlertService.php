@@ -204,11 +204,11 @@ class AlertService
                 ft.name as fuel_type_name,
                 dt.current_stock_liters,
                 dt.capacity_liters,
-                ROUND((dt.current_stock_liters / dt.capacity_liters * 100), 1) as fill_percentage
+                ROUND((dt.current_stock_liters / NULLIF(dt.capacity_liters, 0) * 100), 1) as fill_percentage
             FROM depot_tanks dt
             LEFT JOIN depots d ON dt.depot_id = d.id
             LEFT JOIN fuel_types ft ON dt.fuel_type_id = ft.id
-            WHERE (dt.current_stock_liters / dt.capacity_liters) > 0.95
+            WHERE (dt.current_stock_liters / NULLIF(dt.capacity_liters, 0)) > 0.95
         ");
 
         $alerts = [];

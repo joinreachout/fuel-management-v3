@@ -37,28 +37,31 @@
     <div class="p-6">
       <!-- Snapshot Tab -->
       <div v-if="activeTab === 'snapshot'" class="space-y-4">
-        <div class="grid grid-cols-2 gap-4">
+        <div v-if="loadingSnapshot" class="flex items-center justify-center py-12">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+        </div>
+        <div v-else class="grid grid-cols-2 gap-4">
           <div class="bg-gradient-to-br from-blue-50 to-white p-4 rounded-lg border border-blue-100">
             <div class="text-xs text-blue-600 font-semibold mb-1">Current Stock Value</div>
-            <div class="text-2xl font-bold text-blue-900">€12.4M</div>
+            <div class="text-2xl font-bold text-blue-900">{{ snapshot.currentValue }}</div>
             <div class="text-xs text-blue-500 mt-1">Across all locations</div>
           </div>
 
           <div class="bg-gradient-to-br from-emerald-50 to-white p-4 rounded-lg border border-emerald-100">
             <div class="text-xs text-emerald-600 font-semibold mb-1">Optimized Value</div>
-            <div class="text-2xl font-bold text-emerald-900">€9.8M</div>
-            <div class="text-xs text-emerald-500 mt-1">-21% reduction possible</div>
+            <div class="text-2xl font-bold text-emerald-900">{{ snapshot.optimizedValue }}</div>
+            <div class="text-xs text-emerald-500 mt-1">{{ snapshot.reductionLabel }}</div>
           </div>
 
           <div class="bg-gradient-to-br from-amber-50 to-white p-4 rounded-lg border border-amber-100">
             <div class="text-xs text-amber-600 font-semibold mb-1">Days of Cover</div>
-            <div class="text-2xl font-bold text-amber-900">28 days</div>
+            <div class="text-2xl font-bold text-amber-900">{{ snapshot.daysOfCover }} days</div>
             <div class="text-xs text-amber-500 mt-1">Current average</div>
           </div>
 
           <div class="bg-gradient-to-br from-purple-50 to-white p-4 rounded-lg border border-purple-100">
             <div class="text-xs text-purple-600 font-semibold mb-1">Capital Freed</div>
-            <div class="text-2xl font-bold text-purple-900">€2.6M</div>
+            <div class="text-2xl font-bold text-purple-900">{{ snapshot.capitalFreed }}</div>
             <div class="text-xs text-purple-500 mt-1">Potential savings</div>
           </div>
         </div>
@@ -129,10 +132,43 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { workingCapitalApi } from '../services/api.js';
 
 const activeTab = ref('snapshot');
 const activeScenario = ref('recommended');
+const loadingSnapshot = ref(true);
+
+const snapshot = ref({
+  currentValue: '—',
+  optimizedValue: '—',
+  reductionLabel: '—',
+  daysOfCover: '—',
+  capitalFreed: '—',
+});
+
+const loadData = async () => {
+  loadingSnapshot.value = true;
+  try {
+    const res = await workingCapitalApi.get();
+    const d = res.data?.data || {};
+    snapshot.value = {
+      currentValue: d.current_stock_value_display || '—',
+      optimizedValue: d.optimized_value_display || '—',
+      reductionLabel: d.reduction_percentage != null ? `-${d.reduction_percentage}% reduction possible` : '—',
+      daysOfCover: d.days_of_cover ?? '—',
+      capitalFreed: d.capital_freed_display || '—',
+    };
+  } catch (e) {
+    console.error('WorkingCapital: failed to load', e);
+  } finally {
+    loadingSnapshot.value = false;
+  }
+};
+
+onMounted(() => {
+  loadData();
+});
 
 const scenarios = [
   {
