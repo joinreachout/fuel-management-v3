@@ -1,155 +1,103 @@
-# 🚀 Project Progress
+# Project Status & Roadmap
 
-## ✅ Completed (Session 1 - Feb 15, 2025)
+## System Status
 
-### Infrastructure
-- [x] GitHub repository created (`fuel-management-v3`)
-- [x] SSH keys configured
-- [x] Project structure created (REV 3.0)
-- [x] .gitignore configured
-- [x] .env setup
+**Status:** Live
+**URL:** https://fuel.kittykat.tech/rev3/
+**Last deploy:** Feb 2026 (all audit fixes applied)
 
-### Database
-- [x] New database `d105380_fuelv3` created
-- [x] User `d105380_fuelv3user` created with permissions
-- [x] Schema migrated (16 tables)
-  - regions, stations, fuel_types, depots
-  - depot_tanks (source of truth)
-  - sales_params, stock_policies
-  - suppliers, delivery_times
-  - orders, transfers, transfer_logs
-  - stock_audit (with triggers)
-  - v_current_stock, v_station_stock (views)
+---
 
-### Code
-- [x] UnitConverter utility created
-  - litersToTons()
-  - tonsToLiters()
-  - getDensity()
-- [x] 18 unit tests written
-- [x] All tests passing ✅
-- [x] 3 commits to GitHub
+## What's Built
 
-## ✅ Completed (Session 2 - Feb 16, 2025)
+### Core Infrastructure
+- PHP REST API — custom router, no framework, raw PDO/MySQL
+- Vue 3 SPA — Composition API, `<script setup>`, Vite, TailwindCSS
+- MySQL schema — 16 tables (regions, stations, depots, tanks, orders, transfers, suppliers, etc.)
+- Deploy pipeline — `npm run build` → `git push` → auto `git pull` on server
 
-### Data Migration
-- [x] Data migration from old database executed successfully
-  - ✅ 3 regions migrated
-  - ✅ 10 fuel types migrated (with density values: 0.75-0.92)
-  - ✅ 9 stations migrated
-  - ✅ 19 depots migrated
-  - ✅ 95 depot tanks migrated
-  - ✅ 69 sales params migrated
-  - ✅ 11 suppliers migrated
-  - ✅ Total stock: 139,165.30 m³ (current_stock_liters)
-  - ⏭️ Stock policies skipped (manual configuration later)
-  - ⏭️ Orders skipped (start fresh)
-  - ⏭️ Transfers skipped (start fresh)
-- [x] Data quality verified (no duplicates detected)
-- [x] Migration scripts created:
-  - run-migration.php (main migration)
-  - check-migrated-data.php (verification)
-  - check-schema.php (schema validation)
-  - check-sales-params.php (data inspection)
-  - check-suppliers.php (data inspection)
+### Dashboard
+- Fuel Level Forecast chart — station-level, 30/60/90 days, includes scheduled deliveries
+- KPI cards — Total Stations, Shortages Predicted, Mandatory Orders, Active Transfers
+- Critical alerts banner — stations below threshold
+- Filters — Region / Station / Fuel Type / Forecast horizon
 
-### Server Setup & Deployment
-- [x] SSH access configured (virt105026@kittykat.tech)
-- [x] SSH key authentication working
-- [x] Server directory restructured:
-  - `/fuel/REV20/` - archived old version
-  - `/fuel/rev3/` - new version
-- [x] GitHub repository made public
-- [x] Auto-deploy workflow: git push → git pull on server
-- [x] .env file configured on production server
+### Analytics Widgets
+- Stock by Fuel Type (real depot_tanks data)
+- Station Fill Levels (real current_stock vs capacity)
+- Top Suppliers (from orders + supplier_station_offers)
+- Fuel Type Distribution (% of total stock)
+- Working Capital Snapshot (stock value, days of cover)
+- Transfer Activity (in_transit transfers)
+- Orders Calendar (delivery dates from orders table)
+- Procurement Advisor (shortage predictions + recommended orders)
+- Risk Exposure, Cost Analysis, Inventory Turnover (static analytical views)
 
-### API Development - Phase 1
-- [x] StationController created with 3 endpoints
-- [x] Routing refactored to Controller pattern
-- [x] API endpoints tested and working:
-  - ✅ GET /api/stations (returns 9 stations)
-  - ✅ GET /api/stations/{id}
-  - ✅ GET /api/stations/{id}/depots
-- [x] Production URL: https://fuel.kittykat.tech/rev3/backend/public/api/stations
+### Orders Module
+- Full CRUD for orders
+- Statuses: pending → confirmed → in_transit → delivered
+- Delivery date tracking — feeds forecast chart
 
-### API Development - Phase 2 (Complete Models & Controllers)
-- [x] **Models Created (10 total)**:
-  - Station, Depot, FuelType, DepotTank
-  - Supplier, Order, Transfer, Sale, User
-- [x] **Controllers Created (7 total)**:
-  - StationController (3 endpoints)
-  - DepotController (5 endpoints)
-  - FuelTypeController (3 endpoints)
-  - SupplierController (5 endpoints)
-  - OrderController (5 endpoints)
-  - TransferController (4 endpoints)
-  - SaleController (7 endpoints)
-  - UserController (4 endpoints)
-- [x] DepotController endpoints tested and working:
-  - ✅ GET /api/depots (returns 19 depots)
-  - ✅ GET /api/depots/{id}
-  - ✅ GET /api/depots/{id}/tanks
-  - ✅ GET /api/depots/{id}/stock
-  - ✅ GET /api/depots/{id}/forecast
-- [x] **Total API Endpoints: 36**
+### Transfers Module
+- Depot-to-depot transfers
+- Status tracking with progress
 
-## 📋 Next Steps
+### Parameters Module (System Config)
+- Infrastructure tab — Regions → Stations → Depots → Tanks hierarchy
+- Supply Offers tab — supplier cards with inline-editable prices + delivery days
+- Sales Params tab — daily consumption (liters/day) per depot/fuel type
+- Stock Policies tab — critical/min/target thresholds per depot/fuel type
+- Fuel Types tab — density values per fuel type
 
-### Immediate (Current Session)
-1. [x] Create Response helper class ✅
-2. [x] Create Database wrapper class ✅
-3. [x] Create Models (Station, Depot, FuelType, DepotTank, Supplier, Order, Transfer, Sale, User) ✅
-4. [x] Create Controllers (7 controllers, 36 endpoints total) ✅
-5. [x] Test endpoints on production ✅
-6. [ ] Add remaining endpoints to routing (index.php)
-7. [ ] Create Services (ForecastService, AlertService, ReportService)
-8. [ ] Setup Composer autoloader
+### Import Module
+- CSV/Excel import for sales data
 
-### Short Term (Backend Completion)
-- [x] Copy data from old DB ✅ COMPLETED
-- [x] Create all Models ✅ COMPLETED
-- [x] Create all Controllers ✅ COMPLETED
-- [ ] Wire up all endpoints in routing
-- [ ] Create ForecastService (consumption prediction)
-- [ ] Create AlertService (low stock warnings)
-- [ ] Create ReportService (analytics & exports)
-- [ ] Configure stock_policies manually
-- [ ] API documentation (endpoints list)
-- [ ] Add input validation
-- [ ] Add authentication middleware
+---
 
-### Medium Term (Frontend)
-- [ ] Vue 3 setup with Vite
-- [ ] Dashboard with key metrics
-- [ ] Depot/Tank management UI
-- [ ] Orders/Transfers UI
-- [ ] Sales tracking UI
-- [ ] Reports & Analytics UI
-- [ ] User authentication UI
+## Current Metrics
 
-### Long Term
-- [ ] Python optimizer integration
-- [ ] Full testing suite (unit + integration)
-- [ ] Performance optimization
-- [ ] Production deployment checklist
+| Item | Count |
+|------|-------|
+| Regions | 3 |
+| Stations | 9 |
+| Depots | 19 |
+| Depot Tanks | 95 |
+| Fuel Types | 10 |
+| Suppliers | 11 |
+| DB Tables | 16+ |
+| API Endpoints | 40+ |
+| Frontend Components | 20+ |
+| DB Migrations | 7 |
 
-## 📊 Metrics
+---
 
-- **Database Tables**: 16
-- **Models**: 10 (Station, Depot, FuelType, DepotTank, Supplier, Order, Transfer, Sale, User + UnitConverter)
-- **Controllers**: 7
-- **API Endpoints**: 36
-- **Code files**: 21 (Models + Controllers + Utils)
-- **Tests**: 18 (100% passing)
-- **Commits**: 5
-- **Lines of code**: ~3,500+
-- **Data migrated**:
-  - 216 records (regions, fuel_types, stations, depots, suppliers, sales_params)
-  - 95 depot tanks with 139,165.30 m³ total fuel stock
-  - 0 duplicates detected
+## Backlog — Future Features
 
-## 🎯 Current Focus
+### Automatic Fuel Exchange Price Tracking
+**Priority:** Medium
+**Added:** 2026-02
 
-✅ All core Models and Controllers created (10 Models, 7 Controllers, 36 endpoints).
+Integrate with commodity exchange sources to automatically fetch market fuel prices.
 
-Next: Wire up remaining endpoints in routing, then create Services layer (ForecastService, AlertService, ReportService).
+**Used in:**
+- `ProcurementAdvisor.vue` — replace static `marketPrices` with live exchange rates
+- `WorkingCapital.vue` — recalculate stock value at current market price
+- `CostAnalysis.vue` — compare purchase prices vs market rates
+
+**Data sources (options):**
+- СПбМТСБ (St. Petersburg International Mercantile Exchange) — API or scraping
+- Platts / Argus Media — paid API
+- ЦДУ ТЭК — open data from Russian Ministry of Energy
+
+**Implementation needed:**
+- [ ] DB table `market_prices`: `fuel_type_id`, `price_per_ton`, `price_date`, `source`
+- [ ] `backend/src/Services/FuelPriceService.php` — fetch + cache prices
+- [ ] `backend/src/Controllers/FuelPriceController.php` — `GET /api/fuel-prices/market`
+- [ ] Cron job or manual refresh button in UI
+- [ ] Frontend: replace static `marketPrices` in `ProcurementAdvisor.vue` with API data
+
+### Other Backlog Items
+- [ ] User authentication (login/roles)
+- [ ] Reports & exports (PDF/Excel)
+- [ ] Full test suite (unit + integration)
+- [ ] Python optimizer integration (advanced procurement calculations)
