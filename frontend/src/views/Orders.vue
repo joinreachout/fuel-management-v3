@@ -1,45 +1,865 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Fixed Black Top Bar with Logo + Menu -->
-    <div class="fixed top-0 left-0 right-0 bg-black z-50 px-8 py-3">
-      <div class="flex items-center gap-8">
-        <!-- Logo WHITE -->
-        <img
-          src="/kkt_logo.png"
-          alt="Kitty Kat Technologies"
-          class="h-12 w-auto"
-          style="filter: brightness(0) invert(1);">
+  <div>
+    <!-- ============================================================ -->
+    <!--  MAIN UI (hidden during print)                               -->
+    <!-- ============================================================ -->
+    <div class="no-print min-h-screen bg-gray-50">
 
-        <!-- Menu -->
-        <nav class="flex items-center gap-6">
-          <a href="/" class="text-gray-400 hover:text-white transition-colors text-sm">Dashboard</a>
-          <a href="/orders" class="text-white font-medium border-b-2 border-white pb-1 text-sm">Orders</a>
-          <a href="/transfers" class="text-gray-400 hover:text-white transition-colors text-sm">Transfers</a>
-          <a href="/parameters" class="text-gray-400 hover:text-white transition-colors text-sm">Parameters</a>
-          <a href="/import" class="text-gray-400 hover:text-white transition-colors text-sm">Import</a>
-          <a href="/how-it-works" class="text-gray-400 hover:text-white transition-colors text-sm">How It Works</a>
-        </nav>
-      </div>
-    </div>
-
-    <!-- Spacer for fixed navbar -->
-    <div class="h-20"></div>
-
-    <!-- Page Content -->
-    <div class="max-w-7xl mx-auto px-6 py-8">
-      <div class="bg-white rounded-2xl shadow-lg p-12 text-center">
-        <i class="fas fa-shopping-cart text-6xl text-blue-500 mb-6"></i>
-        <h1 class="text-3xl font-bold text-gray-800 mb-4">Orders Management</h1>
-        <p class="text-gray-600 mb-8">Orders management functionality will be implemented here</p>
-        <div class="inline-flex items-center px-6 py-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-          <i class="fas fa-info-circle mr-2"></i>
-          This page is under development. Please check back later.
+      <!-- Fixed Black Top Bar -->
+      <div class="fixed top-0 left-0 right-0 bg-black z-50 px-8 py-3">
+        <div class="flex items-center gap-8">
+          <img src="/kkt_logo.png" alt="Kitty Kat Technologies" class="h-12 w-auto" style="filter: brightness(0) invert(1);">
+          <nav class="flex items-center gap-6">
+            <router-link to="/" class="text-gray-400 hover:text-white transition-colors text-sm">Dashboard</router-link>
+            <router-link to="/orders" class="text-white font-medium border-b-2 border-white pb-1 text-sm">Orders</router-link>
+            <router-link to="/transfers" class="text-gray-400 hover:text-white transition-colors text-sm">Transfers</router-link>
+            <router-link to="/parameters" class="text-gray-400 hover:text-white transition-colors text-sm">Parameters</router-link>
+            <router-link to="/import" class="text-gray-400 hover:text-white transition-colors text-sm">Import</router-link>
+            <router-link to="/how-it-works" class="text-gray-400 hover:text-white transition-colors text-sm">How It Works</router-link>
+          </nav>
         </div>
       </div>
+
+      <!-- Spacer -->
+      <div class="h-20"></div>
+
+      <!-- Page Content -->
+      <div class="max-w-7xl mx-auto px-6 py-8">
+
+        <!-- Page Header -->
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900">Purchase Orders</h1>
+            <p class="text-sm text-gray-500 mt-1">Create, print and manage fuel purchase orders (PO)</p>
+          </div>
+          <button @click="openCreateModal" class="flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors text-sm shadow-sm">
+            <i class="fas fa-plus"></i>
+            New PO
+          </button>
+        </div>
+
+        <!-- Filters Bar -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-5 flex flex-wrap items-center gap-3">
+          <select v-model="filters.station_id" @change="loadOrders"
+            class="text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <option value="">All Stations</option>
+            <option v-for="s in stations" :key="s.id" :value="s.id">{{ s.name }}</option>
+          </select>
+
+          <select v-model="filters.fuel_type_id" @change="loadOrders"
+            class="text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <option value="">All Fuel Types</option>
+            <option v-for="f in fuelTypes" :key="f.id" :value="f.id">{{ f.name }}</option>
+          </select>
+
+          <select v-model="filters.status" @change="loadOrders"
+            class="text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <option value="">All Statuses</option>
+            <option value="planned">Planned</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="in_transit">In Transit</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+
+          <input type="date" v-model="filters.date_from" @change="loadOrders"
+            class="text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            title="Delivery date from">
+
+          <input type="date" v-model="filters.date_to" @change="loadOrders"
+            class="text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            title="Delivery date to">
+
+          <button @click="clearFilters"
+            class="text-sm text-gray-500 hover:text-gray-800 px-2 py-2 rounded-lg transition-colors">
+            <i class="fas fa-times mr-1"></i>Clear
+          </button>
+
+          <div class="ml-auto text-sm text-gray-500">
+            {{ orders.length }} order{{ orders.length !== 1 ? 's' : '' }}
+          </div>
+        </div>
+
+        <!-- Orders Table -->
+        <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+
+          <!-- Loading -->
+          <div v-if="loading" class="flex items-center justify-center py-16">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mr-3"></div>
+            <span class="text-gray-500 text-sm">Loading orders...</span>
+          </div>
+
+          <!-- Empty state -->
+          <div v-else-if="orders.length === 0" class="text-center py-16 text-gray-400">
+            <i class="fas fa-clipboard-list text-5xl mb-4"></i>
+            <p class="text-lg font-medium text-gray-500">No orders found</p>
+            <p class="text-sm mt-1">Adjust filters or create a new purchase order</p>
+            <button @click="openCreateModal" class="mt-5 inline-flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-xl font-medium text-sm hover:bg-gray-800 transition-colors">
+              <i class="fas fa-plus"></i> New PO
+            </button>
+          </div>
+
+          <!-- Table -->
+          <div v-else class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">PO #</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Station</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fuel Type</th>
+                  <th class="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty (L)</th>
+                  <th class="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty (T)</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Delivery Date</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr v-for="order in orders" :key="order.id" class="hover:bg-gray-50 transition-colors">
+
+                  <!-- PO number -->
+                  <td class="px-5 py-3.5 font-mono text-gray-700 font-medium whitespace-nowrap">
+                    {{ order.order_number }}
+                  </td>
+
+                  <!-- Station -->
+                  <td class="px-5 py-3.5 text-gray-800 whitespace-nowrap">
+                    {{ order.station_name || '—' }}
+                  </td>
+
+                  <!-- Fuel Type -->
+                  <td class="px-5 py-3.5 whitespace-nowrap">
+                    <span class="text-gray-800">{{ order.fuel_type_name }}</span>
+                    <span class="text-gray-400 ml-1 text-xs">({{ order.fuel_type_code }})</span>
+                  </td>
+
+                  <!-- Qty L -->
+                  <td class="px-5 py-3.5 text-right font-medium text-gray-700 whitespace-nowrap">
+                    {{ formatNum(order.quantity_liters) }}
+                  </td>
+
+                  <!-- Qty T -->
+                  <td class="px-5 py-3.5 text-right text-gray-500 whitespace-nowrap">
+                    {{ order.quantity_tons }}
+                  </td>
+
+                  <!-- Supplier -->
+                  <td class="px-5 py-3.5 text-gray-600 whitespace-nowrap">
+                    {{ order.supplier_name || '—' }}
+                  </td>
+
+                  <!-- Delivery Date -->
+                  <td class="px-5 py-3.5 text-gray-700 whitespace-nowrap">
+                    {{ formatDate(order.delivery_date) }}
+                  </td>
+
+                  <!-- Status badge -->
+                  <td class="px-5 py-3.5">
+                    <span :class="statusBadgeClass(order.status)"
+                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                      {{ statusLabel(order.status) }}
+                    </span>
+                    <!-- Cancellation reason -->
+                    <div v-if="order.status === 'cancelled' && order.cancelled_reason"
+                      class="mt-1 text-xs text-red-500 italic max-w-[200px] truncate cursor-help"
+                      :title="order.cancelled_reason">
+                      {{ order.cancelled_reason }}
+                    </div>
+                  </td>
+
+                  <!-- Actions -->
+                  <td class="px-5 py-3.5">
+                    <div class="flex items-center gap-2 flex-wrap">
+
+                      <!-- Print: available for planned/confirmed/in_transit -->
+                      <button v-if="['planned','confirmed','in_transit'].includes(order.status)"
+                        @click="printPO(order)"
+                        class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        title="Print PO">
+                        <i class="fas fa-print"></i> Print
+                      </button>
+
+                      <!-- Cancel: only for planned (user error correction) -->
+                      <button v-if="order.status === 'planned'"
+                        @click="openCancelModal(order)"
+                        class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                        title="Cancel this PO">
+                        <i class="fas fa-times"></i> Cancel
+                      </button>
+
+                    </div>
+                  </td>
+
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- /table card -->
+
+      </div>
+      <!-- /page content -->
+
+      <!-- ============================================================ -->
+      <!--  CREATE PO MODAL                                             -->
+      <!-- ============================================================ -->
+      <Teleport to="body">
+        <div v-if="showCreateModal"
+          class="fixed inset-0 z-[100] flex items-center justify-center"
+          @click.self="showCreateModal = false">
+          <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[92vh] overflow-y-auto">
+            <div class="p-8">
+              <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold text-gray-900">
+                  <i class="fas fa-file-alt text-blue-500 mr-2"></i>
+                  New Purchase Order
+                </h2>
+                <button @click="showCreateModal = false" class="text-gray-400 hover:text-gray-600 text-xl">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+
+              <form @submit.prevent="submitCreate">
+                <div class="space-y-4">
+
+                  <!-- Station -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                      Station <span class="text-red-500">*</span>
+                    </label>
+                    <select v-model="form.station_id" required
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                      <option value="">Select station...</option>
+                      <option v-for="s in stations" :key="s.id" :value="s.id">{{ s.name }}</option>
+                    </select>
+                  </div>
+
+                  <!-- Fuel Type -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                      Fuel Type <span class="text-red-500">*</span>
+                    </label>
+                    <select v-model="form.fuel_type_id" required
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                      <option value="">Select fuel type...</option>
+                      <option v-for="f in fuelTypes" :key="f.id" :value="f.id">
+                        {{ f.name }} ({{ f.code }})
+                      </option>
+                    </select>
+                  </div>
+
+                  <!-- Supplier -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
+                    <select v-model="form.supplier_id"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                      <option value="">Select supplier...</option>
+                      <option v-for="s in suppliers" :key="s.id" :value="s.id">{{ s.name }}</option>
+                    </select>
+                  </div>
+
+                  <!-- Quantity -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                      Quantity (liters) <span class="text-red-500">*</span>
+                    </label>
+                    <input type="number" v-model.number="form.quantity_liters" min="1" required
+                      placeholder="e.g. 45000"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <p v-if="form.quantity_liters && selectedFuelDensity" class="mt-1 text-xs text-gray-500">
+                      ≈ {{ ((form.quantity_liters * selectedFuelDensity) / 1000).toFixed(2) }} tons
+                    </p>
+                  </div>
+
+                  <!-- Price per ton -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Price per ton (USD)</label>
+                    <input type="number" v-model.number="form.price_per_ton" min="0" step="0.01"
+                      placeholder="e.g. 850"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <p v-if="form.quantity_liters && form.price_per_ton && selectedFuelDensity" class="mt-1 text-xs text-gray-500">
+                      Total ≈ ${{ ((form.quantity_liters * selectedFuelDensity / 1000) * form.price_per_ton).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}
+                    </p>
+                  </div>
+
+                  <!-- Delivery Date -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                      Delivery Date <span class="text-red-500">*</span>
+                    </label>
+                    <input type="date" v-model="form.delivery_date" required :min="today"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                  </div>
+
+                  <!-- Notes -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea v-model="form.notes" rows="2"
+                      placeholder="Optional notes..."
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none">
+                    </textarea>
+                  </div>
+
+                </div>
+
+                <!-- Actions -->
+                <div class="flex gap-3 mt-6">
+                  <button type="submit" :disabled="formSubmitting"
+                    class="flex-1 py-2.5 bg-black text-white rounded-xl font-medium text-sm hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fas fa-plus mr-2"></i>
+                    {{ formSubmitting ? 'Creating...' : 'Create PO' }}
+                  </button>
+                  <button type="button" @click="showCreateModal = false"
+                    class="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition-colors">
+                    Cancel
+                  </button>
+                </div>
+
+                <p v-if="createError" class="mt-3 text-sm text-red-600 bg-red-50 rounded-lg px-4 py-2.5">
+                  <i class="fas fa-exclamation-circle mr-1"></i>{{ createError }}
+                </p>
+              </form>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
+      <!-- ============================================================ -->
+      <!--  CANCEL MODAL                                                -->
+      <!-- ============================================================ -->
+      <Teleport to="body">
+        <div v-if="showCancelModal"
+          class="fixed inset-0 z-[100] flex items-center justify-center"
+          @click.self="showCancelModal = false">
+          <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
+            <div class="p-8">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-gray-900">
+                  <i class="fas fa-ban text-red-500 mr-2"></i>
+                  Cancel Order
+                </h2>
+                <button @click="showCancelModal = false" class="text-gray-400 hover:text-gray-600 text-xl">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+
+              <!-- Order summary -->
+              <div class="bg-gray-50 rounded-xl px-4 py-3 mb-5 text-sm text-gray-700">
+                <div class="font-semibold text-gray-900 mb-1">{{ selectedOrder?.order_number }}</div>
+                <div>{{ selectedOrder?.station_name }} — {{ selectedOrder?.fuel_type_name }}</div>
+                <div>Quantity: <span class="font-medium">{{ formatNum(selectedOrder?.quantity_liters) }} L</span></div>
+                <div>Delivery: <span class="font-medium">{{ formatDate(selectedOrder?.delivery_date) }}</span></div>
+              </div>
+
+              <!-- Reason input -->
+              <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Reason for cancellation <span class="text-red-500">*</span>
+                </label>
+                <textarea v-model="cancelReason" rows="3"
+                  placeholder="e.g. Wrong quantity entered, wrong station selected..."
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:outline-none resize-none">
+                </textarea>
+              </div>
+
+              <!-- Warning -->
+              <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5 text-xs text-amber-700 flex items-start gap-2">
+                <i class="fas fa-exclamation-triangle mt-0.5 flex-shrink-0"></i>
+                <span>The forecast chart will be updated — the delivery bump will disappear and new shortage warnings may appear in Procurement Advisor.</span>
+              </div>
+
+              <!-- Actions -->
+              <div class="flex gap-3">
+                <button @click="submitCancel"
+                  :disabled="!cancelReason.trim() || cancelSubmitting"
+                  class="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-medium text-sm hover:bg-red-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                  {{ cancelSubmitting ? 'Cancelling...' : 'Cancel Order' }}
+                </button>
+                <button @click="showCancelModal = false"
+                  class="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition-colors">
+                  Go Back
+                </button>
+              </div>
+
+              <p v-if="cancelError" class="mt-3 text-sm text-red-600 bg-red-50 rounded-lg px-4 py-2.5">
+                <i class="fas fa-exclamation-circle mr-1"></i>{{ cancelError }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
     </div>
+    <!-- /main UI -->
+
+    <!-- ============================================================ -->
+    <!--  PRINT SECTION — visible only in @media print                -->
+    <!-- ============================================================ -->
+    <div id="print-po" v-if="printOrder">
+
+      <!-- Company header -->
+      <div class="po-header">
+        <div class="po-company">KITTY KAT TECHNOLOGIES</div>
+        <div class="po-rule"></div>
+        <div class="po-title">FUEL PURCHASE ORDER</div>
+        <div class="po-number">No. {{ printOrder.order_number }}</div>
+        <div class="po-rule"></div>
+      </div>
+
+      <!-- Meta info -->
+      <table class="po-meta">
+        <tr>
+          <td class="po-meta-label">Date:</td>
+          <td class="po-meta-value">{{ formatDate(printOrder.order_date) }}</td>
+          <td class="po-meta-label">Delivery Date:</td>
+          <td class="po-meta-value">{{ formatDate(printOrder.delivery_date) }}</td>
+        </tr>
+        <tr>
+          <td class="po-meta-label">Station:</td>
+          <td class="po-meta-value">{{ printOrder.station_name }}</td>
+          <td class="po-meta-label">Supplier:</td>
+          <td class="po-meta-value">{{ printOrder.supplier_name || '—' }}</td>
+        </tr>
+        <tr v-if="printOrder.depot_name">
+          <td class="po-meta-label">Depot:</td>
+          <td class="po-meta-value" colspan="3">{{ printOrder.depot_name }}</td>
+        </tr>
+      </table>
+
+      <!-- Line items -->
+      <table class="po-table">
+        <thead>
+          <tr>
+            <th>Fuel Type</th>
+            <th>Quantity (L)</th>
+            <th>Quantity (T)</th>
+            <th>Price / T (USD)</th>
+            <th>Total (USD)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{{ printOrder.fuel_type_name }} ({{ printOrder.fuel_type_code }})</td>
+            <td>{{ formatNum(printOrder.quantity_liters) }}</td>
+            <td>{{ printOrder.quantity_tons }}</td>
+            <td>{{ printOrder.price_per_ton ? '$' + formatNum(printOrder.price_per_ton) : '—' }}</td>
+            <td>{{ printOrder.total_amount ? '$' + formatNum(printOrder.total_amount) : '—' }}</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4" class="po-total-label">TOTAL:</td>
+            <td class="po-total-val">{{ printOrder.total_amount ? '$' + formatNum(printOrder.total_amount) : '—' }}</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <!-- Notes -->
+      <div v-if="printOrder.notes" class="po-notes">
+        <strong>Notes:</strong> {{ printOrder.notes }}
+      </div>
+
+      <!-- Signatures -->
+      <div class="po-signatures">
+        <div class="po-sig">
+          <div class="po-sig-line"></div>
+          <div class="po-sig-label">Prepared by</div>
+        </div>
+        <div class="po-sig">
+          <div class="po-sig-line"></div>
+          <div class="po-sig-label">Reviewed by</div>
+        </div>
+        <div class="po-sig">
+          <div class="po-sig-line"></div>
+          <div class="po-sig-label">Approved by</div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="po-footer">
+        <div class="po-rule"></div>
+        <div>Kitty Kat Technologies — Fuel Management System</div>
+        <div>Generated: {{ new Date().toLocaleDateString('en-GB') }}</div>
+      </div>
+    </div>
+    <!-- /print section -->
+
   </div>
 </template>
 
 <script setup>
-// Orders page logic will be implemented here
+import { ref, computed, onMounted } from 'vue'
+import { ordersApi, stationsApi, fuelTypesApi, suppliersApi } from '../services/api.js'
+
+// ────────────────────────────────────────────────────────────────────────────
+// State
+// ────────────────────────────────────────────────────────────────────────────
+const orders    = ref([])
+const stations  = ref([])
+const fuelTypes = ref([])
+const suppliers = ref([])
+const loading   = ref(false)
+
+const filters = ref({
+  station_id:   '',
+  fuel_type_id: '',
+  status:       '',
+  date_from:    '',
+  date_to:      ''
+})
+
+// Create PO form
+const showCreateModal = ref(false)
+const formSubmitting  = ref(false)
+const createError     = ref('')
+const form = ref({
+  station_id:     '',
+  fuel_type_id:   '',
+  supplier_id:    '',
+  quantity_liters: null,
+  price_per_ton:   null,
+  delivery_date:   '',
+  notes:           ''
+})
+
+// Cancel modal
+const showCancelModal  = ref(false)
+const cancelSubmitting = ref(false)
+const cancelError      = ref('')
+const cancelReason     = ref('')
+const selectedOrder    = ref(null)
+
+// Print
+const printOrder = ref(null)
+
+const today = new Date().toISOString().split('T')[0]
+
+// ────────────────────────────────────────────────────────────────────────────
+// Computed
+// ────────────────────────────────────────────────────────────────────────────
+const selectedFuelDensity = computed(() => {
+  if (!form.value.fuel_type_id) return null
+  const ft = fuelTypes.value.find(f => f.id == form.value.fuel_type_id)
+  return ft ? parseFloat(ft.density) : null
+})
+
+// ────────────────────────────────────────────────────────────────────────────
+// Data loading
+// ────────────────────────────────────────────────────────────────────────────
+async function loadOrders() {
+  loading.value = true
+  try {
+    const params = {}
+    if (filters.value.station_id)   params.station_id   = filters.value.station_id
+    if (filters.value.fuel_type_id) params.fuel_type_id = filters.value.fuel_type_id
+    if (filters.value.status)       params.status       = filters.value.status
+    if (filters.value.date_from)    params.date_from    = filters.value.date_from
+    if (filters.value.date_to)      params.date_to      = filters.value.date_to
+
+    const res = await ordersApi.getAll(params)
+    orders.value = res.data.data || []
+  } catch (e) {
+    console.error('Failed to load orders', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function loadStations() {
+  try {
+    const res = await stationsApi.getAll()
+    stations.value = res.data.data || []
+  } catch (e) { console.error('loadStations', e) }
+}
+
+async function loadFuelTypes() {
+  try {
+    const res = await fuelTypesApi.getAll()
+    fuelTypes.value = res.data.data || []
+  } catch (e) { console.error('loadFuelTypes', e) }
+}
+
+async function loadSuppliers() {
+  try {
+    const res = await suppliersApi.getAll()
+    suppliers.value = res.data.data || []
+  } catch (e) { console.error('loadSuppliers', e) }
+}
+
+function clearFilters() {
+  filters.value = { station_id: '', fuel_type_id: '', status: '', date_from: '', date_to: '' }
+  loadOrders()
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Create PO
+// ────────────────────────────────────────────────────────────────────────────
+function openCreateModal() {
+  form.value = {
+    station_id: '', fuel_type_id: '', supplier_id: '',
+    quantity_liters: null, price_per_ton: null,
+    delivery_date: '', notes: ''
+  }
+  createError.value = ''
+  showCreateModal.value = true
+}
+
+async function submitCreate() {
+  createError.value = ''
+  formSubmitting.value = true
+  try {
+    await ordersApi.create(form.value)
+    showCreateModal.value = false
+    await loadOrders()
+  } catch (e) {
+    createError.value = e.response?.data?.error || 'Failed to create order'
+  } finally {
+    formSubmitting.value = false
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Cancel PO
+// ────────────────────────────────────────────────────────────────────────────
+function openCancelModal(order) {
+  selectedOrder.value = order
+  cancelReason.value  = ''
+  cancelError.value   = ''
+  showCancelModal.value = true
+}
+
+async function submitCancel() {
+  if (!cancelReason.value.trim()) return
+  cancelSubmitting.value = true
+  cancelError.value = ''
+  try {
+    await ordersApi.cancel(selectedOrder.value.id, cancelReason.value)
+    showCancelModal.value = false
+    await loadOrders()
+  } catch (e) {
+    cancelError.value = e.response?.data?.error || 'Failed to cancel order'
+  } finally {
+    cancelSubmitting.value = false
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Print PO
+// ────────────────────────────────────────────────────────────────────────────
+function printPO(order) {
+  printOrder.value = order
+  // Give Vue time to render the #print-po section before triggering print
+  setTimeout(() => window.print(), 100)
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ────────────────────────────────────────────────────────────────────────────
+function statusBadgeClass(status) {
+  const map = {
+    planned:    'bg-gray-100 text-gray-700',
+    confirmed:  'bg-blue-100 text-blue-700',
+    in_transit: 'bg-amber-100 text-amber-700',
+    delivered:  'bg-green-100 text-green-700',
+    cancelled:  'bg-red-100 text-red-700',
+  }
+  return map[status] || 'bg-gray-100 text-gray-600'
+}
+
+function statusLabel(status) {
+  const map = {
+    planned:    'Planned',
+    confirmed:  'Confirmed',
+    in_transit: 'In Transit',
+    delivered:  'Delivered',
+    cancelled:  'Cancelled',
+  }
+  return map[status] || status
+}
+
+function formatDate(d) {
+  if (!d) return '—'
+  const date = new Date(d)
+  return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function formatNum(n) {
+  if (n == null || n === '') return '—'
+  return Number(n).toLocaleString('en-US')
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Lifecycle
+// ────────────────────────────────────────────────────────────────────────────
+onMounted(() => {
+  loadOrders()
+  loadStations()
+  loadFuelTypes()
+  loadSuppliers()
+})
 </script>
+
+<style scoped>
+/* ── Screen: hide print section ── */
+#print-po {
+  display: none;
+}
+</style>
+
+<style>
+/* ── Print styles (global, not scoped) ── */
+@media print {
+  /* Hide the whole app UI */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Show only the PO blank */
+  #print-po {
+    display: block !important;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11pt;
+    color: #000;
+    padding: 20mm 15mm;
+    line-height: 1.5;
+  }
+
+  /* ── PO Header ── */
+  .po-company {
+    text-align: center;
+    font-size: 20pt;
+    font-weight: bold;
+    letter-spacing: 3px;
+    margin-bottom: 6px;
+  }
+
+  .po-rule {
+    border-top: 2px solid #000;
+    margin: 8px 0;
+  }
+
+  .po-title {
+    text-align: center;
+    font-size: 14pt;
+    font-weight: bold;
+    letter-spacing: 1px;
+    margin: 10px 0 4px;
+  }
+
+  .po-number {
+    text-align: center;
+    font-size: 12pt;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+
+  /* ── PO Meta table ── */
+  .po-meta {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+  }
+
+  .po-meta td {
+    padding: 3px 8px;
+    vertical-align: top;
+  }
+
+  .po-meta-label {
+    width: 110px;
+    color: #555;
+    font-size: 9pt;
+  }
+
+  .po-meta-value {
+    font-weight: bold;
+    font-size: 10pt;
+  }
+
+  /* ── PO Table ── */
+  .po-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 18px 0;
+    font-size: 10pt;
+  }
+
+  .po-table th {
+    background: #000;
+    color: #fff;
+    padding: 7px 10px;
+    text-align: left;
+    font-size: 9pt;
+    font-weight: bold;
+  }
+
+  .po-table td {
+    border: 1px solid #bbb;
+    padding: 7px 10px;
+  }
+
+  .po-table tfoot tr td {
+    border-top: 2.5px solid #000;
+    font-weight: bold;
+  }
+
+  .po-total-label {
+    text-align: right;
+    color: #444;
+    font-size: 10pt;
+  }
+
+  .po-total-val {
+    font-size: 13pt;
+    font-weight: bold;
+  }
+
+  /* ── Notes ── */
+  .po-notes {
+    margin: 14px 0;
+    font-size: 9pt;
+    color: #444;
+    border-left: 3px solid #ccc;
+    padding-left: 12px;
+  }
+
+  /* ── Signatures ── */
+  .po-signatures {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 40mm;
+    gap: 20px;
+  }
+
+  .po-sig {
+    flex: 1;
+    text-align: center;
+  }
+
+  .po-sig-line {
+    border-bottom: 1px solid #000;
+    height: 10mm;
+    margin-bottom: 6px;
+  }
+
+  .po-sig-label {
+    font-size: 9pt;
+    color: #555;
+  }
+
+  /* ── Footer ── */
+  .po-footer {
+    margin-top: 16px;
+    text-align: center;
+    font-size: 8pt;
+    color: #888;
+  }
+
+  .po-footer .po-rule {
+    margin-bottom: 8px;
+  }
+}
+</style>

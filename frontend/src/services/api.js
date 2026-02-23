@@ -59,11 +59,15 @@ export const suppliersApi = {
 
 // Orders API
 export const ordersApi = {
-  getAll: () => api.get('/orders'),
-  getById: (id) => api.get(`/orders/${id}`),
-  getByStatus: (status) => api.get(`/orders/status/${status}`),
-  getPending: () => api.get('/orders/pending'),
-  getBySupplier: (id) => api.get(`/orders/supplier/${id}`),
+  getAll:    (params = {}) => api.get('/orders', { params }),
+  getById:   (id)          => api.get(`/orders/${id}`),
+  getPending: ()           => api.get('/orders/pending'),
+  getSummary: ()           => api.get('/orders/summary'),
+  getRecent:  (days = 30)  => api.get('/orders/recent', { params: { days } }),
+  create:    (data)        => api.post('/orders', data),
+  update:    (id, data)    => api.put(`/orders/${id}`, data),
+  cancel:    (id, reason)  => api.post(`/orders/${id}/cancel`, { reason }),
+  delete:    (id)          => api.delete(`/orders/${id}`),
 };
 
 // Transfers API

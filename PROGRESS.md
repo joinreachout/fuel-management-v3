@@ -97,14 +97,20 @@ pending → confirmed → in_transit → delivered
                   (+ reason)     (+ reason)
 ```
 
-**What needs to be built:**
-- [ ] Orders list page with filters (station, fuel type, status, date range)
-- [ ] Create/Edit order form
-- [ ] Cancel order action — modal with mandatory reason input
-- [ ] `cancelled_reason` and `cancelled_at` fields in `orders` table (migration)
-- [ ] Status transition buttons (Confirm / Mark In Transit / Mark Delivered / Cancel)
-- [ ] ForecastService already filters by `status IN ('confirmed', 'in_transit')` — cancellation auto-removes bump ✓
-- [ ] ProcurementAdvisor re-query on order status change
+**Architecture clarification (2026-02-23):**
+- PO = created → printed → given to boss. After that our system has no control over execution.
+- ERP (erp.kittykat.tech) sends actual delivery data → Import → updates depot stock
+- User only: Create PO, Print PO, Cancel PO (if user error)
+- Status transitions `confirmed`/`in_transit`/`delivered` happen via ERP/Import only
+
+**Implementation checklist:**
+- [x] DB migration 007: `cancelled_reason`, `cancelled_at` fields
+- [x] `Order.php` — create/update/cancel/delete + filters
+- [ ] `OrderController.php` — store/update/cancel/destroy
+- [ ] `index.php` — 4 new routes
+- [ ] `ForecastService.php` — change filter to `NOT IN ('cancelled', 'delivered')`
+- [ ] `api.js` — create/update/cancel/delete methods
+- [ ] `Orders.vue` — full page: table + filters + badges + print + cancel modal + create form
 
 ---
 

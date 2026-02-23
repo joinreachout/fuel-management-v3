@@ -200,6 +200,18 @@ try {
     } elseif ($requestMethod === 'GET' && preg_match('#^/api/orders/(\d+)$#', $path, $matches)) {
         $orderController->show((int) $matches[1]);
 
+    } elseif ($requestMethod === 'POST' && $path === '/api/orders') {
+        $orderController->store();
+
+    } elseif ($requestMethod === 'POST' && preg_match('#^/api/orders/(\d+)/cancel$#', $path, $matches)) {
+        $orderController->cancel((int) $matches[1]);
+
+    } elseif ($requestMethod === 'PUT' && preg_match('#^/api/orders/(\d+)$#', $path, $matches)) {
+        $orderController->update((int) $matches[1]);
+
+    } elseif ($requestMethod === 'DELETE' && preg_match('#^/api/orders/(\d+)$#', $path, $matches)) {
+        $orderController->destroy((int) $matches[1]);
+
     // ==================== TRANSFERS ====================
     } elseif ($requestMethod === 'GET' && $path === '/api/transfers') {
         $transferController->getTransfers();
