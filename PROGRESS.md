@@ -75,8 +75,9 @@
 ## Next Up — In Progress
 
 ### Orders Module (Full UI Implementation + Cancellation Logic)
-**Priority:** HIGH — Next task
+**Priority:** HIGH — ✅ DONE
 **Added:** 2026-02
+**Completed:** 2026-02-23
 **Spec:** [docs/features/ORDERS_MODULE.md](docs/features/ORDERS_MODULE.md)
 
 **Core concept:**
@@ -104,13 +105,13 @@ pending → confirmed → in_transit → delivered
 - Status transitions `confirmed`/`in_transit`/`delivered` happen via ERP/Import only
 
 **Implementation checklist:**
-- [x] DB migration 007: `cancelled_reason`, `cancelled_at` fields
+- [x] DB migration 007: `cancelled_reason`, `cancelled_at` fields (applied to production)
 - [x] `Order.php` — create/update/cancel/delete + filters
-- [ ] `OrderController.php` — store/update/cancel/destroy
-- [ ] `index.php` — 4 new routes
-- [ ] `ForecastService.php` — change filter to `NOT IN ('cancelled', 'delivered')`
-- [ ] `api.js` — create/update/cancel/delete methods
-- [ ] `Orders.vue` — full page: table + filters + badges + print + cancel modal + create form
+- [x] `OrderController.php` — store/update/cancel/destroy
+- [x] `index.php` — 4 new routes (POST, PUT, DELETE, POST cancel)
+- [x] `ForecastService.php` — filter changed to `NOT IN ('cancelled', 'delivered')`
+- [x] `api.js` — create/update/cancel/delete methods
+- [x] `Orders.vue` — full page: table + filters + status badges + Print + Cancel modal + Create PO modal + print CSS
 
 ---
 
