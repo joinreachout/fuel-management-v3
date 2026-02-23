@@ -144,8 +144,33 @@
               </div>
             </div>
 
+            <!-- PO Pending banner — shown when a Purchase Order already exists -->
+            <div v-if="rec.po_pending && rec.active_po"
+              class="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 mb-3 text-xs flex items-start gap-2">
+              <i class="fas fa-clipboard-check text-blue-500 mt-0.5 flex-shrink-0"></i>
+              <div>
+                <div class="font-semibold text-blue-800">PO Issued — Awaiting ERP Confirmation</div>
+                <div class="text-blue-600 mt-0.5">
+                  {{ rec.active_po.order_number }} •
+                  {{ rec.active_po.quantity_tons }} t •
+                  Delivery: {{ rec.active_po.delivery_date }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Action button: different state when PO already exists -->
             <button
+              v-if="rec.po_pending"
               type="button"
+              @click="router.push('/orders')"
+              class="w-full bg-blue-100 text-blue-700 py-2 px-4 rounded-lg text-sm font-semibold hover:bg-blue-200 transition-all border border-blue-200">
+              <i class="fas fa-external-link-alt mr-1"></i>
+              View Purchase Orders
+            </button>
+            <button
+              v-else
+              type="button"
+              @click="router.push('/orders')"
               class="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-2 px-4 rounded-lg text-sm font-semibold hover:from-blue-600 hover:to-indigo-600 transition-all">
               Create Order
             </button>
@@ -187,7 +212,10 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { procurementApi } from '../services/api';
+
+const router = useRouter();
 
 const activeTab = ref('briefing');
 const loading = ref(true);
@@ -266,7 +294,10 @@ const recommendations = computed(() => {
     current_stock_tons: s.current_stock_tons,
     fill_percentage: s.fill_percentage,
     recommended_order_tons: s.recommended_order_tons,
-    best_supplier: s.best_supplier
+    best_supplier: s.best_supplier,
+    // PO tracking
+    po_pending: s.po_pending || false,
+    active_po:  s.active_po  || null
   }));
 });
 

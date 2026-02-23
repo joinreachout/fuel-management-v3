@@ -20,7 +20,11 @@ class OrderController
     public function index(): void
     {
         try {
+            // Mark any expired POs on each load (POs past delivery_date with no ERP match)
+            Order::markExpiredPOs();
+
             $filters = [];
+            if (!empty($_GET['order_type']))   $filters['order_type']   = $_GET['order_type'];
             if (!empty($_GET['station_id']))   $filters['station_id']   = $_GET['station_id'];
             if (!empty($_GET['fuel_type_id'])) $filters['fuel_type_id'] = $_GET['fuel_type_id'];
             if (!empty($_GET['status']))       $filters['status']       = $_GET['status'];

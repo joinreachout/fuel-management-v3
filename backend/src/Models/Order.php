@@ -6,8 +6,13 @@ use App\Core\Database;
 
 /**
  * Order Model
- * Represents fuel purchase orders (PO) — created by users for boss approval + print
- * ERP deliveries (confirmed/in_transit/delivered) come through Import module
+ *
+ * Two distinct types co-exist in the orders table:
+ *   purchase_order — created by user (planned/matched/expired/cancelled)
+ *   erp_order      — imported from ERP via Import module (confirmed/in_transit/delivered/cancelled)
+ *
+ * Only ERP orders drive the Forecast chart.
+ * PO lifecycle: planned → (ERP matches it → matched) | (date passes → expired) | (user cancels → cancelled)
  */
 class Order
 {
@@ -36,10 +41,13 @@ class Order
                 o.total_amount,
                 o.order_date,
                 o.delivery_date,
+                o.order_type,
                 o.status,
                 o.notes,
                 o.cancelled_reason,
                 o.cancelled_at,
+                o.erp_order_id,
+                o.matched_at,
                 o.created_at,
                 o.created_by
             FROM orders o
@@ -52,13 +60,17 @@ class Order
 
     /**
      * Get all orders with optional filters
-     * @param array $filters: station_id, fuel_type_id, status, date_from, date_to
+     * @param array $filters: order_type, station_id, fuel_type_id, status, date_from, date_to
      */
     public static function all(array $filters = []): array
     {
         $sql = self::baseSelect() . " WHERE 1=1";
         $params = [];
 
+        if (!empty($filters['order_type'])) {
+            $sql .= " AND o.order_type = ?";
+            $params[] = $filters['order_type'];
+        }
         if (!empty($filters['station_id'])) {
             $sql .= " AND o.station_id = ?";
             $params[] = (int)$filters['station_id'];
@@ -80,7 +92,7 @@ class Order
             $params[] = $filters['date_to'];
         }
 
-        $sql .= " ORDER BY o.order_date DESC, o.id DESC";
+        $sql .= " ORDER BY o.delivery_date ASC, o.id DESC";
         return Database::fetchAll($sql, $params);
     }
 
@@ -126,10 +138,10 @@ class Order
 
         Database::query("
             INSERT INTO orders (
-                order_number, station_id, depot_id, fuel_type_id,
+                order_number, order_type, station_id, depot_id, fuel_type_id,
                 supplier_id, quantity_liters, price_per_ton, total_amount,
                 order_date, delivery_date, status, notes, created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'planned', ?, ?)
+            ) VALUES (?, 'purchase_order', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'planned', ?, ?)
         ", [
             $orderNumber,
             (int)$data['station_id'],
@@ -183,14 +195,18 @@ class Order
     }
 
     /**
-     * Cancel a purchase order with a reason (user error correction)
-     * Can cancel: planned, confirmed, in_transit
+     * Cancel a purchase order with a reason (user error correction only)
+     * Only purchase_orders can be cancelled by the user.
+     * ERP orders: status managed by ERP/Import only.
      */
     public static function cancel(int $id, string $reason): ?array
     {
         $order = self::find($id);
         if (!$order) return null;
-        if (in_array($order['status'], ['delivered', 'cancelled'])) return null;
+        // Only POs can be cancelled by the user
+        if ($order['order_type'] !== 'purchase_order') return null;
+        // Cannot cancel if already terminal
+        if (in_array($order['status'], ['delivered', 'cancelled', 'matched'])) return null;
 
         Database::query("
             UPDATE orders
@@ -253,6 +269,138 @@ class Order
             GROUP BY ft.id, ft.name, ft.code, ft.density
             ORDER BY total_liters DESC
         ");
+    }
+
+    /**
+     * Mark a PO as matched with an incoming ERP order.
+     * Called during Import when a matching ERP order arrives.
+     */
+    public static function matchWithErp(int $poId, int $erpOrderId): ?array
+    {
+        $po = self::find($poId);
+        if (!$po || $po['order_type'] !== 'purchase_order' || $po['status'] !== 'planned') {
+            return null;
+        }
+
+        Database::query("
+            UPDATE orders
+            SET status = 'matched', erp_order_id = ?, matched_at = NOW()
+            WHERE id = ?
+        ", [$erpOrderId, $poId]);
+
+        return self::find($poId);
+    }
+
+    /**
+     * Mark a PO as expired (delivery date passed without ERP confirmation).
+     * Called during page load or cron-like check.
+     */
+    public static function markExpiredPOs(): int
+    {
+        $result = Database::query("
+            UPDATE orders
+            SET status = 'expired'
+            WHERE order_type = 'purchase_order'
+              AND status = 'planned'
+              AND delivery_date < CURDATE()
+        ");
+        return $result->rowCount();
+    }
+
+    /**
+     * Find active PO for station + fuel_type (for Procurement Advisor)
+     * Returns the first planned PO with future delivery_date, if any
+     */
+    public static function findActivePO(int $stationId, int $fuelTypeId): ?array
+    {
+        $result = Database::fetchAll("
+            SELECT
+                o.id, o.order_number, o.delivery_date, o.quantity_liters,
+                ROUND(o.quantity_liters * ft.density / 1000, 2) as quantity_tons,
+                o.status
+            FROM orders o
+            LEFT JOIN fuel_types ft ON o.fuel_type_id = ft.id
+            WHERE o.order_type = 'purchase_order'
+              AND o.status = 'planned'
+              AND o.station_id = ?
+              AND o.fuel_type_id = ?
+              AND o.delivery_date > CURDATE()
+            ORDER BY o.delivery_date ASC
+            LIMIT 1
+        ", [$stationId, $fuelTypeId]);
+        return $result[0] ?? null;
+    }
+
+    /**
+     * Create an ERP order record (called from Import module)
+     * order_type is always 'erp_order'; status set by ERP data
+     */
+    public static function createErpOrder(array $data): ?array
+    {
+        $year = date('Y');
+        $countRow = Database::fetchAll(
+            "SELECT COUNT(*) as cnt FROM orders WHERE YEAR(order_date) = ?",
+            [$year]
+        );
+        $count = (int)($countRow[0]['cnt'] ?? 0) + 1;
+        $orderNumber = $data['order_number'] ?? ('ERP-' . $year . '-' . str_pad($count, 3, '0', STR_PAD_LEFT));
+
+        $totalAmount = $data['total_amount'] ?? null;
+        if (!$totalAmount && !empty($data['price_per_ton']) && !empty($data['quantity_liters'])) {
+            $ftRow = Database::fetchAll("SELECT density FROM fuel_types WHERE id = ?", [(int)$data['fuel_type_id']]);
+            $density = (float)($ftRow[0]['density'] ?? 0.85);
+            $tons = ($data['quantity_liters'] * $density) / 1000;
+            $totalAmount = round($tons * $data['price_per_ton'], 2);
+        }
+
+        $validStatuses = ['confirmed', 'in_transit', 'delivered', 'cancelled'];
+        $status = in_array($data['status'] ?? '', $validStatuses) ? $data['status'] : 'confirmed';
+
+        Database::query("
+            INSERT INTO orders (
+                order_number, order_type, station_id, depot_id, fuel_type_id,
+                supplier_id, quantity_liters, price_per_ton, total_amount,
+                order_date, delivery_date, status, notes
+            ) VALUES (?, 'erp_order', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ", [
+            $orderNumber,
+            (int)$data['station_id'],
+            !empty($data['depot_id']) ? (int)$data['depot_id'] : null,
+            (int)$data['fuel_type_id'],
+            !empty($data['supplier_id']) ? (int)$data['supplier_id'] : null,
+            (float)$data['quantity_liters'],
+            !empty($data['price_per_ton']) ? (float)$data['price_per_ton'] : null,
+            $totalAmount,
+            $data['order_date'] ?? date('Y-m-d'),
+            $data['delivery_date'],
+            $status,
+            $data['notes'] ?? null,
+        ]);
+
+        $id = Database::getConnection()->lastInsertId();
+
+        // Auto-match: look for a PO with same station/fuel/date ±7 days
+        $matchedPO = Database::fetchAll("
+            SELECT id FROM orders
+            WHERE order_type = 'purchase_order'
+              AND status = 'planned'
+              AND station_id = ?
+              AND fuel_type_id = ?
+              AND ABS(DATEDIFF(delivery_date, ?)) <= 7
+            ORDER BY ABS(DATEDIFF(delivery_date, ?)) ASC
+            LIMIT 1
+        ", [
+            (int)$data['station_id'],
+            (int)$data['fuel_type_id'],
+            $data['delivery_date'],
+            $data['delivery_date']
+        ]);
+
+        if (!empty($matchedPO)) {
+            self::matchWithErp((int)$matchedPO[0]['id'], $id);
+        }
+
+        return self::find($id);
     }
 
     /**

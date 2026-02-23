@@ -29,44 +29,85 @@
         <!-- Page Header -->
         <div class="flex items-center justify-between mb-6">
           <div>
-            <h1 class="text-2xl font-bold text-gray-900">Purchase Orders</h1>
-            <p class="text-sm text-gray-500 mt-1">Create, print and manage fuel purchase orders (PO)</p>
+            <h1 class="text-2xl font-bold text-gray-900">Orders</h1>
+            <p class="text-sm text-gray-500 mt-1">Manage Purchase Orders and ERP Deliveries</p>
           </div>
-          <button @click="openCreateModal" class="flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors text-sm shadow-sm">
+          <!-- New PO button — only visible on Purchase Orders tab -->
+          <button v-if="activeTab === 'purchase_orders'"
+            @click="openCreateModal"
+            class="flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors text-sm shadow-sm">
             <i class="fas fa-plus"></i>
             New PO
           </button>
         </div>
 
-        <!-- Filters Bar -->
+        <!-- ── TABS ── -->
+        <div class="flex border-b border-gray-200 mb-5 gap-0">
+          <button
+            @click="switchTab('purchase_orders')"
+            :class="activeTab === 'purchase_orders'
+              ? 'border-b-2 border-black text-gray-900 font-semibold'
+              : 'text-gray-500 hover:text-gray-700'"
+            class="px-5 py-3 text-sm transition-colors focus:outline-none whitespace-nowrap">
+            <i class="fas fa-file-alt mr-2"></i>
+            Purchase Orders
+            <span :class="activeTab === 'purchase_orders' ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'"
+              class="ml-2 px-2 py-0.5 rounded-full text-xs font-medium">
+              {{ poOrders.length }}
+            </span>
+          </button>
+          <button
+            @click="switchTab('erp_deliveries')"
+            :class="activeTab === 'erp_deliveries'
+              ? 'border-b-2 border-black text-gray-900 font-semibold'
+              : 'text-gray-500 hover:text-gray-700'"
+            class="px-5 py-3 text-sm transition-colors focus:outline-none whitespace-nowrap">
+            <i class="fas fa-truck mr-2"></i>
+            ERP Deliveries
+            <span :class="activeTab === 'erp_deliveries' ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'"
+              class="ml-2 px-2 py-0.5 rounded-full text-xs font-medium">
+              {{ erpOrders.length }}
+            </span>
+          </button>
+        </div>
+
+        <!-- ── FILTERS BAR ── -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-5 flex flex-wrap items-center gap-3">
-          <select v-model="filters.station_id" @change="loadOrders"
+          <select v-model="activeFilters.station_id" @change="loadActiveTab"
             class="text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
             <option value="">All Stations</option>
             <option v-for="s in stations" :key="s.id" :value="s.id">{{ s.name }}</option>
           </select>
 
-          <select v-model="filters.fuel_type_id" @change="loadOrders"
+          <select v-model="activeFilters.fuel_type_id" @change="loadActiveTab"
             class="text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
             <option value="">All Fuel Types</option>
             <option v-for="f in fuelTypes" :key="f.id" :value="f.id">{{ f.name }}</option>
           </select>
 
-          <select v-model="filters.status" @change="loadOrders"
+          <!-- Status filter — different options per tab -->
+          <select v-model="activeFilters.status" @change="loadActiveTab"
             class="text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
             <option value="">All Statuses</option>
-            <option value="planned">Planned</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="in_transit">In Transit</option>
-            <option value="delivered">Delivered</option>
-            <option value="cancelled">Cancelled</option>
+            <template v-if="activeTab === 'purchase_orders'">
+              <option value="planned">Planned</option>
+              <option value="matched">Matched (ERP confirmed)</option>
+              <option value="expired">Expired</option>
+              <option value="cancelled">Cancelled</option>
+            </template>
+            <template v-else>
+              <option value="confirmed">Confirmed</option>
+              <option value="in_transit">In Transit</option>
+              <option value="delivered">Delivered</option>
+              <option value="cancelled">Cancelled</option>
+            </template>
           </select>
 
-          <input type="date" v-model="filters.date_from" @change="loadOrders"
+          <input type="date" v-model="activeFilters.date_from" @change="loadActiveTab"
             class="text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
             title="Delivery date from">
 
-          <input type="date" v-model="filters.date_to" @change="loadOrders"
+          <input type="date" v-model="activeFilters.date_to" @change="loadActiveTab"
             class="text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
             title="Delivery date to">
 
@@ -76,30 +117,30 @@
           </button>
 
           <div class="ml-auto text-sm text-gray-500">
-            {{ orders.length }} order{{ orders.length !== 1 ? 's' : '' }}
+            {{ currentOrders.length }} record{{ currentOrders.length !== 1 ? 's' : '' }}
           </div>
         </div>
 
-        <!-- Orders Table -->
-        <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!--  TAB 1: PURCHASE ORDERS                                       -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <div v-if="activeTab === 'purchase_orders'" class="bg-white rounded-2xl shadow-lg overflow-hidden">
 
-          <!-- Loading -->
-          <div v-if="loading" class="flex items-center justify-center py-16">
+          <div v-if="loadingPO" class="flex items-center justify-center py-16">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mr-3"></div>
-            <span class="text-gray-500 text-sm">Loading orders...</span>
+            <span class="text-gray-500 text-sm">Loading purchase orders...</span>
           </div>
 
-          <!-- Empty state -->
-          <div v-else-if="orders.length === 0" class="text-center py-16 text-gray-400">
-            <i class="fas fa-clipboard-list text-5xl mb-4"></i>
-            <p class="text-lg font-medium text-gray-500">No orders found</p>
+          <div v-else-if="poOrders.length === 0" class="text-center py-16 text-gray-400">
+            <i class="fas fa-file-alt text-5xl mb-4"></i>
+            <p class="text-lg font-medium text-gray-500">No purchase orders found</p>
             <p class="text-sm mt-1">Adjust filters or create a new purchase order</p>
-            <button @click="openCreateModal" class="mt-5 inline-flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-xl font-medium text-sm hover:bg-gray-800 transition-colors">
+            <button @click="openCreateModal"
+              class="mt-5 inline-flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-xl font-medium text-sm hover:bg-gray-800 transition-colors">
               <i class="fas fa-plus"></i> New PO
             </button>
           </div>
 
-          <!-- Table -->
           <div v-else class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead class="bg-gray-50 border-b border-gray-200">
@@ -116,40 +157,33 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
-                <tr v-for="order in orders" :key="order.id" class="hover:bg-gray-50 transition-colors">
+                <tr v-for="order in poOrders" :key="order.id" class="hover:bg-gray-50 transition-colors">
 
-                  <!-- PO number -->
                   <td class="px-5 py-3.5 font-mono text-gray-700 font-medium whitespace-nowrap">
                     {{ order.order_number }}
                   </td>
 
-                  <!-- Station -->
                   <td class="px-5 py-3.5 text-gray-800 whitespace-nowrap">
                     {{ order.station_name || '—' }}
                   </td>
 
-                  <!-- Fuel Type -->
                   <td class="px-5 py-3.5 whitespace-nowrap">
                     <span class="text-gray-800">{{ order.fuel_type_name }}</span>
                     <span class="text-gray-400 ml-1 text-xs">({{ order.fuel_type_code }})</span>
                   </td>
 
-                  <!-- Qty L -->
                   <td class="px-5 py-3.5 text-right font-medium text-gray-700 whitespace-nowrap">
                     {{ formatNum(order.quantity_liters) }}
                   </td>
 
-                  <!-- Qty T -->
                   <td class="px-5 py-3.5 text-right text-gray-500 whitespace-nowrap">
                     {{ order.quantity_tons }}
                   </td>
 
-                  <!-- Supplier -->
                   <td class="px-5 py-3.5 text-gray-600 whitespace-nowrap">
                     {{ order.supplier_name || '—' }}
                   </td>
 
-                  <!-- Delivery Date -->
                   <td class="px-5 py-3.5 text-gray-700 whitespace-nowrap">
                     {{ formatDate(order.delivery_date) }}
                   </td>
@@ -160,34 +194,36 @@
                       class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
                       {{ statusLabel(order.status) }}
                     </span>
-                    <!-- Cancellation reason -->
+                    <!-- Matched: show linked ERP order reference -->
+                    <div v-if="order.status === 'matched' && order.erp_order_id"
+                      class="mt-1 text-xs text-blue-500">
+                      ERP #{{ order.erp_order_id }}
+                    </div>
+                    <!-- Cancelled reason -->
                     <div v-if="order.status === 'cancelled' && order.cancelled_reason"
-                      class="mt-1 text-xs text-red-500 italic max-w-[200px] truncate cursor-help"
+                      class="mt-1 text-xs text-red-500 italic max-w-[180px] truncate cursor-help"
                       :title="order.cancelled_reason">
                       {{ order.cancelled_reason }}
                     </div>
                   </td>
 
-                  <!-- Actions -->
+                  <!-- Actions — only for purchase_orders -->
                   <td class="px-5 py-3.5">
-                    <div class="flex items-center gap-2 flex-wrap">
-
-                      <!-- Print: available for planned/confirmed/in_transit -->
-                      <button v-if="['planned','confirmed','in_transit'].includes(order.status)"
+                    <div class="flex items-center gap-2">
+                      <!-- Print: only for planned -->
+                      <button v-if="order.status === 'planned'"
                         @click="printPO(order)"
                         class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                         title="Print PO">
                         <i class="fas fa-print"></i> Print
                       </button>
-
-                      <!-- Cancel: only for planned (user error correction) -->
+                      <!-- Cancel: only for planned -->
                       <button v-if="order.status === 'planned'"
                         @click="openCancelModal(order)"
                         class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
                         title="Cancel this PO">
                         <i class="fas fa-times"></i> Cancel
                       </button>
-
                     </div>
                   </td>
 
@@ -196,7 +232,104 @@
             </table>
           </div>
         </div>
-        <!-- /table card -->
+        <!-- /Purchase Orders tab -->
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!--  TAB 2: ERP DELIVERIES (read-only)                            -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <div v-else class="bg-white rounded-2xl shadow-lg overflow-hidden">
+
+          <!-- Info banner: ERP orders are read-only -->
+          <div class="bg-blue-50 border-b border-blue-100 px-5 py-2.5 text-xs text-blue-700 flex items-center gap-2">
+            <i class="fas fa-info-circle"></i>
+            ERP orders are imported from the ERP system (erp.kittykat.tech) and are read-only.
+            Only ERP deliveries contribute to the Forecast chart.
+          </div>
+
+          <div v-if="loadingERP" class="flex items-center justify-center py-16">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mr-3"></div>
+            <span class="text-gray-500 text-sm">Loading ERP deliveries...</span>
+          </div>
+
+          <div v-else-if="erpOrders.length === 0" class="text-center py-16 text-gray-400">
+            <i class="fas fa-truck text-5xl mb-4"></i>
+            <p class="text-lg font-medium text-gray-500">No ERP deliveries found</p>
+            <p class="text-sm mt-1">ERP orders are imported via the Import module</p>
+          </div>
+
+          <div v-else class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Order #</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Station</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fuel Type</th>
+                  <th class="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty (L)</th>
+                  <th class="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty (T)</th>
+                  <th class="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Price / T</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Delivery Date</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Matched PO</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr v-for="order in erpOrders" :key="order.id" class="hover:bg-gray-50 transition-colors">
+
+                  <td class="px-5 py-3.5 font-mono text-gray-700 font-medium whitespace-nowrap">
+                    {{ order.order_number }}
+                  </td>
+
+                  <td class="px-5 py-3.5 text-gray-800 whitespace-nowrap">
+                    {{ order.station_name || '—' }}
+                  </td>
+
+                  <td class="px-5 py-3.5 whitespace-nowrap">
+                    <span class="text-gray-800">{{ order.fuel_type_name }}</span>
+                    <span class="text-gray-400 ml-1 text-xs">({{ order.fuel_type_code }})</span>
+                  </td>
+
+                  <td class="px-5 py-3.5 text-right font-medium text-gray-700 whitespace-nowrap">
+                    {{ formatNum(order.quantity_liters) }}
+                  </td>
+
+                  <td class="px-5 py-3.5 text-right text-gray-500 whitespace-nowrap">
+                    {{ order.quantity_tons }}
+                  </td>
+
+                  <td class="px-5 py-3.5 text-right text-gray-600 whitespace-nowrap">
+                    {{ order.price_per_ton ? '$' + formatNum(order.price_per_ton) : '—' }}
+                  </td>
+
+                  <td class="px-5 py-3.5 text-gray-600 whitespace-nowrap">
+                    {{ order.supplier_name || '—' }}
+                  </td>
+
+                  <td class="px-5 py-3.5 text-gray-700 whitespace-nowrap">
+                    {{ formatDate(order.delivery_date) }}
+                  </td>
+
+                  <td class="px-5 py-3.5">
+                    <span :class="statusBadgeClass(order.status)"
+                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap">
+                      {{ statusLabel(order.status) }}
+                    </span>
+                  </td>
+
+                  <!-- Matched PO column -->
+                  <td class="px-5 py-3.5 text-xs text-gray-500">
+                    <span v-if="order.erp_order_id" class="text-blue-600 font-medium">
+                      Linked
+                    </span>
+                    <span v-else class="text-gray-300">—</span>
+                  </td>
+
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- /ERP Deliveries tab -->
 
       </div>
       <!-- /page content -->
@@ -339,7 +472,7 @@
               <div class="flex items-center justify-between mb-4">
                 <h2 class="text-xl font-bold text-gray-900">
                   <i class="fas fa-ban text-red-500 mr-2"></i>
-                  Cancel Order
+                  Cancel Purchase Order
                 </h2>
                 <button @click="showCancelModal = false" class="text-gray-400 hover:text-gray-600 text-xl">
                   <i class="fas fa-times"></i>
@@ -365,10 +498,10 @@
                 </textarea>
               </div>
 
-              <!-- Warning -->
+              <!-- Note -->
               <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5 text-xs text-amber-700 flex items-start gap-2">
-                <i class="fas fa-exclamation-triangle mt-0.5 flex-shrink-0"></i>
-                <span>The forecast chart will be updated — the delivery bump will disappear and new shortage warnings may appear in Procurement Advisor.</span>
+                <i class="fas fa-info-circle mt-0.5 flex-shrink-0"></i>
+                <span>Purchase Orders do not affect the forecast chart. Cancellation is for error correction only — if the ERP already confirmed this order, cancel via ERP.</span>
               </div>
 
               <!-- Actions -->
@@ -497,13 +630,26 @@ import { ordersApi, stationsApi, fuelTypesApi, suppliersApi } from '../services/
 // ────────────────────────────────────────────────────────────────────────────
 // State
 // ────────────────────────────────────────────────────────────────────────────
-const orders    = ref([])
-const stations  = ref([])
-const fuelTypes = ref([])
-const suppliers = ref([])
-const loading   = ref(false)
+const activeTab  = ref('purchase_orders')   // 'purchase_orders' | 'erp_deliveries'
 
-const filters = ref({
+const poOrders   = ref([])
+const erpOrders  = ref([])
+const stations   = ref([])
+const fuelTypes  = ref([])
+const suppliers  = ref([])
+const loadingPO  = ref(false)
+const loadingERP = ref(false)
+
+// Separate filter sets for each tab
+const poFilters = ref({
+  station_id:   '',
+  fuel_type_id: '',
+  status:       '',
+  date_from:    '',
+  date_to:      ''
+})
+
+const erpFilters = ref({
   station_id:   '',
   fuel_type_id: '',
   status:       '',
@@ -516,9 +662,9 @@ const showCreateModal = ref(false)
 const formSubmitting  = ref(false)
 const createError     = ref('')
 const form = ref({
-  station_id:     '',
-  fuel_type_id:   '',
-  supplier_id:    '',
+  station_id:      '',
+  fuel_type_id:    '',
+  supplier_id:     '',
   quantity_liters: null,
   price_per_ton:   null,
   delivery_date:   '',
@@ -540,6 +686,17 @@ const today = new Date().toISOString().split('T')[0]
 // ────────────────────────────────────────────────────────────────────────────
 // Computed
 // ────────────────────────────────────────────────────────────────────────────
+
+/** Active filters object — points to whichever tab is visible */
+const activeFilters = computed(() =>
+  activeTab.value === 'purchase_orders' ? poFilters.value : erpFilters.value
+)
+
+/** Active orders list for the count in the filter bar */
+const currentOrders = computed(() =>
+  activeTab.value === 'purchase_orders' ? poOrders.value : erpOrders.value
+)
+
 const selectedFuelDensity = computed(() => {
   if (!form.value.fuel_type_id) return null
   const ft = fuelTypes.value.find(f => f.id == form.value.fuel_type_id)
@@ -547,24 +704,62 @@ const selectedFuelDensity = computed(() => {
 })
 
 // ────────────────────────────────────────────────────────────────────────────
+// Tab switching
+// ────────────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab.value = tab
+  loadActiveTab()
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Data loading
 // ────────────────────────────────────────────────────────────────────────────
-async function loadOrders() {
-  loading.value = true
+async function loadPOOrders() {
+  loadingPO.value = true
   try {
-    const params = {}
-    if (filters.value.station_id)   params.station_id   = filters.value.station_id
-    if (filters.value.fuel_type_id) params.fuel_type_id = filters.value.fuel_type_id
-    if (filters.value.status)       params.status       = filters.value.status
-    if (filters.value.date_from)    params.date_from    = filters.value.date_from
-    if (filters.value.date_to)      params.date_to      = filters.value.date_to
+    const f = poFilters.value
+    const params = { order_type: 'purchase_order' }
+    if (f.station_id)   params.station_id   = f.station_id
+    if (f.fuel_type_id) params.fuel_type_id = f.fuel_type_id
+    if (f.status)       params.status       = f.status
+    if (f.date_from)    params.date_from    = f.date_from
+    if (f.date_to)      params.date_to      = f.date_to
 
     const res = await ordersApi.getAll(params)
-    orders.value = res.data.data || []
+    poOrders.value = res.data.data || []
   } catch (e) {
-    console.error('Failed to load orders', e)
+    console.error('Failed to load PO orders', e)
   } finally {
-    loading.value = false
+    loadingPO.value = false
+  }
+}
+
+async function loadERPOrders() {
+  loadingERP.value = true
+  try {
+    const f = erpFilters.value
+    const params = { order_type: 'erp_order' }
+    if (f.station_id)   params.station_id   = f.station_id
+    if (f.fuel_type_id) params.fuel_type_id = f.fuel_type_id
+    if (f.status)       params.status       = f.status
+    if (f.date_from)    params.date_from    = f.date_from
+    if (f.date_to)      params.date_to      = f.date_to
+
+    const res = await ordersApi.getAll(params)
+    erpOrders.value = res.data.data || []
+  } catch (e) {
+    console.error('Failed to load ERP orders', e)
+  } finally {
+    loadingERP.value = false
+  }
+}
+
+/** Load only the currently visible tab (used by filter changes) */
+function loadActiveTab() {
+  if (activeTab.value === 'purchase_orders') {
+    loadPOOrders()
+  } else {
+    loadERPOrders()
   }
 }
 
@@ -590,8 +785,13 @@ async function loadSuppliers() {
 }
 
 function clearFilters() {
-  filters.value = { station_id: '', fuel_type_id: '', status: '', date_from: '', date_to: '' }
-  loadOrders()
+  if (activeTab.value === 'purchase_orders') {
+    poFilters.value = { station_id: '', fuel_type_id: '', status: '', date_from: '', date_to: '' }
+    loadPOOrders()
+  } else {
+    erpFilters.value = { station_id: '', fuel_type_id: '', status: '', date_from: '', date_to: '' }
+    loadERPOrders()
+  }
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -613,7 +813,7 @@ async function submitCreate() {
   try {
     await ordersApi.create(form.value)
     showCreateModal.value = false
-    await loadOrders()
+    await loadPOOrders()
   } catch (e) {
     createError.value = e.response?.data?.error || 'Failed to create order'
   } finally {
@@ -625,9 +825,9 @@ async function submitCreate() {
 // Cancel PO
 // ────────────────────────────────────────────────────────────────────────────
 function openCancelModal(order) {
-  selectedOrder.value = order
-  cancelReason.value  = ''
-  cancelError.value   = ''
+  selectedOrder.value  = order
+  cancelReason.value   = ''
+  cancelError.value    = ''
   showCancelModal.value = true
 }
 
@@ -638,7 +838,7 @@ async function submitCancel() {
   try {
     await ordersApi.cancel(selectedOrder.value.id, cancelReason.value)
     showCancelModal.value = false
-    await loadOrders()
+    await loadPOOrders()
   } catch (e) {
     cancelError.value = e.response?.data?.error || 'Failed to cancel order'
   } finally {
@@ -651,7 +851,6 @@ async function submitCancel() {
 // ────────────────────────────────────────────────────────────────────────────
 function printPO(order) {
   printOrder.value = order
-  // Give Vue time to render the #print-po section before triggering print
   setTimeout(() => window.print(), 100)
 }
 
@@ -660,10 +859,15 @@ function printPO(order) {
 // ────────────────────────────────────────────────────────────────────────────
 function statusBadgeClass(status) {
   const map = {
+    // PO statuses
     planned:    'bg-gray-100 text-gray-700',
-    confirmed:  'bg-blue-100 text-blue-700',
+    matched:    'bg-blue-100 text-blue-700',
+    expired:    'bg-orange-100 text-orange-700',
+    // ERP statuses
+    confirmed:  'bg-sky-100 text-sky-700',
     in_transit: 'bg-amber-100 text-amber-700',
     delivered:  'bg-green-100 text-green-700',
+    // Both
     cancelled:  'bg-red-100 text-red-700',
   }
   return map[status] || 'bg-gray-100 text-gray-600'
@@ -672,6 +876,8 @@ function statusBadgeClass(status) {
 function statusLabel(status) {
   const map = {
     planned:    'Planned',
+    matched:    'Matched',
+    expired:    'Expired',
     confirmed:  'Confirmed',
     in_transit: 'In Transit',
     delivered:  'Delivered',
@@ -695,7 +901,9 @@ function formatNum(n) {
 // Lifecycle
 // ────────────────────────────────────────────────────────────────────────────
 onMounted(() => {
-  loadOrders()
+  // Load both tabs in parallel on mount so tab badge counts are accurate
+  loadPOOrders()
+  loadERPOrders()
   loadStations()
   loadFuelTypes()
   loadSuppliers()

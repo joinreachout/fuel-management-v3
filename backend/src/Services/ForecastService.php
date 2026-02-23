@@ -437,6 +437,7 @@ class ForecastService
                     WHERE o.station_id IN ({$stationPlaceholders})
                       AND o.fuel_type_id IN ({$fuelPlaceholders})
                       AND o.delivery_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL ? DAY)
+                      AND o.order_type = 'erp_order'
                       AND o.status NOT IN ('cancelled', 'delivered')
                     GROUP BY o.delivery_date
                 ", $orderParams);

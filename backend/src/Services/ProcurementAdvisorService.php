@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Core\Database;
+use App\Models\Order;
 
 /**
  * Procurement Advisor Service
@@ -185,6 +186,10 @@ class ProcurementAdvisorService
                 $daysUntilCritical = max(0, $daysLeft);
             }
 
+            // Check for an active Purchase Order for this station + fuel type
+            // If one exists, we show "PO pending" badge instead of pushing a new recommendation
+            $activePO = Order::findActivePO((int)$row['station_id'], (int)$row['fuel_type_id']);
+
             $shortages[] = [
                 'station_id' => $row['station_id'],
                 'station_name' => $row['station_name'],
@@ -195,6 +200,9 @@ class ProcurementAdvisorService
                 'fuel_type_name' => $row['fuel_type_name'],
                 'fuel_type_code' => $row['fuel_type_code'],
                 'urgency' => $urgency,
+                // PO tracking fields
+                'po_pending' => $activePO !== null,
+                'active_po' => $activePO,
                 'days_left' => $daysLeft,
                 'days_until_critical' => $daysUntilCritical,
                 'critical_date' => $criticalDate,
