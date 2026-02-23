@@ -34,9 +34,10 @@
 - Risk Exposure, Cost Analysis, Inventory Turnover (static analytical views)
 
 ### Orders Module
-- Full CRUD for orders
+- Backend API: full CRUD, status transitions
 - Statuses: pending → confirmed → in_transit → delivered
 - Delivery date tracking — feeds forecast chart
+- **Frontend UI: not yet implemented** (in progress)
 
 ### Transfers Module
 - Depot-to-depot transfers
@@ -68,6 +69,42 @@
 | API Endpoints | 40+ |
 | Frontend Components | 20+ |
 | DB Migrations | 7 |
+
+---
+
+## Next Up — In Progress
+
+### Orders Module (Full UI Implementation + Cancellation Logic)
+**Priority:** HIGH — Next task
+**Added:** 2026-02
+**Spec:** [docs/features/ORDERS_MODULE.md](docs/features/ORDERS_MODULE.md)
+
+**Core concept:**
+The forecast chart shows two types of deliveries:
+1. **Past deliveries** — already completed (`delivered`), reflected in current stock
+2. **Future planned deliveries** — scheduled (`confirmed` / `in_transit`), shown as bumps on forecast
+
+When a planned order gets **cancelled** (broken truck, factory bombed, etc.) — the system must:
+- Immediately recalculate the forecast curve (delivery bump disappears)
+- Re-evaluate Procurement Advisor recommendations (new shortage risk detected)
+- Show reason for cancellation in order history
+
+**Status flow:**
+```
+pending → confirmed → in_transit → delivered
+                  ↘              ↘
+                  cancelled      cancelled
+                  (+ reason)     (+ reason)
+```
+
+**What needs to be built:**
+- [ ] Orders list page with filters (station, fuel type, status, date range)
+- [ ] Create/Edit order form
+- [ ] Cancel order action — modal with mandatory reason input
+- [ ] `cancelled_reason` and `cancelled_at` fields in `orders` table (migration)
+- [ ] Status transition buttons (Confirm / Mark In Transit / Mark Delivered / Cancel)
+- [ ] ForecastService already filters by `status IN ('confirmed', 'in_transit')` — cancellation auto-removes bump ✓
+- [ ] ProcurementAdvisor re-query on order status change
 
 ---
 
