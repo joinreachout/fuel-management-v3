@@ -1,215 +1,277 @@
-# Orders Module — Full Specification
+# Orders Module — Architecture & Specification
 
-> Status: Backend API exists. Frontend UI not implemented. See PROGRESS.md.
-
----
-
-## Why This Matters
-
-The forecast chart is only useful if orders are managed correctly. The core contract:
-
-- **Delivered orders** → stock was already physically added → `current_stock_liters` in `depot_tanks` is the source of truth
-- **Planned orders** (`confirmed` / `in_transit`) → shown as delivery bumps on the forecast chart
-- **Cancelled orders** → immediately vanish from forecast, triggering new shortage warnings
-
-Real-world risks that make cancellation critical:
-- Supplier truck breaks down en route
-- Factory/refinery disruption (fire, strike, sanctions)
-- Customs delays
-- Extreme weather blocks route
-- Order placed with wrong quantity or depot
-
-When a bump disappears from the forecast, the system must surface the impact **immediately** — which stations are now at risk, how urgent is re-ordering.
+> **Status:** ✅ Fully implemented and live (2026-02-23)
+> **Migration:** 008_order_type.sql applied to production
 
 ---
 
-## Status Flow
+## Two Order Types — Core Concept
+
+The `orders` table holds **two fundamentally different kinds of records**, distinguished by the `order_type` column:
+
+| Type | `order_type` | Who creates it | Purpose |
+|------|-------------|----------------|---------|
+| Purchase Order | `purchase_order` | User manually in UI | Planning document — a request sent to the supplier; a paper PO printed and given to management |
+| ERP Order | `erp_order` | Import from erp.kittykat.tech (1C simulator) | Real confirmed supply from ERP; drives the Forecast chart |
+
+### Why two types?
+- A **Purchase Order** is a *planning intent* — it does NOT mean fuel will arrive. Only an ERP confirmation means it will.
+- The **Forecast chart** must only show bumps for **real ERP deliveries**, not for unconfirmed POs (which could be ignored, duplicate, or cancelled due to error).
+- The user needs to track both: did I submit a request to the supplier? Did the ERP confirm it?
+
+---
+
+## Purchase Order (PO) Lifecycle
 
 ```
-pending
-  │
-  ├─ [Confirm] ──────────────→ confirmed
-  │                                │
-  │                         [Mark In Transit] → in_transit
-  │                                │                │
-  │                          [Cancel]         [Cancel]
-  │                          + reason         + reason
-  │                                │                │
-  │                          cancelled        cancelled
-  │
-  └─ [Cancel] → cancelled (+ reason)
-
-confirmed / in_transit:
-  └─ [Mark Delivered] → delivered
+[User creates PO]
+        ↓
+   status: planned
+        │
+        ├── [ERP import arrives, matches PO] ──→ matched
+        │                                          (erp_order_id set, matched_at set)
+        │
+        ├── [Delivery date passes, no ERP] ──→ expired
+        │   (auto: markExpiredPOs() on each index load)
+        │
+        └── [User cancels — error correction] ──→ cancelled
+                (cancelled_reason required)
 ```
 
-**Rules:**
-- `delivered` is **terminal** — cannot be cancelled
-- `cancelled` is **terminal** — cannot be un-cancelled (create new order instead)
-- Cancellation always requires a reason (non-empty string)
+**Key rules for POs:**
+- Only `purchase_order` type can be cancelled by user (not ERP orders)
+- Cannot cancel if status is `matched` or `expired` (only `planned` → `cancelled`)
+- Only `planned` POs can be printed and cancelled via UI
+- POs do **NOT** affect the Forecast chart — they are invisible to ForecastService
 
 ---
 
-## DB Schema Changes
+## ERP Order Lifecycle
 
-Add to `orders` table (migration 003 or separate):
+```
+[Import from ERP system]
+        ↓
+   status: confirmed  (ERP has confirmed the shipment)
+        ↓
+   status: in_transit  (ERP reports truck dispatched)
+        ↓
+   status: delivered   (ERP reports delivery complete)
+                        → stock physically updated elsewhere
+        or
+   status: cancelled   (ERP cancelled — managed by ERP/Import only)
+```
+
+**Key rules for ERP orders:**
+- Created ONLY via Import module (or `Order::createErpOrder()` internally)
+- Read-only in UI — no create/cancel buttons shown
+- `confirmed` and `in_transit` ERP orders → **shown as delivery bumps on Forecast chart**
+- `delivered` → stock already in `depot_tanks.current_stock_liters` (source of truth)
+
+---
+
+## Auto-Matching: PO ↔ ERP Order
+
+When an ERP order is imported (`Order::createErpOrder()`), the system automatically searches for a matching PO:
 
 ```sql
-ALTER TABLE orders
-  ADD COLUMN cancelled_reason VARCHAR(500) NULL AFTER status,
-  ADD COLUMN cancelled_at DATETIME NULL AFTER cancelled_reason;
+WHERE order_type = 'purchase_order'
+  AND status = 'planned'
+  AND station_id = [same]
+  AND fuel_type_id = [same]
+  AND ABS(DATEDIFF(delivery_date, [erp_delivery_date])) <= 7
+ORDER BY ABS(DATEDIFF(...)) ASC
+LIMIT 1
 ```
 
-`status` ENUM extended to include `'cancelled'`:
+If a match is found:
+- PO status → `matched`
+- PO `erp_order_id` → ID of the new ERP order
+- PO `matched_at` → NOW()
+
+---
+
+## Database Schema
+
+### New columns added by migration 008:
+
 ```sql
-ALTER TABLE orders MODIFY COLUMN status ENUM(
-  'pending', 'confirmed', 'in_transit', 'delivered', 'cancelled'
-) NOT NULL DEFAULT 'pending';
+-- Added to orders table
+order_type   ENUM('purchase_order', 'erp_order') NOT NULL DEFAULT 'purchase_order'
+erp_order_id INT NULL       -- FK: which ERP order matched this PO
+matched_at   DATETIME NULL  -- when was this PO matched to ERP
 ```
+
+### Status ENUM (full):
+```sql
+ENUM('planned','matched','expired','confirmed','in_transit','delivered','cancelled')
+```
+
+| Status | Applies to | Description |
+|--------|-----------|-------------|
+| `planned` | purchase_order | Created by user, awaiting ERP confirmation |
+| `matched` | purchase_order | ERP confirmed — linked to erp_order_id |
+| `expired` | purchase_order | Delivery date passed without ERP matching |
+| `confirmed` | erp_order | ERP has confirmed the shipment |
+| `in_transit` | erp_order | Truck dispatched, en route |
+| `delivered` | erp_order | Delivery completed |
+| `cancelled` | both | Cancelled (with reason for PO; by ERP for erp_order) |
 
 ---
 
 ## Backend API
 
-### Existing endpoints (already in OrderController):
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/orders` | List all orders (filterable) |
-| GET | `/api/orders/{id}` | Single order |
-| POST | `/api/orders` | Create order |
-| PUT | `/api/orders/{id}` | Update order (status, quantity, date) |
-| DELETE | `/api/orders/{id}` | Delete order (admin only) |
+### GET `/api/orders`
 
-### New endpoint needed:
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/orders/{id}/cancel` | Cancel with reason |
+Returns orders filtered by `order_type`:
 
-Request body:
-```json
-{ "reason": "Supplier truck broke down on Bishkek-Osh road" }
+```
+GET /api/orders?order_type=purchase_order   → only POs
+GET /api/orders?order_type=erp_order        → only ERP orders
+GET /api/orders?station_id=249&fuel_type_id=25
 ```
 
-The cancel endpoint:
-1. Validates `reason` is not empty
-2. Sets `status = 'cancelled'`, `cancelled_reason = ?`, `cancelled_at = NOW()`
-3. Returns updated order
+**Response fields (all orders):**
+```json
+{
+  "id": 42,
+  "order_number": "ORD-2026-001",
+  "order_type": "purchase_order",
+  "supplier_id": 1,
+  "supplier_name": "OPCK",
+  "station_id": 249,
+  "station_name": "Станция Каинда",
+  "depot_id": 148,
+  "depot_name": "Каинда-1",
+  "fuel_type_id": 25,
+  "fuel_type_name": "Diesel B7",
+  "fuel_type_code": "DIESB7",
+  "density": "0.830",
+  "quantity_liters": "45000.00",
+  "quantity_tons": "37.35",
+  "price_per_ton": "850.00",
+  "total_amount": "31747.50",
+  "order_date": "2026-02-23",
+  "delivery_date": "2026-03-05",
+  "status": "planned",
+  "notes": null,
+  "cancelled_reason": null,
+  "cancelled_at": null,
+  "erp_order_id": null,
+  "matched_at": null,
+  "created_at": "2026-02-23 16:00:00",
+  "created_by": null
+}
+```
 
-**Forecast impact:** ForecastService queries `status IN ('confirmed', 'in_transit')` — cancellation automatically removes the bump. No extra code needed in ForecastService.
+### POST `/api/orders`
+Creates a new purchase order (always `order_type = 'purchase_order'`, status `planned`).
+
+**Required fields:** `station_id`, `fuel_type_id`, `quantity_liters`, `delivery_date`
+**Optional:** `supplier_id`, `depot_id`, `price_per_ton`, `notes`
+
+### POST `/api/orders/{id}/cancel`
+```json
+{ "reason": "Wrong quantity entered" }
+```
+Only works for `purchase_order` with status `planned`.
+
+### PUT `/api/orders/{id}`
+Update PO fields: `quantity_liters`, `price_per_ton`, `total_amount`, `delivery_date`, `supplier_id`, `depot_id`, `notes`.
+Cannot update `delivered` or `cancelled` orders.
+
+### DELETE `/api/orders/{id}`
+Delete PO — only if `status = 'planned'`.
 
 ---
 
-## Frontend: Orders Page
+## Frontend: Orders Page (two tabs)
 
-### Layout
-```
-┌─────────────────────────────────────────────────────┐
-│  Orders                          [+ New Order]       │
-├─────────────────────────────────────────────────────┤
-│  Filters: [Station ▼] [Fuel Type ▼] [Status ▼] [Date range]  │
-├──────┬──────────┬───────────┬───────────┬───────────┬────────┤
-│  #   │ Station  │ Fuel Type │ Qty (tons)│ Delivery  │ Status │ Actions │
-├──────┼──────────┼───────────┼───────────┼───────────┼────────┤
-│ ...  │  ...     │  ...      │   ...     │ Feb 26    │ ✅ del │        │
-│ ...  │  ...     │  ...      │   ...     │ Mar 05    │ 🚚 int │ [✓del] [✗]│
-│ ...  │  ...     │  ...      │   ...     │ Mar 12    │ 📋 cnf │ [🚚] [✓] [✗]│
-│ ...  │  ...     │  ...      │   ...     │ Mar 19    │ ⏳ pnd │ [📋] [✗]│
-│ ...  │  ...     │  ...      │   ...     │ Feb 20    │ ❌ can │ (reason shown on hover)│
-└──────┴──────────┴───────────┴───────────┴───────────┴────────┘
-```
+### Tab 1: Purchase Orders
+- Shows: `planned`, `matched`, `expired`, `cancelled` statuses
+- Has **+ New PO** button
+- Per-row actions:
+  - `planned` → **Print** + **Cancel**
+  - `matched` → shows "ERP #ID" reference — no actions
+  - `expired` → no actions
+  - `cancelled` → shows reason — no actions
+- Status badges:
+  - `planned` → gray
+  - `matched` → blue ("Matched")
+  - `expired` → orange ("Expired")
+  - `cancelled` → red
 
-### Status badges (colored):
-| Status | Color | Label |
-|--------|-------|-------|
-| `pending` | gray | Pending |
-| `confirmed` | blue | Confirmed |
-| `in_transit` | yellow | In Transit |
-| `delivered` | green | Delivered |
-| `cancelled` | red | Cancelled |
-
-### Action buttons per row:
-- `pending`: [Confirm] [Cancel]
-- `confirmed`: [Mark In Transit] [Mark Delivered] [Cancel]
-- `in_transit`: [Mark Delivered] [Cancel]
-- `delivered`: — (no actions)
-- `cancelled`: shows `cancelled_reason` as tooltip or inline text
-
-### Cancellation modal:
-```
-┌─────────────────────────────────────────┐
-│  Cancel Order #ORD-2026-025             │
-│                                         │
-│  Station: Станция Рыбачье               │
-│  Fuel: Diesel B7 — 45,000 L             │
-│  Delivery: Mar 05, 2026                 │
-│                                         │
-│  Reason for cancellation: *             │
-│  ┌─────────────────────────────────┐   │
-│  │ e.g. Supplier truck broke down  │   │
-│  └─────────────────────────────────┘   │
-│                                         │
-│  ⚠️ This will update the forecast chart │
-│  and may trigger new shortage alerts.   │
-│                                         │
-│         [Cancel Order]  [Go Back]       │
-└─────────────────────────────────────────┘
-```
-
-### Create/Edit order form:
-Fields:
-- Station (select from stations)
-- Fuel Type (select — filtered by what that station uses)
-- Quantity (liters, shown as tons preview)
-- Supplier (select from suppliers)
-- Delivery Date (date picker)
-- Status (default: pending)
-- Notes (optional)
+### Tab 2: ERP Deliveries
+- Shows: `confirmed`, `in_transit`, `delivered`, `cancelled` statuses
+- **Read-only** — no create/cancel buttons
+- Info banner: "ERP orders are imported from erp.kittykat.tech and are read-only"
+- Extra column: **Matched PO** — shows "Linked" if `erp_order_id` is set
+- Status badges:
+  - `confirmed` → sky blue
+  - `in_transit` → amber
+  - `delivered` → green
+  - `cancelled` → red
 
 ---
 
 ## Forecast Integration
 
-**Current behavior (already works):**
+**ForecastService** (`backend/src/Services/ForecastService.php`) uses ONLY ERP orders for delivery bumps:
+
 ```php
-AND o.status IN ('confirmed', 'in_transit')
+AND o.order_type = 'erp_order'
+AND o.status NOT IN ('cancelled', 'delivered')
+-- i.e. only confirmed + in_transit ERP orders create bumps
 ```
 
-When an order is cancelled → status changes → next forecast load excludes it automatically.
-
-**No changes needed in ForecastService.**
-
-However, consider adding a **visual indicator** on the forecast chart for cancelled orders:
-- Faint dashed vertical line on the day of the cancelled delivery
-- Tooltip: "Order cancelled: [reason]"
-- Helps the user see WHERE the gap appeared and why
+Purchase Orders are **invisible** to the forecast. Only real ERP confirmations matter.
 
 ---
 
 ## Procurement Advisor Integration
 
-After cancellation, ProcurementAdvisor should immediately show:
-- The station+fuel now at higher risk (the cancelled delivery was covering it)
-- New recommended order with adjusted quantities and urgency
+`ProcurementAdvisorService::getUpcomingShortages()` calls `Order::findActivePO()` for each shortage entry:
 
-**Current ProcurementAdvisorService** recalculates on each page load → cancellation automatically surfaces new recommendations. No extra code needed unless we want real-time push notifications.
+```php
+$activePO = Order::findActivePO((int)$row['station_id'], (int)$row['fuel_type_id']);
 
----
+$shortages[] = [
+    // ... all the usual fields ...
+    'po_pending' => $activePO !== null,
+    'active_po'  => $activePO,  // { order_number, delivery_date, quantity_tons, status }
+];
+```
 
-## Implementation Order
-
-1. **DB migration** — add `cancelled_reason`, `cancelled_at`, extend `status` ENUM
-2. **Backend** — `POST /api/orders/{id}/cancel` endpoint
-3. **Backend** — ensure `GET /api/orders` supports filtering by status, station, date
-4. **Frontend** — Orders list page with table + status badges + action buttons
-5. **Frontend** — Cancel modal with reason input
-6. **Frontend** — Create/Edit order form
-7. **Frontend** — Connect to forecast chart (verify bump disappears after cancel)
-8. **Frontend** — Connect to Procurement Advisor (verify new shortage surfaces)
+In `ProcurementAdvisor.vue`:
+- If `po_pending = true`: shows a blue banner "PO Issued — Awaiting ERP Confirmation" with PO details
+- Button changes to "View Purchase Orders" (navigates to /orders)
+- If `po_pending = false`: shows "Create Order" button as normal
 
 ---
 
-## Estimated Scope
+## Key Methods (Order.php)
 
-- Backend: ~1-2h (migration + cancel endpoint + filter improvements)
-- Frontend: ~3-4h (list page + actions + modal + form)
-- Testing: ~1h (create → confirm → cancel → verify forecast)
+| Method | Description |
+|--------|-------------|
+| `Order::create(array $data)` | Creates PO — always `order_type = 'purchase_order'`, status `planned` |
+| `Order::createErpOrder(array $data)` | Creates ERP order + auto-matches to existing PO |
+| `Order::cancel(int $id, string $reason)` | Cancels PO (only `planned` POs) |
+| `Order::matchWithErp(int $poId, int $erpOrderId)` | Links PO to ERP order, sets `matched` status |
+| `Order::markExpiredPOs()` | Marks `planned` POs with past delivery_date as `expired` |
+| `Order::findActivePO(int $stationId, int $fuelTypeId)` | For Procurement Advisor — finds active PO |
+| `Order::all(array $filters)` | Supports `order_type` filter |
+
+---
+
+## Future Work
+
+- **Import.vue** — Full UI to connect to erp.kittykat.tech, sync ERP orders
+- **PO Expiry notification** — show warning badge for expired POs on Dashboard
+- **ERP order link in table** — in PO tab, link to matching ERP order
+- **Bulk import** — CSV/Excel import of ERP orders for historical data
+- **PO PDF export** — already implemented via `window.print()` with print CSS
+
+---
+
+> Last updated: 2026-02-23
+> Migration: 008_order_type.sql
+> Commit: `feat: Orders module — PO vs ERP order type separation`

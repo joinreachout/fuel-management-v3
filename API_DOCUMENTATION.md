@@ -245,8 +245,19 @@ Get statistics for a supplier (total orders, completed, pending, cancelled, volu
 
 ## 📦 Orders
 
+Two order types coexist in the same table, distinguished by `order_type`:
+- `purchase_order` — created by user in UI; planning document; does **NOT** affect forecast
+- `erp_order` — imported from ERP system; drives forecast delivery bumps
+
 ### GET `/api/orders`
-Get all fuel orders from suppliers.
+Get fuel orders. Filter by `order_type` to separate POs from ERP orders.
+
+**Query params:** `order_type`, `station_id`, `fuel_type_id`, `status`, `date_from`, `date_to`
+
+```
+GET /api/orders?order_type=purchase_order   → POs only (planned/matched/expired/cancelled)
+GET /api/orders?order_type=erp_order        → ERP orders only (confirmed/in_transit/delivered/cancelled)
+```
 
 **Response:**
 ```json
@@ -256,31 +267,61 @@ Get all fuel orders from suppliers.
         {
             "id": 1,
             "order_number": "ORD-2026-001",
+            "order_type": "purchase_order",
             "supplier_id": 1,
             "supplier_name": "OPCK",
             "station_id": 249,
             "station_name": "Станция Каинда",
+            "depot_id": 148,
+            "depot_name": "Каинда-1",
             "fuel_type_id": 31,
             "fuel_type_name": "A-95",
             "fuel_type_code": "GAS95",
+            "density": "0.750",
             "quantity_liters": "50000.00",
-            "quantity_tons": "40.00",
+            "quantity_tons": "37.50",
             "price_per_ton": "850.00",
-            "total_amount": "34000.00",
-            "order_date": "2026-02-10",
-            "delivery_date": "2026-02-25",
+            "total_amount": "31875.00",
+            "order_date": "2026-02-23",
+            "delivery_date": "2026-03-05",
             "status": "planned",
-            "created_at": "2026-02-10 10:00:00"
+            "notes": null,
+            "cancelled_reason": null,
+            "cancelled_at": null,
+            "erp_order_id": null,
+            "matched_at": null,
+            "created_at": "2026-02-23 12:00:00",
+            "created_by": null
         }
     ],
-    "count": 0
+    "count": 1
 }
 ```
 
-**Status values:** `planned`, `confirmed`, `in_transit`, `delivered`, `cancelled`
+**Status values for `purchase_order`:** `planned`, `matched`, `expired`, `cancelled`
+**Status values for `erp_order`:** `confirmed`, `in_transit`, `delivered`, `cancelled`
 
 ### GET `/api/orders/{id}`
 Get single order by ID.
+
+### POST `/api/orders`
+Create a new Purchase Order (always `order_type = 'purchase_order'`, initial status `planned`).
+
+**Required:** `station_id`, `fuel_type_id`, `quantity_liters`, `delivery_date`
+**Optional:** `supplier_id`, `depot_id`, `price_per_ton`, `notes`
+
+### PUT `/api/orders/{id}`
+Update PO fields: `quantity_liters`, `price_per_ton`, `total_amount`, `delivery_date`, `supplier_id`, `depot_id`, `notes`.
+Cannot update `delivered` or `cancelled` orders.
+
+### DELETE `/api/orders/{id}`
+Delete a PO — only if `status = 'planned'`.
+
+### POST `/api/orders/{id}/cancel`
+Cancel a Purchase Order with mandatory reason.
+
+**Request:** `{ "reason": "Wrong quantity entered" }`
+Only works for `purchase_order` with `status = 'planned'`.
 
 ### GET `/api/orders/pending`
 Get pending orders (status = 'planned').

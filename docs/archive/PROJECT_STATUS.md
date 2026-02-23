@@ -1,5 +1,5 @@
 # Fuel Management System REV 3.0 — Project Status
-> Last updated: 2026-02-18
+> Last updated: 2026-02-23
 
 ---
 
@@ -314,13 +314,29 @@ kL     = L / 1000
 | Цены поставщиков | 🟡 Средний | Данные из старой БД (могут быть устаревшими) — обновить вручную |
 | Добавление fuel type offer | 🟡 Средний | Сейчас можно добавить поставщика, но нельзя через UI добавить ему новый вид топлива / станцию |
 | Аламедин delivery days | 🟡 Средний | Скопированы с Бишкека — проверить реальные |
-| Orders module | 🟠 Средний | Создание заказов есть в UI, нужно проверить полный флоу |
+| Import module: ERP sync UI | 🟠 Средний | Import.vue — UI для подключения к erp.kittykat.tech + createErpOrder() |
+| PO expiry warnings on Dashboard | 🟡 Низкий | Бейдж на дашборде для истёкших PO |
 | Transfers module | 🟠 Средний | Перемещения между станциями |
 | Import module | 🟠 Средний | Импорт данных из 1C / Excel |
 
 ---
 
 ## 🗓 Changelog
+
+### 2026-02-23 (сессия 5)
+- ✅ Migration 008: добавлен `order_type` ENUM, `erp_order_id`, `matched_at`; расширен статус ENUM (`matched`, `expired`)
+- ✅ Order.php: `baseSelect` + фильтр `order_type` + новые методы: `matchWithErp`, `markExpiredPOs`, `findActivePO`, `createErpOrder`
+- ✅ ForecastService: доставки на графике только от `erp_order` (PO не влияют)
+- ✅ ProcurementAdvisorService: поле `po_pending` + `active_po` в рекомендациях
+- ✅ Orders.vue: два таба — Purchase Orders (created by user) + ERP Deliveries (read-only, from ERP)
+- ✅ ProcurementAdvisor.vue: бейдж "PO Issued — Awaiting ERP" + кнопки с router.push
+
+### 2026-02-23 (сессия 4)
+- ✅ Orders module: полная реализация (Orders.vue, OrderController, Order.php, migration 007)
+- ✅ Маршруты POST/PUT/DELETE/cancel в index.php
+- ✅ Print PO: секция печати с @media print CSS (3 подписи, шапка, таблица позиций)
+- ✅ Исправлены баги: Database::execute() → Database::query(), lastInsertId() через getConnection()
+- ✅ Migration 007: добавлены cancelled_reason + cancelled_at
 
 ### 2026-02-18 (сессия 3 — продолжение)
 - ✅ Supply Offers: таблица 497 строк → карточки поставщиков
