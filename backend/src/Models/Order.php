@@ -124,7 +124,7 @@ class Order
             $totalAmount = round($tons * $data['price_per_ton'], 2);
         }
 
-        Database::execute("
+        Database::query("
             INSERT INTO orders (
                 order_number, station_id, depot_id, fuel_type_id,
                 supplier_id, quantity_liters, price_per_ton, total_amount,
@@ -145,7 +145,7 @@ class Order
             $data['created_by'] ?? null,
         ]);
 
-        $id = Database::lastInsertId();
+        $id = Database::getConnection()->lastInsertId();
         return self::find($id);
     }
 
@@ -174,7 +174,7 @@ class Order
         if (empty($fields)) return self::find($id);
 
         $params[] = $id;
-        Database::execute(
+        Database::query(
             "UPDATE orders SET " . implode(', ', $fields) . " WHERE id = ?",
             $params
         );
@@ -192,7 +192,7 @@ class Order
         if (!$order) return null;
         if (in_array($order['status'], ['delivered', 'cancelled'])) return null;
 
-        Database::execute("
+        Database::query("
             UPDATE orders
             SET status = 'cancelled', cancelled_reason = ?, cancelled_at = NOW()
             WHERE id = ?
@@ -209,7 +209,7 @@ class Order
         $order = self::find($id);
         if (!$order || $order['status'] !== 'planned') return false;
 
-        Database::execute("DELETE FROM orders WHERE id = ?", [$id]);
+        Database::query("DELETE FROM orders WHERE id = ?", [$id]);
         return true;
     }
 

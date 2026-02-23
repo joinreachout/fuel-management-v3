@@ -13,35 +13,52 @@ if ($token !== 'fuel007migrate') {
 
 header('Content-Type: application/json');
 
-require_once __DIR__ . '/backend/config/database.php';
-require_once __DIR__ . '/backend/src/Core/Database.php';
-
-use App\Core\Database;
-
-$results = [];
+// Load .env manually — no dependency on backend classes
+$envFile = __DIR__ . '/.env';
+if (file_exists($envFile)) {
+    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        if (strpos(trim($line), '#') === 0 || strpos($line, '=') === false) continue;
+        [$k, $v] = explode('=', $line, 2);
+        putenv(trim($k) . '=' . trim($v));
+    }
+}
 
 try {
+    $dsn = sprintf(
+        "mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4",
+        getenv('DB_HOST') ?: 'localhost',
+        getenv('DB_PORT') ?: '3306',
+        getenv('DB_NAME')
+    );
+    $pdo = new PDO($dsn, getenv('DB_USER'), getenv('DB_PASSWORD'), [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    ]);
+
     // Check if columns already exist
-    $cols = Database::fetchAll("SHOW COLUMNS FROM orders LIKE 'cancelled_reason'");
+    $cols = $pdo->query("SHOW COLUMNS FROM orders LIKE 'cancelled_reason'")->fetchAll();
     if (!empty($cols)) {
-        echo json_encode(['success' => true, 'message' => 'Migration already applied — cancelled_reason column exists.']);
+        echo json_encode([
+            'success' => true,
+            'message' => 'Migration already applied — cancelled_reason column already exists.'
+        ]);
         exit;
     }
 
-    // Run migration
-    Database::execute("
+    // Run migration 007
+    $pdo->exec("
         ALTER TABLE orders
           ADD COLUMN cancelled_reason VARCHAR(500) NULL AFTER notes,
           ADD COLUMN cancelled_at DATETIME NULL AFTER cancelled_reason
     ");
 
     // Verify
-    $verify = Database::fetchAll("SHOW COLUMNS FROM orders WHERE Field IN ('cancelled_reason', 'cancelled_at')");
+    $added = $pdo->query("SHOW COLUMNS FROM orders WHERE Field IN ('cancelled_reason', 'cancelled_at')")
+                 ->fetchAll(PDO::FETCH_COLUMN);
 
     echo json_encode([
         'success' => true,
         'message' => 'Migration 007 applied successfully',
-        'columns_added' => array_column($verify, 'Field')
+        'columns_added' => $added
     ]);
 
 } catch (Exception $e) {
