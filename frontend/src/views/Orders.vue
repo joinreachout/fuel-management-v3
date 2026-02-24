@@ -23,7 +23,7 @@
       <!-- Spacer (black to merge seamlessly with hero header) -->
       <div class="h-20 bg-black"></div>
 
-      <!-- ── DARK HERO HEADER (same style as Dashboard) ── -->
+      <!-- ── DARK HERO HEADER (REV 2.0 style: 3 rows) ── -->
       <header class="bg-black relative">
         <!-- Truck Background Image - Right Side with Gradient Fade -->
         <div class="absolute inset-0 overflow-hidden pointer-events-none">
@@ -35,17 +35,19 @@
             opacity: 0.85;
           "></div>
         </div>
+
         <!-- Header Content -->
-        <div class="relative px-8 py-6">
-          <div class="flex items-start justify-between">
-            <!-- Left: Title -->
+        <div class="relative px-8 py-3 pb-6">
+
+          <!-- ROW 1: Title + KPI Row 1 (4 metrics) -->
+          <div class="flex items-start justify-between mb-2 mt-6">
             <div>
-              <h1 class="text-2xl font-bold text-white mb-1">Orders</h1>
-              <p class="text-sm text-gray-400">Manage Purchase Orders and ERP Deliveries</p>
+              <h1 class="text-2xl font-bold text-white mb-1">
+                <i class="fas fa-file-alt mr-3 text-gray-400"></i>Orders
+              </h1>
+              <p class="text-sm text-gray-400">Orders management and tracking system</p>
             </div>
-            <!-- Right: System KPI chips + action button -->
             <div class="flex items-center gap-10 pt-1">
-              <!-- KPI: Total Stations -->
               <div class="flex items-center gap-3">
                 <div class="text-2xl font-bold text-white">{{ kpiTotalStations }}</div>
                 <div class="h-8 w-0.5 bg-white/40"></div>
@@ -54,16 +56,36 @@
                   <div class="text-white text-xs font-semibold">Stations</div>
                 </div>
               </div>
-              <!-- KPI: Below Threshold -->
               <div class="flex items-center gap-3">
                 <div class="text-2xl font-bold" :class="kpiShortages > 0 ? 'text-red-400' : 'text-white'">{{ kpiShortages }}</div>
                 <div class="h-8 w-0.5 bg-white/40"></div>
                 <div class="flex flex-col leading-tight">
-                  <div class="text-white text-xs font-semibold">Below</div>
-                  <div class="text-white text-xs font-semibold">Threshold</div>
+                  <div class="text-white text-xs font-semibold">Shortages</div>
+                  <div class="text-white text-xs font-semibold">Predicted</div>
                 </div>
               </div>
-              <!-- KPI: Mandatory Orders -->
+              <div class="flex items-center gap-3">
+                <div class="text-2xl font-bold" :class="kpiShortages > 0 ? 'text-red-400' : 'text-white'">{{ kpiShortages }}</div>
+                <div class="h-8 w-0.5 bg-white/40"></div>
+                <div class="flex flex-col leading-tight">
+                  <div class="text-white text-xs font-semibold">Critical</div>
+                  <div class="text-white text-xs font-semibold">Stations</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="text-2xl font-bold text-white">{{ kpiLowStock }}</div>
+                <div class="h-8 w-0.5 bg-white/40"></div>
+                <div class="flex flex-col leading-tight">
+                  <div class="text-white text-xs font-semibold">Low Stock</div>
+                  <div class="text-white text-xs font-semibold">Stations</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ROW 2: KPI Row 2 (right-aligned) -->
+          <div class="flex justify-end mb-4">
+            <div class="flex items-center gap-10">
               <div class="flex items-center gap-3">
                 <div class="text-2xl font-bold" :class="kpiMandatory > 0 ? 'text-orange-400' : 'text-white'">{{ kpiMandatory }}</div>
                 <div class="h-8 w-0.5 bg-white/40"></div>
@@ -72,7 +94,6 @@
                   <div class="text-white text-xs font-semibold">Orders</div>
                 </div>
               </div>
-              <!-- KPI: Recommended Orders -->
               <div class="flex items-center gap-3">
                 <div class="text-2xl font-bold text-white">{{ kpiRecommended }}</div>
                 <div class="h-8 w-0.5 bg-white/40"></div>
@@ -81,22 +102,29 @@
                   <div class="text-white text-xs font-semibold">Orders</div>
                 </div>
               </div>
-              <!-- New PO button — white on dark bg -->
-              <button v-if="activeTab === 'purchase_orders'"
-                @click="openCreateModal"
-                class="flex items-center gap-2 px-5 py-2.5 bg-white text-gray-900 rounded-xl font-medium hover:bg-gray-100 transition-colors text-sm shadow-sm">
-                <i class="fas fa-plus"></i>
-                New PO
-              </button>
-              <!-- Manual ERP entry -->
-              <button v-if="activeTab === 'erp_deliveries'"
-                @click="openCreateErpModal"
-                class="flex items-center gap-2 px-5 py-2.5 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 transition-colors text-sm shadow-sm">
-                <i class="fas fa-plus"></i>
-                Manual Entry
-              </button>
+              <div class="flex items-center gap-3">
+                <div class="text-2xl font-bold text-white">{{ poPlanned + erpInTransit }}</div>
+                <div class="h-8 w-0.5 bg-white/40"></div>
+                <div class="flex flex-col leading-tight">
+                  <div class="text-white text-xs font-semibold">Active</div>
+                  <div class="text-white text-xs font-semibold">Orders</div>
+                </div>
+              </div>
             </div>
           </div>
+
+          <!-- ROW 3: Info chips at bottom of header -->
+          <div class="flex items-center gap-4 pb-3">
+            <div class="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-lg border border-white/10 text-xs">
+              <i class="far fa-clock text-gray-400"></i>
+              <span class="font-medium text-gray-300">{{ currentDateTime }}</span>
+            </div>
+            <div class="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-lg border border-white/10 text-xs">
+              <i class="fas fa-circle text-blue-400" style="font-size:8px"></i>
+              <span class="font-medium text-gray-300">{{ poPlanned }} pending orders</span>
+            </div>
+          </div>
+
         </div>
       </header>
 
@@ -153,33 +181,48 @@
           </div>
         </div>
 
-        <!-- ── TABS ── -->
-        <div class="flex border-b border-gray-200 mb-5 gap-0">
-          <button
-            @click="switchTab('purchase_orders')"
-            :class="activeTab === 'purchase_orders'
-              ? 'border-b-2 border-black text-gray-900 font-semibold'
-              : 'text-gray-500 hover:text-gray-700'"
-            class="px-5 py-3 text-sm transition-colors focus:outline-none whitespace-nowrap">
-            <i class="fas fa-file-alt mr-2"></i>
-            Purchase Orders
-            <span :class="activeTab === 'purchase_orders' ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'"
-              class="ml-2 px-2 py-0.5 rounded-full text-xs font-medium">
-              {{ poOrders.length }}
-            </span>
+        <!-- ── TABS + ACTION BUTTON ── -->
+        <div class="flex items-center justify-between border-b border-gray-200 mb-5">
+          <div class="flex gap-0">
+            <button
+              @click="switchTab('purchase_orders')"
+              :class="activeTab === 'purchase_orders'
+                ? 'border-b-2 border-black text-gray-900 font-semibold'
+                : 'text-gray-500 hover:text-gray-700'"
+              class="px-5 py-3 text-sm transition-colors focus:outline-none whitespace-nowrap">
+              <i class="fas fa-file-alt mr-2"></i>
+              Purchase Orders
+              <span :class="activeTab === 'purchase_orders' ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'"
+                class="ml-2 px-2 py-0.5 rounded-full text-xs font-medium">
+                {{ poOrders.length }}
+              </span>
+            </button>
+            <button
+              @click="switchTab('erp_deliveries')"
+              :class="activeTab === 'erp_deliveries'
+                ? 'border-b-2 border-black text-gray-900 font-semibold'
+                : 'text-gray-500 hover:text-gray-700'"
+              class="px-5 py-3 text-sm transition-colors focus:outline-none whitespace-nowrap">
+              <i class="fas fa-truck mr-2"></i>
+              ERP Deliveries
+              <span :class="activeTab === 'erp_deliveries' ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'"
+                class="ml-2 px-2 py-0.5 rounded-full text-xs font-medium">
+                {{ erpOrders.length }}
+              </span>
+            </button>
+          </div>
+          <!-- Action button — moves with tab, sits at tab bar level -->
+          <button v-if="activeTab === 'purchase_orders'"
+            @click="openCreateModal"
+            class="flex items-center gap-2 px-5 py-2 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors text-sm shadow-sm">
+            <i class="fas fa-plus"></i>
+            New PO
           </button>
-          <button
-            @click="switchTab('erp_deliveries')"
-            :class="activeTab === 'erp_deliveries'
-              ? 'border-b-2 border-black text-gray-900 font-semibold'
-              : 'text-gray-500 hover:text-gray-700'"
-            class="px-5 py-3 text-sm transition-colors focus:outline-none whitespace-nowrap">
-            <i class="fas fa-truck mr-2"></i>
-            ERP Deliveries
-            <span :class="activeTab === 'erp_deliveries' ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'"
-              class="ml-2 px-2 py-0.5 rounded-full text-xs font-medium">
-              {{ erpOrders.length }}
-            </span>
+          <button v-if="activeTab === 'erp_deliveries'"
+            @click="openCreateErpModal"
+            class="flex items-center gap-2 px-5 py-2 bg-orange-600 text-white rounded-xl font-medium hover:bg-orange-700 transition-colors text-sm shadow-sm">
+            <i class="fas fa-plus"></i>
+            Manual Entry
           </button>
         </div>
 
@@ -1006,9 +1049,13 @@ const erpDelivered = computed(() => statsCount('erp_order', 'delivered'))
 
 // Header KPI computeds (system-wide stats from dashboard + procurement)
 const kpiTotalStations = computed(() => dashSummary.value?.inventory?.total_stations ?? '—')
-const kpiShortages     = computed(() => dashSummary.value?.alerts?.CRITICAL ?? 0)
+const kpiShortages     = computed(() => dashSummary.value?.critical_tanks_count ?? 0)
+const kpiLowStock      = computed(() => dashSummary.value?.alerts?.WARNING ?? 0)
 const kpiMandatory     = computed(() => procSummary.value?.mandatory_orders  ?? 0)
 const kpiRecommended   = computed(() => procSummary.value?.recommended_orders ?? 0)
+
+// Current datetime chip (set once on mount)
+const currentDateTime  = ref('')
 
 // ────────────────────────────────────────────────────────────────────────────
 // Tab switching
@@ -1078,6 +1125,11 @@ async function loadOrderStats() {
 }
 
 async function loadHeaderKpis() {
+  // Set current datetime chip immediately
+  currentDateTime.value = new Date().toLocaleString('en-GB', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  })
   try {
     const [dash, proc] = await Promise.all([
       dashboardApi.getSummary(),
