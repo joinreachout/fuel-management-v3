@@ -27,25 +27,65 @@
       <div class="max-w-7xl mx-auto px-6 py-8">
 
         <!-- Page Header -->
-        <div class="flex items-center justify-between mb-6">
+        <div class="flex items-start justify-between mb-6">
+          <!-- Left: Title -->
           <div>
             <h1 class="text-2xl font-bold text-gray-900">Orders</h1>
             <p class="text-sm text-gray-500 mt-1">Manage Purchase Orders and ERP Deliveries</p>
           </div>
-          <!-- New PO button — only visible on Purchase Orders tab -->
-          <button v-if="activeTab === 'purchase_orders'"
-            @click="openCreateModal"
-            class="flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors text-sm shadow-sm">
-            <i class="fas fa-plus"></i>
-            New PO
-          </button>
-          <!-- Manual ERP entry — fallback when ERP system is unavailable -->
-          <button v-if="activeTab === 'erp_deliveries'"
-            @click="openCreateErpModal"
-            class="flex items-center gap-2 px-5 py-2.5 bg-orange-600 text-white rounded-xl font-medium hover:bg-orange-700 transition-colors text-sm shadow-sm">
-            <i class="fas fa-plus"></i>
-            Manual Entry
-          </button>
+          <!-- Right: System KPI chips + action button -->
+          <div class="flex items-center gap-10 pt-1">
+            <!-- KPI: Total Stations -->
+            <div class="flex items-center gap-3">
+              <div class="text-2xl font-bold text-gray-900">{{ kpiTotalStations }}</div>
+              <div class="h-8 w-px bg-gray-300"></div>
+              <div class="flex flex-col leading-tight">
+                <div class="text-gray-500 text-xs font-semibold">Total</div>
+                <div class="text-gray-500 text-xs font-semibold">Stations</div>
+              </div>
+            </div>
+            <!-- KPI: Below Threshold -->
+            <div class="flex items-center gap-3">
+              <div class="text-2xl font-bold" :class="kpiShortages > 0 ? 'text-red-600' : 'text-gray-900'">{{ kpiShortages }}</div>
+              <div class="h-8 w-px bg-gray-300"></div>
+              <div class="flex flex-col leading-tight">
+                <div class="text-gray-500 text-xs font-semibold">Below</div>
+                <div class="text-gray-500 text-xs font-semibold">Threshold</div>
+              </div>
+            </div>
+            <!-- KPI: Mandatory Orders -->
+            <div class="flex items-center gap-3">
+              <div class="text-2xl font-bold" :class="kpiMandatory > 0 ? 'text-orange-600' : 'text-gray-900'">{{ kpiMandatory }}</div>
+              <div class="h-8 w-px bg-gray-300"></div>
+              <div class="flex flex-col leading-tight">
+                <div class="text-gray-500 text-xs font-semibold">Mandatory</div>
+                <div class="text-gray-500 text-xs font-semibold">Orders</div>
+              </div>
+            </div>
+            <!-- KPI: Recommended Orders -->
+            <div class="flex items-center gap-3">
+              <div class="text-2xl font-bold text-gray-900">{{ kpiRecommended }}</div>
+              <div class="h-8 w-px bg-gray-300"></div>
+              <div class="flex flex-col leading-tight">
+                <div class="text-gray-500 text-xs font-semibold">Recommended</div>
+                <div class="text-gray-500 text-xs font-semibold">Orders</div>
+              </div>
+            </div>
+            <!-- New PO button — only visible on Purchase Orders tab -->
+            <button v-if="activeTab === 'purchase_orders'"
+              @click="openCreateModal"
+              class="flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors text-sm shadow-sm">
+              <i class="fas fa-plus"></i>
+              New PO
+            </button>
+            <!-- Manual ERP entry — fallback when ERP system is unavailable -->
+            <button v-if="activeTab === 'erp_deliveries'"
+              @click="openCreateErpModal"
+              class="flex items-center gap-2 px-5 py-2.5 bg-orange-600 text-white rounded-xl font-medium hover:bg-orange-700 transition-colors text-sm shadow-sm">
+              <i class="fas fa-plus"></i>
+              Manual Entry
+            </button>
+          </div>
         </div>
 
         <!-- ── STATS BAR ── -->
@@ -831,7 +871,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ordersApi, stationsApi, fuelTypesApi, suppliersApi } from '../services/api.js'
+import { ordersApi, stationsApi, fuelTypesApi, suppliersApi, dashboardApi, procurementApi } from '../services/api.js'
 
 // ────────────────────────────────────────────────────────────────────────────
 // State
@@ -848,6 +888,10 @@ const loadingERP = ref(false)
 
 // Stats bar
 const orderStats = ref([])   // raw array: [{order_type, status, cnt}]
+
+// Header KPIs (system-wide, from dashboard + procurement APIs)
+const dashSummary = ref(null)
+const procSummary = ref(null)
 
 // Separate filter sets for each tab
 const poFilters = ref({
@@ -945,6 +989,12 @@ const erpConfirmed = computed(() => statsCount('erp_order', 'confirmed'))
 const erpInTransit = computed(() => statsCount('erp_order', 'in_transit'))
 const erpDelivered = computed(() => statsCount('erp_order', 'delivered'))
 
+// Header KPI computeds (system-wide stats from dashboard + procurement)
+const kpiTotalStations = computed(() => dashSummary.value?.inventory?.total_stations ?? '—')
+const kpiShortages     = computed(() => dashSummary.value?.alerts?.CRITICAL ?? 0)
+const kpiMandatory     = computed(() => procSummary.value?.mandatory_orders  ?? 0)
+const kpiRecommended   = computed(() => procSummary.value?.recommended_orders ?? 0)
+
 // ────────────────────────────────────────────────────────────────────────────
 // Tab switching
 // ────────────────────────────────────────────────────────────────────────────
@@ -1010,6 +1060,17 @@ async function loadOrderStats() {
     const res = await ordersApi.getStats()
     orderStats.value = res.data.data || []
   } catch (e) { console.error('loadOrderStats', e) }
+}
+
+async function loadHeaderKpis() {
+  try {
+    const [dash, proc] = await Promise.all([
+      dashboardApi.getSummary(),
+      procurementApi.getSummary(),
+    ])
+    dashSummary.value = dash.data.data || {}
+    procSummary.value = proc.data.data || {}
+  } catch (e) { console.error('loadHeaderKpis', e) }
 }
 
 async function loadStations() {
@@ -1181,6 +1242,7 @@ onMounted(() => {
   loadPOOrders()
   loadERPOrders()
   loadOrderStats()
+  loadHeaderKpis()
   loadStations()
   loadFuelTypes()
   loadSuppliers()

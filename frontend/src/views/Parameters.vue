@@ -20,48 +20,65 @@
       <div class="max-w-[1920px] mx-auto">
 
         <!-- Page Header -->
-        <div class="mb-6 flex items-center justify-between">
+        <div class="mb-6 flex items-start justify-between">
+          <!-- Left: Title -->
           <div>
             <h1 class="text-3xl font-bold text-gray-900">System Parameters</h1>
             <p class="text-gray-600 mt-1">All values come from the database — click any value to edit inline</p>
           </div>
-          <div v-if="saveStatus" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
-               :class="saveStatus === 'saved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
-            <i :class="saveStatus === 'saved' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle'"></i>
-            {{ saveStatus === 'saved' ? 'Saved' : 'Error saving' }}
-          </div>
-        </div>
-
-        <!-- ── STATS BAR ── -->
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-3 mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-          <div class="flex items-center gap-2">
-            <i class="fas fa-gas-pump text-blue-500"></i>
-            <span class="font-bold text-gray-800">{{ statsStations }}</span>
-            <span class="text-gray-500">Stations</span>
-          </div>
-          <div class="w-px h-5 bg-gray-200 hidden sm:block"></div>
-          <div class="flex items-center gap-2">
-            <i class="fas fa-oil-can text-yellow-500"></i>
-            <span class="font-bold text-gray-800">{{ fuelTypes.length }}</span>
-            <span class="text-gray-500">Fuel Types</span>
-          </div>
-          <div class="w-px h-5 bg-gray-200 hidden sm:block"></div>
-          <div class="flex items-center gap-2">
-            <i class="fas fa-handshake text-green-500"></i>
-            <span class="font-bold text-gray-800">{{ statsSuppliers }}</span>
-            <span class="text-gray-500">Suppliers</span>
-          </div>
-          <div class="w-px h-5 bg-gray-200 hidden sm:block"></div>
-          <div class="flex items-center gap-2">
-            <i class="fas fa-warehouse text-purple-500"></i>
-            <span class="font-bold text-gray-800">{{ statsDepots }}</span>
-            <span class="text-gray-500">Depots</span>
-          </div>
-          <div class="w-px h-5 bg-gray-200 hidden sm:block"></div>
-          <div class="flex items-center gap-2">
-            <i class="fas fa-fill-drip text-gray-500"></i>
-            <span class="font-bold text-gray-800">{{ depotTanks.length }}</span>
-            <span class="text-gray-500">Tanks</span>
+          <!-- Right: Infrastructure KPI chips + save indicator -->
+          <div class="flex items-center gap-10 pt-1">
+            <!-- KPI: Stations -->
+            <div class="flex items-center gap-3">
+              <div class="text-2xl font-bold text-gray-900">{{ statsStations }}</div>
+              <div class="h-8 w-px bg-gray-300"></div>
+              <div class="flex flex-col leading-tight">
+                <div class="text-gray-500 text-xs font-semibold">Total</div>
+                <div class="text-gray-500 text-xs font-semibold">Stations</div>
+              </div>
+            </div>
+            <!-- KPI: Fuel Types -->
+            <div class="flex items-center gap-3">
+              <div class="text-2xl font-bold text-gray-900">{{ fuelTypes.length }}</div>
+              <div class="h-8 w-px bg-gray-300"></div>
+              <div class="flex flex-col leading-tight">
+                <div class="text-gray-500 text-xs font-semibold">Fuel</div>
+                <div class="text-gray-500 text-xs font-semibold">Types</div>
+              </div>
+            </div>
+            <!-- KPI: Suppliers -->
+            <div class="flex items-center gap-3">
+              <div class="text-2xl font-bold text-gray-900">{{ statsSuppliers }}</div>
+              <div class="h-8 w-px bg-gray-300"></div>
+              <div class="flex flex-col leading-tight">
+                <div class="text-gray-500 text-xs font-semibold">Active</div>
+                <div class="text-gray-500 text-xs font-semibold">Suppliers</div>
+              </div>
+            </div>
+            <!-- KPI: Depots -->
+            <div class="flex items-center gap-3">
+              <div class="text-2xl font-bold text-gray-900">{{ statsDepots }}</div>
+              <div class="h-8 w-px bg-gray-300"></div>
+              <div class="flex flex-col leading-tight">
+                <div class="text-gray-500 text-xs font-semibold">Storage</div>
+                <div class="text-gray-500 text-xs font-semibold">Depots</div>
+              </div>
+            </div>
+            <!-- KPI: Tanks -->
+            <div class="flex items-center gap-3">
+              <div class="text-2xl font-bold text-gray-900">{{ depotTanks.length }}</div>
+              <div class="h-8 w-px bg-gray-300"></div>
+              <div class="flex flex-col leading-tight">
+                <div class="text-gray-500 text-xs font-semibold">Total</div>
+                <div class="text-gray-500 text-xs font-semibold">Tanks</div>
+              </div>
+            </div>
+            <!-- Save status indicator -->
+            <div v-if="saveStatus" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+                 :class="saveStatus === 'saved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+              <i :class="saveStatus === 'saved' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle'"></i>
+              {{ saveStatus === 'saved' ? 'Saved' : 'Error saving' }}
+            </div>
           </div>
         </div>
 
