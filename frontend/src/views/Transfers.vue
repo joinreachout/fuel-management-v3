@@ -12,12 +12,12 @@
 
         <!-- Menu -->
         <nav class="flex items-center gap-6">
-          <a href="/" class="text-gray-400 hover:text-white transition-colors text-sm">Dashboard</a>
-          <a href="/orders" class="text-gray-400 hover:text-white transition-colors text-sm">Orders</a>
-          <a href="/transfers" class="text-white font-medium border-b-2 border-white pb-1 text-sm">Transfers</a>
-          <a href="/parameters" class="text-gray-400 hover:text-white transition-colors text-sm">Parameters</a>
-          <a href="/import" class="text-gray-400 hover:text-white transition-colors text-sm">Import</a>
-          <a href="/how-it-works" class="text-gray-400 hover:text-white transition-colors text-sm">How It Works</a>
+          <router-link to="/" class="text-gray-400 hover:text-white transition-colors text-sm">Dashboard</router-link>
+          <router-link to="/orders" class="text-gray-400 hover:text-white transition-colors text-sm">Orders</router-link>
+          <router-link to="/transfers" class="text-white font-medium border-b-2 border-white pb-1 text-sm">Transfers</router-link>
+          <router-link to="/parameters" class="text-gray-400 hover:text-white transition-colors text-sm">Parameters</router-link>
+          <router-link to="/import" class="text-gray-400 hover:text-white transition-colors text-sm">Import</router-link>
+          <router-link to="/how-it-works" class="text-gray-400 hover:text-white transition-colors text-sm">How It Works</router-link>
         </nav>
       </div>
     </div>
