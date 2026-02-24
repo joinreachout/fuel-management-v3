@@ -128,12 +128,15 @@
         </div>
       </header>
 
-      <!-- Page Content — Overlapping Hero Header (black visible on sides) -->
+      <!-- Page Content — ONE BIG WHITE CARD overlapping hero header -->
       <div class="relative -mt-16 z-10">
-        <div class="max-w-7xl mx-auto px-6 pt-5 pb-10">
+        <div class="max-w-7xl mx-auto px-6 pt-0 pb-10">
 
-        <!-- ── STATS BAR ── -->
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-3 mb-5 flex flex-wrap items-center gap-y-2 text-sm">
+          <!-- ══ BIG WHITE CARD ══ -->
+          <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+
+          <!-- ── STATS BAR ── -->
+          <div class="px-5 py-3 border-b border-gray-200 flex flex-wrap items-center gap-y-2 text-sm">
           <!-- PO group label -->
           <span class="flex items-center text-xs font-semibold text-gray-400 uppercase tracking-wider mr-3">
             <i class="fas fa-file-alt mr-1.5"></i>Purchase Orders
@@ -183,7 +186,7 @@
         </div>
 
         <!-- ── TABS + ACTION BUTTON ── -->
-        <div class="flex items-center justify-between border-b border-gray-200 mb-5">
+        <div class="flex items-center justify-between border-b border-gray-200 pr-4">
           <div class="flex gap-0">
             <button
               @click="switchTab('purchase_orders')"
@@ -228,7 +231,7 @@
         </div>
 
         <!-- ── FILTERS BAR ── -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-5 flex flex-wrap items-center gap-3">
+        <div class="border-b border-gray-100 px-4 py-3 flex flex-wrap items-center gap-3">
           <select v-model="activeFilters.station_id" @change="loadActiveTab"
             class="text-sm px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
             <option value="">All Stations</option>
@@ -280,7 +283,7 @@
         <!-- ══════════════════════════════════════════════════════════════ -->
         <!--  TAB 1: PURCHASE ORDERS                                       -->
         <!-- ══════════════════════════════════════════════════════════════ -->
-        <div v-if="activeTab === 'purchase_orders'" class="bg-white rounded-2xl shadow-lg overflow-hidden">
+        <div v-if="activeTab === 'purchase_orders'">
 
           <div v-if="loadingPO" class="flex items-center justify-center py-16">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mr-3"></div>
@@ -393,7 +396,7 @@
         <!-- ══════════════════════════════════════════════════════════════ -->
         <!--  TAB 2: ERP DELIVERIES (read-only)                            -->
         <!-- ══════════════════════════════════════════════════════════════ -->
-        <div v-else class="bg-white rounded-2xl shadow-lg overflow-hidden">
+        <div v-else>
 
           <!-- Info banner: ERP orders are read-only -->
           <div class="bg-blue-50 border-b border-blue-100 px-5 py-2.5 text-xs text-blue-700 flex items-center gap-2">
@@ -491,6 +494,8 @@
         </div>
         <!-- /ERP Deliveries tab -->
 
+          </div>
+          <!-- /big white card -->
         </div>
       </div>
       <!-- /page content -->
