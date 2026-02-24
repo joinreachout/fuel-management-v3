@@ -15,72 +15,90 @@
       </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="pt-20 px-8 py-6">
-      <div class="max-w-[1920px] mx-auto">
+    <!-- Spacer (black to merge with hero header) -->
+    <div class="h-20 bg-black"></div>
 
-        <!-- Page Header -->
-        <div class="mb-6 flex items-start justify-between">
+    <!-- ── DARK HERO HEADER (same style as Dashboard) ── -->
+    <header class="bg-black relative">
+      <!-- Truck Background Image - Right Side with Gradient Fade -->
+      <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="absolute right-0 top-0 bottom-0 w-2/3" style="
+          background-image: linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 15%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0) 60%), url('/rev3/truck_header.jpg');
+          background-size: auto 100%;
+          background-position: center right;
+          background-repeat: no-repeat;
+          opacity: 0.85;
+        "></div>
+      </div>
+      <!-- Header Content -->
+      <div class="relative px-8 py-6">
+        <div class="flex items-start justify-between">
           <!-- Left: Title -->
           <div>
-            <h1 class="text-3xl font-bold text-gray-900">System Parameters</h1>
-            <p class="text-gray-600 mt-1">All values come from the database — click any value to edit inline</p>
+            <h1 class="text-2xl font-bold text-white mb-1">System Parameters</h1>
+            <p class="text-sm text-gray-400">All values come from the database — click any value to edit inline</p>
           </div>
           <!-- Right: Infrastructure KPI chips + save indicator -->
           <div class="flex items-center gap-10 pt-1">
             <!-- KPI: Stations -->
             <div class="flex items-center gap-3">
-              <div class="text-2xl font-bold text-gray-900">{{ statsStations }}</div>
-              <div class="h-8 w-px bg-gray-300"></div>
+              <div class="text-2xl font-bold text-white">{{ statsStations }}</div>
+              <div class="h-8 w-0.5 bg-white/40"></div>
               <div class="flex flex-col leading-tight">
-                <div class="text-gray-500 text-xs font-semibold">Total</div>
-                <div class="text-gray-500 text-xs font-semibold">Stations</div>
+                <div class="text-white text-xs font-semibold">Total</div>
+                <div class="text-white text-xs font-semibold">Stations</div>
               </div>
             </div>
             <!-- KPI: Fuel Types -->
             <div class="flex items-center gap-3">
-              <div class="text-2xl font-bold text-gray-900">{{ fuelTypes.length }}</div>
-              <div class="h-8 w-px bg-gray-300"></div>
+              <div class="text-2xl font-bold text-white">{{ fuelTypes.length }}</div>
+              <div class="h-8 w-0.5 bg-white/40"></div>
               <div class="flex flex-col leading-tight">
-                <div class="text-gray-500 text-xs font-semibold">Fuel</div>
-                <div class="text-gray-500 text-xs font-semibold">Types</div>
+                <div class="text-white text-xs font-semibold">Fuel</div>
+                <div class="text-white text-xs font-semibold">Types</div>
               </div>
             </div>
             <!-- KPI: Suppliers -->
             <div class="flex items-center gap-3">
-              <div class="text-2xl font-bold text-gray-900">{{ statsSuppliers }}</div>
-              <div class="h-8 w-px bg-gray-300"></div>
+              <div class="text-2xl font-bold text-white">{{ statsSuppliers }}</div>
+              <div class="h-8 w-0.5 bg-white/40"></div>
               <div class="flex flex-col leading-tight">
-                <div class="text-gray-500 text-xs font-semibold">Active</div>
-                <div class="text-gray-500 text-xs font-semibold">Suppliers</div>
+                <div class="text-white text-xs font-semibold">Active</div>
+                <div class="text-white text-xs font-semibold">Suppliers</div>
               </div>
             </div>
             <!-- KPI: Depots -->
             <div class="flex items-center gap-3">
-              <div class="text-2xl font-bold text-gray-900">{{ statsDepots }}</div>
-              <div class="h-8 w-px bg-gray-300"></div>
+              <div class="text-2xl font-bold text-white">{{ statsDepots }}</div>
+              <div class="h-8 w-0.5 bg-white/40"></div>
               <div class="flex flex-col leading-tight">
-                <div class="text-gray-500 text-xs font-semibold">Storage</div>
-                <div class="text-gray-500 text-xs font-semibold">Depots</div>
+                <div class="text-white text-xs font-semibold">Storage</div>
+                <div class="text-white text-xs font-semibold">Depots</div>
               </div>
             </div>
             <!-- KPI: Tanks -->
             <div class="flex items-center gap-3">
-              <div class="text-2xl font-bold text-gray-900">{{ depotTanks.length }}</div>
-              <div class="h-8 w-px bg-gray-300"></div>
+              <div class="text-2xl font-bold text-white">{{ depotTanks.length }}</div>
+              <div class="h-8 w-0.5 bg-white/40"></div>
               <div class="flex flex-col leading-tight">
-                <div class="text-gray-500 text-xs font-semibold">Total</div>
-                <div class="text-gray-500 text-xs font-semibold">Tanks</div>
+                <div class="text-white text-xs font-semibold">Total</div>
+                <div class="text-white text-xs font-semibold">Tanks</div>
               </div>
             </div>
-            <!-- Save status indicator -->
+            <!-- Save status indicator (adapted for dark bg) -->
             <div v-if="saveStatus" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
-                 :class="saveStatus === 'saved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                 :class="saveStatus === 'saved' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'">
               <i :class="saveStatus === 'saved' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle'"></i>
               {{ saveStatus === 'saved' ? 'Saved' : 'Error saving' }}
             </div>
           </div>
         </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="px-8 py-6">
+      <div class="max-w-[1920px] mx-auto">
 
         <!-- Tabs -->
         <div class="bg-white rounded-t-xl border-b border-gray-200">

@@ -20,73 +20,88 @@
         </div>
       </div>
 
-      <!-- Spacer -->
-      <div class="h-20"></div>
+      <!-- Spacer (black to merge seamlessly with hero header) -->
+      <div class="h-20 bg-black"></div>
 
-      <!-- Page Content -->
-      <div class="max-w-7xl mx-auto px-6 py-8">
-
-        <!-- Page Header -->
-        <div class="flex items-start justify-between mb-6">
-          <!-- Left: Title -->
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">Orders</h1>
-            <p class="text-sm text-gray-500 mt-1">Manage Purchase Orders and ERP Deliveries</p>
-          </div>
-          <!-- Right: System KPI chips + action button -->
-          <div class="flex items-center gap-10 pt-1">
-            <!-- KPI: Total Stations -->
-            <div class="flex items-center gap-3">
-              <div class="text-2xl font-bold text-gray-900">{{ kpiTotalStations }}</div>
-              <div class="h-8 w-px bg-gray-300"></div>
-              <div class="flex flex-col leading-tight">
-                <div class="text-gray-500 text-xs font-semibold">Total</div>
-                <div class="text-gray-500 text-xs font-semibold">Stations</div>
-              </div>
+      <!-- ── DARK HERO HEADER (same style as Dashboard) ── -->
+      <header class="bg-black relative">
+        <!-- Truck Background Image - Right Side with Gradient Fade -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+          <div class="absolute right-0 top-0 bottom-0 w-2/3" style="
+            background-image: linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.7) 15%, rgba(0,0,0,0.3) 40%, rgba(0,0,0,0) 60%), url('/rev3/truck_header.jpg');
+            background-size: auto 100%;
+            background-position: center right;
+            background-repeat: no-repeat;
+            opacity: 0.85;
+          "></div>
+        </div>
+        <!-- Header Content -->
+        <div class="relative px-8 py-6">
+          <div class="flex items-start justify-between">
+            <!-- Left: Title -->
+            <div>
+              <h1 class="text-2xl font-bold text-white mb-1">Orders</h1>
+              <p class="text-sm text-gray-400">Manage Purchase Orders and ERP Deliveries</p>
             </div>
-            <!-- KPI: Below Threshold -->
-            <div class="flex items-center gap-3">
-              <div class="text-2xl font-bold" :class="kpiShortages > 0 ? 'text-red-600' : 'text-gray-900'">{{ kpiShortages }}</div>
-              <div class="h-8 w-px bg-gray-300"></div>
-              <div class="flex flex-col leading-tight">
-                <div class="text-gray-500 text-xs font-semibold">Below</div>
-                <div class="text-gray-500 text-xs font-semibold">Threshold</div>
+            <!-- Right: System KPI chips + action button -->
+            <div class="flex items-center gap-10 pt-1">
+              <!-- KPI: Total Stations -->
+              <div class="flex items-center gap-3">
+                <div class="text-2xl font-bold text-white">{{ kpiTotalStations }}</div>
+                <div class="h-8 w-0.5 bg-white/40"></div>
+                <div class="flex flex-col leading-tight">
+                  <div class="text-white text-xs font-semibold">Total</div>
+                  <div class="text-white text-xs font-semibold">Stations</div>
+                </div>
               </div>
-            </div>
-            <!-- KPI: Mandatory Orders -->
-            <div class="flex items-center gap-3">
-              <div class="text-2xl font-bold" :class="kpiMandatory > 0 ? 'text-orange-600' : 'text-gray-900'">{{ kpiMandatory }}</div>
-              <div class="h-8 w-px bg-gray-300"></div>
-              <div class="flex flex-col leading-tight">
-                <div class="text-gray-500 text-xs font-semibold">Mandatory</div>
-                <div class="text-gray-500 text-xs font-semibold">Orders</div>
+              <!-- KPI: Below Threshold -->
+              <div class="flex items-center gap-3">
+                <div class="text-2xl font-bold" :class="kpiShortages > 0 ? 'text-red-400' : 'text-white'">{{ kpiShortages }}</div>
+                <div class="h-8 w-0.5 bg-white/40"></div>
+                <div class="flex flex-col leading-tight">
+                  <div class="text-white text-xs font-semibold">Below</div>
+                  <div class="text-white text-xs font-semibold">Threshold</div>
+                </div>
               </div>
-            </div>
-            <!-- KPI: Recommended Orders -->
-            <div class="flex items-center gap-3">
-              <div class="text-2xl font-bold text-gray-900">{{ kpiRecommended }}</div>
-              <div class="h-8 w-px bg-gray-300"></div>
-              <div class="flex flex-col leading-tight">
-                <div class="text-gray-500 text-xs font-semibold">Recommended</div>
-                <div class="text-gray-500 text-xs font-semibold">Orders</div>
+              <!-- KPI: Mandatory Orders -->
+              <div class="flex items-center gap-3">
+                <div class="text-2xl font-bold" :class="kpiMandatory > 0 ? 'text-orange-400' : 'text-white'">{{ kpiMandatory }}</div>
+                <div class="h-8 w-0.5 bg-white/40"></div>
+                <div class="flex flex-col leading-tight">
+                  <div class="text-white text-xs font-semibold">Mandatory</div>
+                  <div class="text-white text-xs font-semibold">Orders</div>
+                </div>
               </div>
+              <!-- KPI: Recommended Orders -->
+              <div class="flex items-center gap-3">
+                <div class="text-2xl font-bold text-white">{{ kpiRecommended }}</div>
+                <div class="h-8 w-0.5 bg-white/40"></div>
+                <div class="flex flex-col leading-tight">
+                  <div class="text-white text-xs font-semibold">Recommended</div>
+                  <div class="text-white text-xs font-semibold">Orders</div>
+                </div>
+              </div>
+              <!-- New PO button — white on dark bg -->
+              <button v-if="activeTab === 'purchase_orders'"
+                @click="openCreateModal"
+                class="flex items-center gap-2 px-5 py-2.5 bg-white text-gray-900 rounded-xl font-medium hover:bg-gray-100 transition-colors text-sm shadow-sm">
+                <i class="fas fa-plus"></i>
+                New PO
+              </button>
+              <!-- Manual ERP entry -->
+              <button v-if="activeTab === 'erp_deliveries'"
+                @click="openCreateErpModal"
+                class="flex items-center gap-2 px-5 py-2.5 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 transition-colors text-sm shadow-sm">
+                <i class="fas fa-plus"></i>
+                Manual Entry
+              </button>
             </div>
-            <!-- New PO button — only visible on Purchase Orders tab -->
-            <button v-if="activeTab === 'purchase_orders'"
-              @click="openCreateModal"
-              class="flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-xl font-medium hover:bg-gray-800 transition-colors text-sm shadow-sm">
-              <i class="fas fa-plus"></i>
-              New PO
-            </button>
-            <!-- Manual ERP entry — fallback when ERP system is unavailable -->
-            <button v-if="activeTab === 'erp_deliveries'"
-              @click="openCreateErpModal"
-              class="flex items-center gap-2 px-5 py-2.5 bg-orange-600 text-white rounded-xl font-medium hover:bg-orange-700 transition-colors text-sm shadow-sm">
-              <i class="fas fa-plus"></i>
-              Manual Entry
-            </button>
           </div>
         </div>
+      </header>
+
+      <!-- Page Content (white area below hero) -->
+      <div class="max-w-7xl mx-auto px-6 py-6">
 
         <!-- ── STATS BAR ── -->
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-3 mb-5 flex flex-wrap items-center gap-y-2 text-sm">
