@@ -193,6 +193,21 @@ class OrderController
     }
 
     /**
+     * GET /api/orders/stats
+     * Returns counts grouped by order_type + status — used for the stats bar in Orders page.
+     * Lightweight: no joins, single GROUP BY query.
+     */
+    public function stats(): void
+    {
+        try {
+            $counts = Order::getStatusCounts();
+            Response::json(['success' => true, 'data' => $counts]);
+        } catch (\Exception $e) {
+            Response::json(['success' => false, 'error' => 'Failed to fetch order stats: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * GET /api/orders/pending
      */
     public function pending(): void

@@ -61,6 +61,7 @@ export const suppliersApi = {
 export const ordersApi = {
   getAll:    (params = {}) => api.get('/orders', { params }),
   getById:   (id)          => api.get(`/orders/${id}`),
+  getStats:  ()            => api.get('/orders/stats'),
   getPending: ()           => api.get('/orders/pending'),
   getSummary: ()           => api.get('/orders/summary'),
   getRecent:  (days = 30)  => api.get('/orders/recent', { params: { days } }),

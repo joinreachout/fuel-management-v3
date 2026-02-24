@@ -188,6 +188,9 @@ try {
     } elseif ($requestMethod === 'GET' && $path === '/api/orders') {
         $orderController->index();
 
+    } elseif ($requestMethod === 'GET' && $path === '/api/orders/stats') {
+        $orderController->stats();
+
     } elseif ($requestMethod === 'GET' && $path === '/api/orders/pending') {
         $orderController->pending();
 

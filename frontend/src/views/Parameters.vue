@@ -32,6 +32,39 @@
           </div>
         </div>
 
+        <!-- ── STATS BAR ── -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-3 mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+          <div class="flex items-center gap-2">
+            <i class="fas fa-gas-pump text-blue-500"></i>
+            <span class="font-bold text-gray-800">{{ statsStations }}</span>
+            <span class="text-gray-500">Stations</span>
+          </div>
+          <div class="w-px h-5 bg-gray-200 hidden sm:block"></div>
+          <div class="flex items-center gap-2">
+            <i class="fas fa-oil-can text-yellow-500"></i>
+            <span class="font-bold text-gray-800">{{ fuelTypes.length }}</span>
+            <span class="text-gray-500">Fuel Types</span>
+          </div>
+          <div class="w-px h-5 bg-gray-200 hidden sm:block"></div>
+          <div class="flex items-center gap-2">
+            <i class="fas fa-handshake text-green-500"></i>
+            <span class="font-bold text-gray-800">{{ statsSuppliers }}</span>
+            <span class="text-gray-500">Suppliers</span>
+          </div>
+          <div class="w-px h-5 bg-gray-200 hidden sm:block"></div>
+          <div class="flex items-center gap-2">
+            <i class="fas fa-warehouse text-purple-500"></i>
+            <span class="font-bold text-gray-800">{{ statsDepots }}</span>
+            <span class="text-gray-500">Depots</span>
+          </div>
+          <div class="w-px h-5 bg-gray-200 hidden sm:block"></div>
+          <div class="flex items-center gap-2">
+            <i class="fas fa-fill-drip text-gray-500"></i>
+            <span class="font-bold text-gray-800">{{ depotTanks.length }}</span>
+            <span class="text-gray-500">Tanks</span>
+          </div>
+        </div>
+
         <!-- Tabs -->
         <div class="bg-white rounded-t-xl border-b border-gray-200">
           <div class="flex gap-1 px-6 overflow-x-auto">
@@ -760,6 +793,12 @@ const groupedStockPolicies = computed(() => {
       }),
     }));
 });
+
+// ── Stats bar (computed from already-loaded data — no extra API calls) ─────────
+const statsStations  = computed(() => new Set(salesParams.value.map(s => s.station_id)).size)
+const statsSuppliers = computed(() => new Set(supplierOffers.value.map(o => o.supplier_id)).size)
+const statsDepots    = computed(() => new Set(depotTanks.value.map(t => t.depot_id)).size)
+// fuelTypes.value.length and depotTanks.value.length are already available as refs
 
 // Global policy % — read from systemParams
 const globalPolicyPct = computed(() => {

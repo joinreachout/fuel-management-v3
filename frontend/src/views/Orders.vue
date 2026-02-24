@@ -48,6 +48,56 @@
           </button>
         </div>
 
+        <!-- ── STATS BAR ── -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-3 mb-5 flex flex-wrap items-center gap-y-2 text-sm">
+          <!-- PO group label -->
+          <span class="flex items-center text-xs font-semibold text-gray-400 uppercase tracking-wider mr-3">
+            <i class="fas fa-file-alt mr-1.5"></i>Purchase Orders
+          </span>
+          <!-- PO stats -->
+          <div class="flex items-center gap-4 mr-4">
+            <span class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+              <span class="font-bold text-gray-800">{{ poPlanned }}</span>
+              <span class="text-gray-500">Planned</span>
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+              <span class="font-bold text-gray-800">{{ poMatched }}</span>
+              <span class="text-gray-500">Matched</span>
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-orange-400"></span>
+              <span class="font-bold text-gray-800">{{ poExpired }}</span>
+              <span class="text-gray-500">Expired</span>
+            </span>
+          </div>
+          <!-- divider -->
+          <div class="w-px h-5 bg-gray-200 mx-2 hidden sm:block"></div>
+          <!-- ERP group label -->
+          <span class="flex items-center text-xs font-semibold text-gray-400 uppercase tracking-wider mr-3">
+            <i class="fas fa-truck mr-1.5"></i>ERP Deliveries
+          </span>
+          <!-- ERP stats -->
+          <div class="flex items-center gap-4">
+            <span class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+              <span class="font-bold text-gray-800">{{ erpConfirmed }}</span>
+              <span class="text-gray-500">Confirmed</span>
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+              <span class="font-bold text-gray-800">{{ erpInTransit }}</span>
+              <span class="text-gray-500">In Transit</span>
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-green-500"></span>
+              <span class="font-bold text-gray-800">{{ erpDelivered }}</span>
+              <span class="text-gray-500">Delivered</span>
+            </span>
+          </div>
+        </div>
+
         <!-- ── TABS ── -->
         <div class="flex border-b border-gray-200 mb-5 gap-0">
           <button
@@ -796,6 +846,9 @@ const suppliers  = ref([])
 const loadingPO  = ref(false)
 const loadingERP = ref(false)
 
+// Stats bar
+const orderStats = ref([])   // raw array: [{order_type, status, cnt}]
+
 // Separate filter sets for each tab
 const poFilters = ref({
   station_id:   '',
@@ -880,6 +933,18 @@ const selectedErpFuelDensity = computed(() => {
   return ft ? parseFloat(ft.density) : null
 })
 
+// Stats bar — helper + per-status computed
+function statsCount(orderType, status) {
+  const found = orderStats.value.find(s => s.order_type === orderType && s.status === status)
+  return found ? parseInt(found.cnt) : 0
+}
+const poPlanned    = computed(() => statsCount('purchase_order', 'planned'))
+const poMatched    = computed(() => statsCount('purchase_order', 'matched'))
+const poExpired    = computed(() => statsCount('purchase_order', 'expired'))
+const erpConfirmed = computed(() => statsCount('erp_order', 'confirmed'))
+const erpInTransit = computed(() => statsCount('erp_order', 'in_transit'))
+const erpDelivered = computed(() => statsCount('erp_order', 'delivered'))
+
 // ────────────────────────────────────────────────────────────────────────────
 // Tab switching
 // ────────────────────────────────────────────────────────────────────────────
@@ -940,6 +1005,13 @@ function loadActiveTab() {
   }
 }
 
+async function loadOrderStats() {
+  try {
+    const res = await ordersApi.getStats()
+    orderStats.value = res.data.data || []
+  } catch (e) { console.error('loadOrderStats', e) }
+}
+
 async function loadStations() {
   try {
     const res = await stationsApi.getAll()
@@ -990,7 +1062,7 @@ async function submitCreate() {
   try {
     await ordersApi.create(form.value)
     showCreateModal.value = false
-    await loadPOOrders()
+    await Promise.all([loadPOOrders(), loadOrderStats()])
   } catch (e) {
     createError.value = e.response?.data?.error || 'Failed to create order'
   } finally {
@@ -1017,7 +1089,7 @@ async function submitCreateErp() {
   try {
     await ordersApi.createErp(erpForm.value)
     showCreateErpModal.value = false
-    await loadERPOrders()
+    await Promise.all([loadERPOrders(), loadOrderStats()])
   } catch (e) {
     createErpError.value = e.response?.data?.error || 'Failed to create ERP order'
   } finally {
@@ -1042,7 +1114,7 @@ async function submitCancel() {
   try {
     await ordersApi.cancel(selectedOrder.value.id, cancelReason.value)
     showCancelModal.value = false
-    await loadPOOrders()
+    await Promise.all([loadPOOrders(), loadOrderStats()])
   } catch (e) {
     cancelError.value = e.response?.data?.error || 'Failed to cancel order'
   } finally {
@@ -1108,6 +1180,7 @@ onMounted(() => {
   // Load both tabs in parallel on mount so tab badge counts are accurate
   loadPOOrders()
   loadERPOrders()
+  loadOrderStats()
   loadStations()
   loadFuelTypes()
   loadSuppliers()

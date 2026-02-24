@@ -249,6 +249,20 @@ class Order
     }
 
     /**
+     * Get counts grouped by order_type + status
+     * Used for the Orders page stats bar (lightweight, no joins)
+     */
+    public static function getStatusCounts(): array
+    {
+        return Database::fetchAll("
+            SELECT order_type, status, COUNT(*) as cnt
+            FROM orders
+            GROUP BY order_type, status
+            ORDER BY order_type, status
+        ");
+    }
+
+    /**
      * Get orders summary by fuel type
      */
     public static function getSummaryByFuelType(): array
