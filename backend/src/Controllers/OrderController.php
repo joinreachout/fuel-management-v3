@@ -159,6 +159,40 @@ class OrderController
     }
 
     /**
+     * POST /api/orders/erp
+     * Manually create an ERP order — fallback when ERP system is unavailable.
+     * Creates order_type = 'erp_order'; auto-matches to a PO if one exists.
+     *
+     * Required: station_id, fuel_type_id, quantity_liters, delivery_date
+     * Optional: supplier_id, depot_id, price_per_ton, notes
+     * Optional: status — 'confirmed' (default) | 'in_transit'
+     */
+    public function storeErp(): void
+    {
+        try {
+            $body = json_decode(file_get_contents('php://input'), true) ?? [];
+
+            $required = ['station_id', 'fuel_type_id', 'quantity_liters', 'delivery_date'];
+            foreach ($required as $field) {
+                if (empty($body[$field])) {
+                    Response::json(['success' => false, 'error' => "Missing required field: {$field}"], 422);
+                    return;
+                }
+            }
+
+            $order = Order::createErpOrder($body);
+            if (!$order) {
+                Response::json(['success' => false, 'error' => 'Failed to create ERP order'], 500);
+                return;
+            }
+
+            Response::json(['success' => true, 'data' => $order], 201);
+        } catch (\Exception $e) {
+            Response::json(['success' => false, 'error' => 'Failed to create ERP order: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * GET /api/orders/pending
      */
     public function pending(): void

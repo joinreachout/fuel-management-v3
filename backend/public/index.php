@@ -203,6 +203,9 @@ try {
     } elseif ($requestMethod === 'POST' && $path === '/api/orders') {
         $orderController->store();
 
+    } elseif ($requestMethod === 'POST' && $path === '/api/orders/erp') {
+        $orderController->storeErp();
+
     } elseif ($requestMethod === 'POST' && preg_match('#^/api/orders/(\d+)/cancel$#', $path, $matches)) {
         $orderController->cancel((int) $matches[1]);
 

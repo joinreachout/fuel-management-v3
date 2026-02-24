@@ -39,6 +39,13 @@
             <i class="fas fa-plus"></i>
             New PO
           </button>
+          <!-- Manual ERP entry — fallback when ERP system is unavailable -->
+          <button v-if="activeTab === 'erp_deliveries'"
+            @click="openCreateErpModal"
+            class="flex items-center gap-2 px-5 py-2.5 bg-orange-600 text-white rounded-xl font-medium hover:bg-orange-700 transition-colors text-sm shadow-sm">
+            <i class="fas fa-plus"></i>
+            Manual Entry
+          </button>
         </div>
 
         <!-- ── TABS ── -->
@@ -254,7 +261,11 @@
           <div v-else-if="erpOrders.length === 0" class="text-center py-16 text-gray-400">
             <i class="fas fa-truck text-5xl mb-4"></i>
             <p class="text-lg font-medium text-gray-500">No ERP deliveries found</p>
-            <p class="text-sm mt-1">ERP orders are imported via the Import module</p>
+            <p class="text-sm mt-1">ERP orders are imported via the Import module or added manually</p>
+            <button @click="openCreateErpModal"
+              class="mt-5 inline-flex items-center gap-2 px-5 py-2.5 bg-orange-600 text-white rounded-xl font-medium text-sm hover:bg-orange-700 transition-colors">
+              <i class="fas fa-plus"></i> Manual Entry
+            </button>
           </div>
 
           <div v-else class="overflow-x-auto">
@@ -525,6 +536,151 @@
         </div>
       </Teleport>
 
+      <!-- ============================================================ -->
+      <!--  MANUAL ERP ORDER MODAL                                      -->
+      <!-- ============================================================ -->
+      <Teleport to="body">
+        <div v-if="showCreateErpModal"
+          class="fixed inset-0 z-[100] flex items-center justify-center"
+          @click.self="showCreateErpModal = false">
+          <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[92vh] overflow-y-auto">
+            <div class="p-8">
+              <div class="flex items-center justify-between mb-5">
+                <h2 class="text-xl font-bold text-gray-900">
+                  <i class="fas fa-truck text-orange-500 mr-2"></i>
+                  Manual ERP Entry
+                </h2>
+                <button @click="showCreateErpModal = false" class="text-gray-400 hover:text-gray-600 text-xl">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+
+              <!-- Warning banner -->
+              <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-5 text-xs text-amber-800 flex items-start gap-2">
+                <i class="fas fa-exclamation-triangle mt-0.5 flex-shrink-0 text-amber-500"></i>
+                <span>
+                  <strong>Fallback mode.</strong> Use this when the ERP system is unavailable.
+                  This order will appear as a <strong>delivery bump on the Forecast chart</strong>.
+                </span>
+              </div>
+
+              <form @submit.prevent="submitCreateErp">
+                <div class="space-y-4">
+
+                  <!-- Station -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                      Station <span class="text-red-500">*</span>
+                    </label>
+                    <select v-model="erpForm.station_id" required
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
+                      <option value="">Select station...</option>
+                      <option v-for="s in stations" :key="s.id" :value="s.id">{{ s.name }}</option>
+                    </select>
+                  </div>
+
+                  <!-- Fuel Type -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                      Fuel Type <span class="text-red-500">*</span>
+                    </label>
+                    <select v-model="erpForm.fuel_type_id" required
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
+                      <option value="">Select fuel type...</option>
+                      <option v-for="f in fuelTypes" :key="f.id" :value="f.id">
+                        {{ f.name }} ({{ f.code }})
+                      </option>
+                    </select>
+                  </div>
+
+                  <!-- Supplier -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
+                    <select v-model="erpForm.supplier_id"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
+                      <option value="">Select supplier...</option>
+                      <option v-for="s in suppliers" :key="s.id" :value="s.id">{{ s.name }}</option>
+                    </select>
+                  </div>
+
+                  <!-- Quantity -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                      Quantity (liters) <span class="text-red-500">*</span>
+                    </label>
+                    <input type="number" v-model.number="erpForm.quantity_liters" min="1" required
+                      placeholder="e.g. 45000"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
+                    <p v-if="erpForm.quantity_liters && selectedErpFuelDensity" class="mt-1 text-xs text-gray-500">
+                      ≈ {{ ((erpForm.quantity_liters * selectedErpFuelDensity) / 1000).toFixed(2) }} tons
+                    </p>
+                  </div>
+
+                  <!-- Price per ton -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Price per ton (USD)</label>
+                    <input type="number" v-model.number="erpForm.price_per_ton" min="0" step="0.01"
+                      placeholder="e.g. 850"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
+                    <p v-if="erpForm.quantity_liters && erpForm.price_per_ton && selectedErpFuelDensity" class="mt-1 text-xs text-gray-500">
+                      Total ≈ ${{ ((erpForm.quantity_liters * selectedErpFuelDensity / 1000) * erpForm.price_per_ton).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}
+                    </p>
+                  </div>
+
+                  <!-- Delivery Date -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                      Delivery Date <span class="text-red-500">*</span>
+                    </label>
+                    <input type="date" v-model="erpForm.delivery_date" required
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
+                  </div>
+
+                  <!-- Status -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select v-model="erpForm.status"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
+                      <option value="confirmed">Confirmed (shipment confirmed, not yet departed)</option>
+                      <option value="in_transit">In Transit (truck dispatched, en route)</option>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-400">Both statuses appear as bumps on the Forecast chart</p>
+                  </div>
+
+                  <!-- Notes -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea v-model="erpForm.notes" rows="2"
+                      placeholder="e.g. Entered manually — ERP system unavailable on 2026-02-23"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none resize-none">
+                    </textarea>
+                  </div>
+
+                </div>
+
+                <!-- Actions -->
+                <div class="flex gap-3 mt-6">
+                  <button type="submit" :disabled="erpFormSubmitting"
+                    class="flex-1 py-2.5 bg-orange-600 text-white rounded-xl font-medium text-sm hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fas fa-plus mr-2"></i>
+                    {{ erpFormSubmitting ? 'Creating...' : 'Create ERP Entry' }}
+                  </button>
+                  <button type="button" @click="showCreateErpModal = false"
+                    class="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition-colors">
+                    Cancel
+                  </button>
+                </div>
+
+                <p v-if="createErpError" class="mt-3 text-sm text-red-600 bg-red-50 rounded-lg px-4 py-2.5">
+                  <i class="fas fa-exclamation-circle mr-1"></i>{{ createErpError }}
+                </p>
+              </form>
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
     </div>
     <!-- /main UI -->
 
@@ -671,6 +827,21 @@ const form = ref({
   notes:           ''
 })
 
+// Manual ERP create modal
+const showCreateErpModal = ref(false)
+const erpFormSubmitting  = ref(false)
+const createErpError     = ref('')
+const erpForm = ref({
+  station_id:      '',
+  fuel_type_id:    '',
+  supplier_id:     '',
+  quantity_liters: null,
+  price_per_ton:   null,
+  delivery_date:   '',
+  status:          'confirmed',
+  notes:           ''
+})
+
 // Cancel modal
 const showCancelModal  = ref(false)
 const cancelSubmitting = ref(false)
@@ -700,6 +871,12 @@ const currentOrders = computed(() =>
 const selectedFuelDensity = computed(() => {
   if (!form.value.fuel_type_id) return null
   const ft = fuelTypes.value.find(f => f.id == form.value.fuel_type_id)
+  return ft ? parseFloat(ft.density) : null
+})
+
+const selectedErpFuelDensity = computed(() => {
+  if (!erpForm.value.fuel_type_id) return null
+  const ft = fuelTypes.value.find(f => f.id == erpForm.value.fuel_type_id)
   return ft ? parseFloat(ft.density) : null
 })
 
@@ -818,6 +995,33 @@ async function submitCreate() {
     createError.value = e.response?.data?.error || 'Failed to create order'
   } finally {
     formSubmitting.value = false
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Manual ERP Order Creation
+// ────────────────────────────────────────────────────────────────────────────
+function openCreateErpModal() {
+  erpForm.value = {
+    station_id: '', fuel_type_id: '', supplier_id: '',
+    quantity_liters: null, price_per_ton: null,
+    delivery_date: '', status: 'confirmed', notes: ''
+  }
+  createErpError.value = ''
+  showCreateErpModal.value = true
+}
+
+async function submitCreateErp() {
+  createErpError.value = ''
+  erpFormSubmitting.value = true
+  try {
+    await ordersApi.createErp(erpForm.value)
+    showCreateErpModal.value = false
+    await loadERPOrders()
+  } catch (e) {
+    createErpError.value = e.response?.data?.error || 'Failed to create ERP order'
+  } finally {
+    erpFormSubmitting.value = false
   }
 }
 

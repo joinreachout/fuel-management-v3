@@ -65,6 +65,7 @@ export const ordersApi = {
   getSummary: ()           => api.get('/orders/summary'),
   getRecent:  (days = 30)  => api.get('/orders/recent', { params: { days } }),
   create:    (data)        => api.post('/orders', data),
+  createErp: (data)        => api.post('/orders/erp', data),
   update:    (id, data)    => api.put(`/orders/${id}`, data),
   cancel:    (id, reason)  => api.post(`/orders/${id}/cancel`, { reason }),
   delete:    (id)          => api.delete(`/orders/${id}`),
