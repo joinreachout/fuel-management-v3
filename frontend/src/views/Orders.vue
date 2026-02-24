@@ -560,9 +560,9 @@
                     <!-- Delivery info auto-pulled from supplier offers -->
                     <div v-if="selectedSupplierOffer" class="mt-2 flex items-center gap-3 px-3 py-2 bg-blue-50 rounded-lg border border-blue-100 text-xs text-blue-700">
                       <i class="fas fa-shipping-fast text-blue-400"></i>
-                      <span>Delivery: <strong>{{ selectedSupplierOffer.delivery_days }} days</strong></span>
+                      <span>Delivery: <strong>{{ selectedSupplierOffer.delivery_days }} days</strong> → date auto-filled</span>
                       <span v-if="selectedSupplierOffer.price_per_ton" class="ml-auto text-blue-600 font-medium">
-                        Contract: ${{ selectedSupplierOffer.price_per_ton }}/ton
+                        Price: ${{ selectedSupplierOffer.price_per_ton }}/ton ✓
                       </span>
                     </div>
                   </div>
@@ -768,9 +768,9 @@
                     <!-- Delivery info auto-pulled from supplier offers -->
                     <div v-if="selectedErpSupplierOffer" class="mt-2 flex items-center gap-3 px-3 py-2 bg-amber-50 rounded-lg border border-amber-100 text-xs text-amber-700">
                       <i class="fas fa-shipping-fast text-amber-400"></i>
-                      <span>Delivery: <strong>{{ selectedErpSupplierOffer.delivery_days }} days</strong></span>
+                      <span>Delivery: <strong>{{ selectedErpSupplierOffer.delivery_days }} days</strong> → date auto-filled</span>
                       <span v-if="selectedErpSupplierOffer.price_per_ton" class="ml-auto text-amber-600 font-medium">
-                        Contract: ${{ selectedErpSupplierOffer.price_per_ton }}/ton
+                        Price: ${{ selectedErpSupplierOffer.price_per_ton }}/ton ✓
                       </span>
                     </div>
                   </div>
@@ -951,7 +951,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ordersApi, stationsApi, fuelTypesApi, suppliersApi, dashboardApi, procurementApi, parametersApi } from '../services/api.js'
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1370,6 +1370,39 @@ async function loadSupplierOffers() {
     supplierOffers.value = res.data.data || []
   } catch (e) { console.error('loadSupplierOffers', e) }
 }
+
+// ─── Auto-fill Delivery Date + Price from supplier offer ─────────────────────
+
+/** Helper: today + N days → 'YYYY-MM-DD' */
+function dateAfterDays(n) {
+  const d = new Date()
+  d.setDate(d.getDate() + n)
+  return d.toISOString().split('T')[0]
+}
+
+// PO form: watch supplier offer → auto-fill date & price
+watch(selectedSupplierOffer, (offer) => {
+  if (!offer) return
+  // Auto-fill delivery date
+  if (offer.delivery_days) {
+    form.value.delivery_date = dateAfterDays(offer.delivery_days)
+  }
+  // Auto-fill price from contract (only if user hasn't typed one yet)
+  if (offer.price_per_ton && !form.value.price_per_ton) {
+    form.value.price_per_ton = parseFloat(offer.price_per_ton)
+  }
+})
+
+// ERP form: same logic
+watch(selectedErpSupplierOffer, (offer) => {
+  if (!offer) return
+  if (offer.delivery_days) {
+    erpForm.value.delivery_date = dateAfterDays(offer.delivery_days)
+  }
+  if (offer.price_per_ton && !erpForm.value.price_per_ton) {
+    erpForm.value.price_per_ton = parseFloat(offer.price_per_ton)
+  }
+})
 
 onMounted(() => {
   // Load both tabs in parallel on mount so tab badge counts are accurate
