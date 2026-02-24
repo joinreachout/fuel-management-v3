@@ -37,7 +37,7 @@
         </div>
 
         <!-- Header Content -->
-        <div class="relative px-8 py-3 pb-6">
+        <div class="relative px-8 py-3 pb-24">
 
           <!-- ROW 1: Title + KPI Row 1 (4 metrics) -->
           <div class="flex items-start justify-between mb-2 mt-6">
@@ -128,8 +128,9 @@
         </div>
       </header>
 
-      <!-- Page Content (white area below hero) -->
-      <div class="max-w-7xl mx-auto px-6 py-6">
+      <!-- Page Content — Overlapping Hero Header (black visible on sides) -->
+      <div class="relative -mt-16 z-10">
+        <div class="max-w-7xl mx-auto px-6 pt-5 pb-10">
 
         <!-- ── STATS BAR ── -->
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-3 mb-5 flex flex-wrap items-center gap-y-2 text-sm">
@@ -490,6 +491,7 @@
         </div>
         <!-- /ERP Deliveries tab -->
 
+        </div>
       </div>
       <!-- /page content -->
 

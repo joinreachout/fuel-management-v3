@@ -31,7 +31,7 @@
         "></div>
       </div>
       <!-- Header Content -->
-      <div class="relative px-8 py-6">
+      <div class="relative px-8 py-6 pb-24">
         <div class="flex items-start justify-between">
           <!-- Left: Title -->
           <div>
@@ -96,9 +96,10 @@
       </div>
     </header>
 
-    <!-- Main Content -->
-    <div class="px-8 py-6">
-      <div class="max-w-[1920px] mx-auto">
+    <!-- Main Content — Overlapping Hero Header -->
+    <div class="relative -mt-16 z-10">
+      <div class="px-8 pt-5 pb-6">
+        <div class="max-w-[1920px] mx-auto">
 
         <!-- Tabs -->
         <div class="bg-white rounded-t-xl border-b border-gray-200">
@@ -620,6 +621,7 @@
             <i v-if="addingSupplier" class="fas fa-spinner fa-spin mr-1"></i>
             {{ addingSupplier ? 'Saving…' : 'Add Supplier' }}
           </button>
+        </div>
         </div>
       </div>
     </div>
