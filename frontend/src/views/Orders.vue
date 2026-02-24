@@ -557,18 +557,26 @@
                       <option value="">Select supplier...</option>
                       <option v-for="s in suppliers" :key="s.id" :value="s.id">{{ s.name }}</option>
                     </select>
+                    <!-- Delivery info auto-pulled from supplier offers -->
+                    <div v-if="selectedSupplierOffer" class="mt-2 flex items-center gap-3 px-3 py-2 bg-blue-50 rounded-lg border border-blue-100 text-xs text-blue-700">
+                      <i class="fas fa-shipping-fast text-blue-400"></i>
+                      <span>Delivery: <strong>{{ selectedSupplierOffer.delivery_days }} days</strong></span>
+                      <span v-if="selectedSupplierOffer.price_per_ton" class="ml-auto text-blue-600 font-medium">
+                        Contract: ${{ selectedSupplierOffer.price_per_ton }}/ton
+                      </span>
+                    </div>
                   </div>
 
-                  <!-- Quantity -->
+                  <!-- Quantity (TONS) -->
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Quantity (liters) <span class="text-red-500">*</span>
+                      Quantity (tons) <span class="text-red-500">*</span>
                     </label>
-                    <input type="number" v-model.number="form.quantity_liters" min="1" required
-                      placeholder="e.g. 45000"
+                    <input type="number" v-model.number="form.quantity_tons" min="0.1" step="0.1" required
+                      placeholder="e.g. 38"
                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                    <p v-if="form.quantity_liters && selectedFuelDensity" class="mt-1 text-xs text-gray-500">
-                      ≈ {{ ((form.quantity_liters * selectedFuelDensity) / 1000).toFixed(2) }} tons
+                    <p v-if="form.quantity_tons && selectedFuelDensity" class="mt-1 text-xs text-gray-500">
+                      ≈ {{ Math.round(form.quantity_tons * 1000 / selectedFuelDensity).toLocaleString() }} liters
                     </p>
                   </div>
 
@@ -578,8 +586,8 @@
                     <input type="number" v-model.number="form.price_per_ton" min="0" step="0.01"
                       placeholder="e.g. 850"
                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                    <p v-if="form.quantity_liters && form.price_per_ton && selectedFuelDensity" class="mt-1 text-xs text-gray-500">
-                      Total ≈ ${{ ((form.quantity_liters * selectedFuelDensity / 1000) * form.price_per_ton).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}
+                    <p v-if="form.quantity_tons && form.price_per_ton" class="mt-1 text-xs text-gray-500">
+                      Total ≈ ${{ (form.quantity_tons * form.price_per_ton).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}
                     </p>
                   </div>
 
@@ -757,18 +765,26 @@
                       <option value="">Select supplier...</option>
                       <option v-for="s in suppliers" :key="s.id" :value="s.id">{{ s.name }}</option>
                     </select>
+                    <!-- Delivery info auto-pulled from supplier offers -->
+                    <div v-if="selectedErpSupplierOffer" class="mt-2 flex items-center gap-3 px-3 py-2 bg-amber-50 rounded-lg border border-amber-100 text-xs text-amber-700">
+                      <i class="fas fa-shipping-fast text-amber-400"></i>
+                      <span>Delivery: <strong>{{ selectedErpSupplierOffer.delivery_days }} days</strong></span>
+                      <span v-if="selectedErpSupplierOffer.price_per_ton" class="ml-auto text-amber-600 font-medium">
+                        Contract: ${{ selectedErpSupplierOffer.price_per_ton }}/ton
+                      </span>
+                    </div>
                   </div>
 
-                  <!-- Quantity -->
+                  <!-- Quantity (TONS) -->
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">
-                      Quantity (liters) <span class="text-red-500">*</span>
+                      Quantity (tons) <span class="text-red-500">*</span>
                     </label>
-                    <input type="number" v-model.number="erpForm.quantity_liters" min="1" required
-                      placeholder="e.g. 45000"
+                    <input type="number" v-model.number="erpForm.quantity_tons" min="0.1" step="0.1" required
+                      placeholder="e.g. 38"
                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
-                    <p v-if="erpForm.quantity_liters && selectedErpFuelDensity" class="mt-1 text-xs text-gray-500">
-                      ≈ {{ ((erpForm.quantity_liters * selectedErpFuelDensity) / 1000).toFixed(2) }} tons
+                    <p v-if="erpForm.quantity_tons && selectedErpFuelDensity" class="mt-1 text-xs text-gray-500">
+                      ≈ {{ Math.round(erpForm.quantity_tons * 1000 / selectedErpFuelDensity).toLocaleString() }} liters
                     </p>
                   </div>
 
@@ -778,8 +794,8 @@
                     <input type="number" v-model.number="erpForm.price_per_ton" min="0" step="0.01"
                       placeholder="e.g. 850"
                       class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
-                    <p v-if="erpForm.quantity_liters && erpForm.price_per_ton && selectedErpFuelDensity" class="mt-1 text-xs text-gray-500">
-                      Total ≈ ${{ ((erpForm.quantity_liters * selectedErpFuelDensity / 1000) * erpForm.price_per_ton).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}
+                    <p v-if="erpForm.quantity_tons && erpForm.price_per_ton" class="mt-1 text-xs text-gray-500">
+                      Total ≈ ${{ (erpForm.quantity_tons * erpForm.price_per_ton).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}
                     </p>
                   </div>
 
@@ -936,7 +952,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ordersApi, stationsApi, fuelTypesApi, suppliersApi, dashboardApi, procurementApi } from '../services/api.js'
+import { ordersApi, stationsApi, fuelTypesApi, suppliersApi, dashboardApi, procurementApi, parametersApi } from '../services/api.js'
 
 // ────────────────────────────────────────────────────────────────────────────
 // State
@@ -980,13 +996,13 @@ const showCreateModal = ref(false)
 const formSubmitting  = ref(false)
 const createError     = ref('')
 const form = ref({
-  station_id:      '',
-  fuel_type_id:    '',
-  supplier_id:     '',
-  quantity_liters: null,
-  price_per_ton:   null,
-  delivery_date:   '',
-  notes:           ''
+  station_id:     '',
+  fuel_type_id:   '',
+  supplier_id:    '',
+  quantity_tons:  null,   // user enters tons; converted to liters on submit
+  price_per_ton:  null,
+  delivery_date:  '',
+  notes:          ''
 })
 
 // Manual ERP create modal
@@ -994,14 +1010,14 @@ const showCreateErpModal = ref(false)
 const erpFormSubmitting  = ref(false)
 const createErpError     = ref('')
 const erpForm = ref({
-  station_id:      '',
-  fuel_type_id:    '',
-  supplier_id:     '',
-  quantity_liters: null,
-  price_per_ton:   null,
-  delivery_date:   '',
-  status:          'confirmed',
-  notes:           ''
+  station_id:     '',
+  fuel_type_id:   '',
+  supplier_id:    '',
+  quantity_tons:  null,   // user enters tons; converted to liters on submit
+  price_per_ton:  null,
+  delivery_date:  '',
+  status:         'confirmed',
+  notes:          ''
 })
 
 // Cancel modal
@@ -1040,6 +1056,29 @@ const selectedErpFuelDensity = computed(() => {
   if (!erpForm.value.fuel_type_id) return null
   const ft = fuelTypes.value.find(f => f.id == erpForm.value.fuel_type_id)
   return ft ? parseFloat(ft.density) : null
+})
+
+// Supplier offers — loaded once on mount, used for delivery days + price hints
+const supplierOffers = ref([])
+
+/** Best matching offer for PO form (supplier + station + fuel_type if selected) */
+const selectedSupplierOffer = computed(() => {
+  if (!form.value.supplier_id || !form.value.station_id) return null
+  return supplierOffers.value.find(o =>
+    o.supplier_id == form.value.supplier_id &&
+    o.station_id  == form.value.station_id  &&
+    (!form.value.fuel_type_id || o.fuel_type_id == form.value.fuel_type_id)
+  ) || null
+})
+
+/** Best matching offer for ERP form */
+const selectedErpSupplierOffer = computed(() => {
+  if (!erpForm.value.supplier_id || !erpForm.value.station_id) return null
+  return supplierOffers.value.find(o =>
+    o.supplier_id == erpForm.value.supplier_id &&
+    o.station_id  == erpForm.value.station_id  &&
+    (!erpForm.value.fuel_type_id || o.fuel_type_id == erpForm.value.fuel_type_id)
+  ) || null
 })
 
 // Stats bar — helper + per-status computed
@@ -1184,7 +1223,7 @@ function clearFilters() {
 function openCreateModal() {
   form.value = {
     station_id: '', fuel_type_id: '', supplier_id: '',
-    quantity_liters: null, price_per_ton: null,
+    quantity_tons: null, price_per_ton: null,
     delivery_date: '', notes: ''
   }
   createError.value = ''
@@ -1195,7 +1234,14 @@ async function submitCreate() {
   createError.value = ''
   formSubmitting.value = true
   try {
-    await ordersApi.create(form.value)
+    // Convert tons → liters for storage (architecture rule: stored as liters)
+    const density = selectedFuelDensity.value
+    const quantityLiters = density
+      ? Math.round(form.value.quantity_tons * 1000 / density)
+      : Math.round(form.value.quantity_tons)  // fallback: treat as liters
+    const payload = { ...form.value, quantity_liters: quantityLiters }
+    delete payload.quantity_tons
+    await ordersApi.create(payload)
     showCreateModal.value = false
     await Promise.all([loadPOOrders(), loadOrderStats()])
   } catch (e) {
@@ -1211,7 +1257,7 @@ async function submitCreate() {
 function openCreateErpModal() {
   erpForm.value = {
     station_id: '', fuel_type_id: '', supplier_id: '',
-    quantity_liters: null, price_per_ton: null,
+    quantity_tons: null, price_per_ton: null,
     delivery_date: '', status: 'confirmed', notes: ''
   }
   createErpError.value = ''
@@ -1222,7 +1268,14 @@ async function submitCreateErp() {
   createErpError.value = ''
   erpFormSubmitting.value = true
   try {
-    await ordersApi.createErp(erpForm.value)
+    // Convert tons → liters for storage
+    const density = selectedErpFuelDensity.value
+    const quantityLiters = density
+      ? Math.round(erpForm.value.quantity_tons * 1000 / density)
+      : Math.round(erpForm.value.quantity_tons)
+    const payload = { ...erpForm.value, quantity_liters: quantityLiters }
+    delete payload.quantity_tons
+    await ordersApi.createErp(payload)
     showCreateErpModal.value = false
     await Promise.all([loadERPOrders(), loadOrderStats()])
   } catch (e) {
@@ -1311,6 +1364,13 @@ function formatNum(n) {
 // ────────────────────────────────────────────────────────────────────────────
 // Lifecycle
 // ────────────────────────────────────────────────────────────────────────────
+async function loadSupplierOffers() {
+  try {
+    const res = await parametersApi.getSupplierOffers()
+    supplierOffers.value = res.data.data || []
+  } catch (e) { console.error('loadSupplierOffers', e) }
+}
+
 onMounted(() => {
   // Load both tabs in parallel on mount so tab badge counts are accurate
   loadPOOrders()
@@ -1320,6 +1380,7 @@ onMounted(() => {
   loadStations()
   loadFuelTypes()
   loadSuppliers()
+  loadSupplierOffers()
 })
 </script>
 
