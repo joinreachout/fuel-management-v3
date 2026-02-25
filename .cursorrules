@@ -1,0 +1,56 @@
+# Fuel Management System REV 3.0 — Cursor Rules
+
+## Docs (read these first)
+- `docs/README.md` — navigation map, quick-reference table
+- `docs/PROJECT.md` — status, data model, what's built, roadmap
+- `docs/TECH_DECISIONS.md` — architecture decisions, unit rules, PDF, deploy
+- `docs/API.md` — all endpoints
+
+## Stack
+- Backend: PHP 8.1, no framework, custom Router + PDO/MySQL, MVC+Services
+- Frontend: Vue 3 + Vite + TailwindCSS v4, `<script setup>`, Composition API
+- DB: MySQL 8.0, db `d105380_fuelv3`, shared hosting (no SSH shell)
+- PDF: jsPDF **v2.5.1** only — do NOT upgrade (v4 breaks Cyrillic font)
+- Deploy: `npm run build` → `git add -f frontend/dist/` → `git push` → `update.html` on server
+
+## Immutable rules
+
+### Units
+- Stock stored in **liters** (`depot_tanks.current_stock_liters` = source of truth)
+- Orders/prices in **tons** (industry standard)
+- `tons = liters × density / 1000` — ALWAYS use `fuel_types.density`, never hardcode
+- Use `UnitConverter::litreToTon()` / `::tonToLitre()` — never inline the formula
+- All SQL divisions: `NULLIF(x, 0)`
+
+### Code
+- English only in code/comments; Russian allowed only in DB content (station names)
+- No hardcoded values, DRY, PSR-12
+- MVC+Services: Model = DB, Service = logic, Controller = HTTP, Utils = pure functions
+- No N+1 queries (use JOINs), prepared statements everywhere
+
+### Vue
+- Use `reactive()` (not `ref()`) for objects passed as function args from templates
+  — Vue auto-unwraps `ref()` in templates, causing `sortObj.value = undefined` errors
+
+### PDF
+- Font embedded as base64 in `frontend/src/utils/robotoBase64.js`
+- Regenerate with Python if font changes (see docs/TECH_DECISIONS.md → PDF)
+- Do NOT fetch font at runtime — JS binary→base64 conversion corrupts non-ASCII bytes
+
+## Key paths
+```
+backend/public/index.php           — all route registrations
+backend/src/Controllers/           — HTTP handlers
+backend/src/Services/              — business logic
+backend/src/Models/                — DB wrappers
+backend/src/Utils/UnitConverter.php
+frontend/src/views/                — Dashboard, Orders, Transfers, Parameters, Import
+frontend/src/services/api.js       — all API calls
+frontend/src/utils/robotoBase64.js — Roboto font for PDF
+database/migrations/               — 001–008 applied
+```
+
+## Current priorities
+1. Stock Policies data (0 records, migration 004 ready)
+2. Best Supplier widget on Dashboard
+3. Transfers Module full UI (backend done, frontend stub)
