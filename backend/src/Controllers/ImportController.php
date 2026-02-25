@@ -2,7 +2,6 @@
 
 namespace App\Controllers;
 
-use App\Core\Response;
 use App\Services\ImportService;
 
 /**
@@ -10,7 +9,7 @@ use App\Services\ImportService;
  *
  * POST /api/import/sync-erp   Sync orders from the 1C / ERP system
  */
-class ImportController extends Response
+class ImportController
 {
     /**
      * POST /api/import/sync-erp
@@ -33,9 +32,23 @@ class ImportController extends Response
 
         try {
             $result = ImportService::syncFromErp($baseUrl, $periodDays);
-            $this->ok($result);
+            $this->ok(['data' => $result]);
         } catch (\Throwable $e) {
             $this->error($e->getMessage());
         }
+    }
+
+    // ─── Response helpers ────────────────────────────────────────────────────
+
+    private function ok(array $payload): void
+    {
+        http_response_code(200);
+        echo json_encode(array_merge(['success' => true], $payload), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    }
+
+    private function error(string $message): void
+    {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => $message], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     }
 }
