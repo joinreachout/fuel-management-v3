@@ -1628,127 +1628,220 @@ function printPO(order) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Download PO as PDF — built programmatically with jsPDF (no html2canvas,
-// so Tailwind v4 oklch colors don't cause parsing errors)
+// Roboto font loader (Cyrillic support) — cached after first load
+// ────────────────────────────────────────────────────────────────────────────
+let _robotoFontCache = null
+
+async function _loadRobotoFont() {
+  if (_robotoFontCache) return _robotoFontCache
+  const urls = [
+    `${import.meta.env.BASE_URL}fonts/Roboto-Regular.ttf`,
+    'https://cdnjs.cloudflare.com/ajax/libs/materialize/0.98.1/fonts/roboto/Roboto-Regular.ttf',
+    'https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.11.0/font/roboto/Roboto-Regular.ttf',
+    'https://cdn.jsdelivr.net/gh/google/fonts@main/apache/roboto/static/Roboto-Regular.ttf',
+  ]
+  for (const url of urls) {
+    try {
+      const r = await fetch(url, { mode: 'cors' })
+      if (!r.ok) continue
+      const buf = await r.arrayBuffer()
+      const arr = new Uint8Array(buf)
+      let binary = ''
+      for (let j = 0; j < arr.length; j += 8192) {
+        binary += String.fromCharCode(...arr.subarray(j, j + 8192))
+      }
+      _robotoFontCache = btoa(binary)
+      return _robotoFontCache
+    } catch { continue }
+  }
+  throw new Error('Could not load Roboto font from any source')
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Download PO as PDF — REV 2.0 style: navy header bar, colored boxes,
+// items table, VAT, terms, signatures. Roboto for Cyrillic support.
 // ────────────────────────────────────────────────────────────────────────────
 async function downloadPoPdf(order) {
   pdfGenerating.value = true
   try {
-    const { jsPDF } = await import('jspdf')
+    const [{ jsPDF }, fontB64] = await Promise.all([import('jspdf'), _loadRobotoFont()])
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
+    const W   = 210
+    const ml  = 20
+    const cw  = W - ml * 2   // 170
+    let   y   = 20
 
-    const doc   = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
-    const pageW = 210
-    const ml    = 15    // margin left
-    const cw    = 180   // content width
-    let   y     = 22
+    // Register Roboto for Unicode / Cyrillic
+    doc.addFileToVFS('Roboto-Regular.ttf', fontB64)
+    doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal')
 
-    // ── Company ──────────────────────────────────────────────────────────────
-    doc.setFont('helvetica', 'bold').setFontSize(16).setTextColor(0)
-    doc.text('KITTY KAT TECHNOLOGIES', pageW / 2, y, { align: 'center' })
-    y += 5
-    doc.setLineWidth(0.6).setDrawColor(0).line(ml, y, ml + cw, y)
-    y += 7
+    // ── Colors ───────────────────────────────────────────────────────────────
+    const navy   = [15, 23, 42]
+    const blue   = [37, 99, 235]
+    const green  = [16, 185, 129]
+    const gray   = [100, 116, 139]
+    const grayLt = [226, 232, 240]
+    const white  = [255, 255, 255]
+    const black  = [0, 0, 0]
 
-    // ── Title + number ────────────────────────────────────────────────────────
-    doc.setFontSize(12)
-    doc.text('FUEL PURCHASE ORDER', pageW / 2, y, { align: 'center' })
-    y += 5
-    doc.setFont('helvetica', 'normal').setFontSize(10)
-    doc.text(`No. ${order.order_number}`, pageW / 2, y, { align: 'center' })
-    y += 5
-    doc.setLineWidth(0.6).line(ml, y, ml + cw, y)
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    const sf  = (size, color) =>
+      doc.setFont('Roboto', 'normal').setFontSize(size).setTextColor(...(color || black))
+    const ln  = (y1, col, w) =>
+      doc.setDrawColor(...(col || grayLt)).setLineWidth(w || 0.3).line(ml, y1, W - ml, y1)
+    const rct = (x, y2, w2, h, fill) =>
+      doc.setFillColor(...fill).rect(x, y2, w2, h, 'F')
+
+    // ══ HEADER BAR ═══════════════════════════════════════════════════════════
+    rct(0, 0, W, 42, navy)
+
+    sf(22, white)
+    doc.text('KITTY KAT', ml, 18)
+    sf(22, [96, 165, 250])
+    doc.text('TECHNOLOGIES', ml + doc.getTextWidth('KITTY KAT') + 3, 18)
+
+    sf(9, [148, 163, 184])
+    doc.text('Fuel Supply Optimization System', ml, 26)
+
+    sf(11, [96, 165, 250])
+    doc.text('PURCHASE ORDER', W - ml, 15, { align: 'right' })
+
+    const numW = doc.getTextWidth(order.order_number) + 12
+    rct(W - ml - numW, 20, numW, 10, [30, 58, 138])
+    sf(12, white)
+    doc.text(order.order_number, W - ml - numW / 2, 28, { align: 'center' })
+
+    sf(8, [74, 222, 128])
+    doc.text(`● ${(order.status || 'PLANNED').toUpperCase()}`, W - ml, 37, { align: 'right' })
+
+    y = 52
+
+    // ══ DATES ════════════════════════════════════════════════════════════════
+    const colR = W / 2 + 10
+
+    sf(8, gray);  doc.text('ORDER DATE',     ml,   y)
+    sf(11, black); doc.text(formatDate(order.order_date), ml, y + 5)
+    sf(8, gray);  doc.text('DELIVERY DATE',  ml,   y + 14)
+    sf(11, black); doc.text(formatDate(order.delivery_date), ml, y + 19)
+
+    sf(8, gray);  doc.text('ORDER ID',       colR, y)
+    sf(11, black); doc.text(`#${order.id}`,  colR, y + 5)
+    sf(8, gray);  doc.text('CURRENCY',       colR, y + 14)
+    sf(11, black); doc.text('USD',           colR, y + 19)
+
+    y += 32
+    ln(y, grayLt, 0.3)
     y += 8
 
-    // ── Meta rows ─────────────────────────────────────────────────────────────
-    const metaRows = [
-      ['Date:',    formatDate(order.order_date),  'Delivery Date:', formatDate(order.delivery_date)],
-      ['Station:', order.station_name  || '—',    'Supplier:',     order.supplier_name || '—'],
-    ]
-    if (order.depot_name) metaRows.push(['Depot:', order.depot_name, '', ''])
+    // ══ SUPPLIER + DESTINATION ═══════════════════════════════════════════════
+    const halfW = cw / 2 - 4
 
-    doc.setFontSize(9)
-    for (const [l1, v1, l2, v2] of metaRows) {
-      doc.setFont('helvetica', 'normal').setTextColor(110).text(l1, ml, y)
-      doc.setFont('helvetica', 'bold').setTextColor(0).text(v1, ml + 28, y)
-      if (l2) {
-        doc.setFont('helvetica', 'normal').setTextColor(110).text(l2, pageW / 2 + 5, y)
-        doc.setFont('helvetica', 'bold').setTextColor(0).text(v2, pageW / 2 + 38, y)
-      }
-      y += 6
-    }
-    y += 5
+    rct(ml, y, halfW, 32, [240, 245, 255])
+    sf(8, blue);   doc.text('SUPPLIER',           ml + 5, y + 6)
+    sf(12, navy);  doc.text(order.supplier_name || '—', ml + 5, y + 14)
+    sf(9, gray);   doc.text(`ID: ${order.supplier_id || '—'}`, ml + 5, y + 21)
 
-    // ── Items table ───────────────────────────────────────────────────────────
-    const cols = [
-      { label: 'Fuel Type',    x: ml,       align: 'left'  },
-      { label: 'Qty (L)',      x: ml + 78,  align: 'right' },
-      { label: 'Qty (T)',      x: ml + 108, align: 'right' },
-      { label: 'Price / T',   x: ml + 143, align: 'right' },
-      { label: 'Total (USD)', x: ml + cw,  align: 'right' },
-    ]
-    const rowH = 8
+    const dstX = ml + halfW + 8
+    rct(dstX, y, halfW, 32, [240, 253, 244])
+    sf(8, green);  doc.text('DELIVERY DESTINATION', dstX + 5, y + 6)
+    sf(12, navy);  doc.text(order.station_name || '—', dstX + 5, y + 14)
+    sf(9, gray);   doc.text(order.depot_name || '', dstX + 5, y + 21)
+    if (order.station_id) doc.text(`Station ID: ${order.station_id}`, dstX + 5, y + 27)
 
-    // Header row
-    doc.setFillColor(25, 25, 25).rect(ml, y - rowH + 2, cw, rowH, 'F')
-    doc.setFont('helvetica', 'bold').setFontSize(8).setTextColor(255)
-    for (const col of cols) {
-      doc.text(col.label, col.align === 'right' ? col.x : col.x + 2, y, { align: col.align })
-    }
-    y += rowH
+    y += 40
 
-    // Data row
-    doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(0)
-    const vals = [
-      `${order.fuel_type_name} (${order.fuel_type_code})`,
-      formatNum(order.quantity_liters),
-      String(order.quantity_tons ?? '—'),
-      order.price_per_ton ? '$' + formatNum(order.price_per_ton) : '—',
-      order.total_amount  ? '$' + formatNum(order.total_amount)  : '—',
-    ]
-    for (let i = 0; i < cols.length; i++) {
-      const col = cols[i]
-      doc.text(vals[i], col.align === 'right' ? col.x : col.x + 2, y, { align: col.align })
-    }
-    y += 4
-    doc.setLineWidth(0.2).setDrawColor(180).line(ml, y, ml + cw, y)
-    y += 5
+    // ══ ITEMS TABLE ══════════════════════════════════════════════════════════
+    rct(ml, y, cw, 10, navy)
+    sf(8, white)
+    const c = [ml + 3, ml + 58, ml + 93, ml + 120, ml + 150]
+    doc.text('PRODUCT',     c[0], y + 7)
+    doc.text('QTY (T)',     c[1], y + 7)
+    doc.text('VOLUME (L)',  c[2], y + 7)
+    doc.text('PRICE/TON',  c[3], y + 7)
+    doc.text('TOTAL',       c[4], y + 7)
+    y += 10
 
-    // Total row
-    doc.setLineWidth(1.2).setDrawColor(0).line(ml, y - 3, ml + cw, y - 3)
-    doc.setFont('helvetica', 'bold').setFontSize(9).setTextColor(80)
-    doc.text('TOTAL:', ml + cw - 30, y)
-    doc.setFontSize(11).setTextColor(0)
-    doc.text(order.total_amount ? '$' + formatNum(order.total_amount) : '—', ml + cw, y, { align: 'right' })
+    rct(ml, y, cw, 14, [249, 250, 251])
+    sf(10, navy)
+    doc.text(`${order.fuel_type_name} (${order.fuel_type_code})`, c[0], y + 9)
+    sf(10, black)
+    doc.text(String(order.quantity_tons ?? '—'),                   c[1], y + 9)
+    doc.text(formatNum(order.quantity_liters),                     c[2], y + 9)
+    doc.text(order.price_per_ton ? '$' + formatNum(order.price_per_ton) : '—', c[3], y + 9)
+    sf(10, navy)
+    doc.text(order.total_amount ? '$' + formatNum(order.total_amount) : '—', c[4], y + 9)
     y += 14
+    ln(y, navy, 0.5)
+    y += 2
 
-    // ── Notes ─────────────────────────────────────────────────────────────────
+    // ══ TOTALS ═══════════════════════════════════════════════════════════════
+    const totX     = ml + 105
+    const subtotal = parseFloat(order.total_amount) || 0
+    const vat      = Math.round(subtotal * 0.12 * 100) / 100
+    const grand    = Math.round((subtotal + vat) * 100) / 100
+
+    sf(9, gray);   doc.text('Subtotal:',    totX, y + 7)
+    sf(9, black);  doc.text('$' + formatNum(subtotal), W - ml, y + 7, { align: 'right' })
+    y += 9
+    ln(y, grayLt, 0.2)
+    sf(9, gray);   doc.text('VAT (12%):',  totX, y + 7)
+    sf(9, black);  doc.text('$' + formatNum(vat), W - ml, y + 7, { align: 'right' })
+    y += 10
+    rct(totX - 3, y, W - ml - totX + 3, 12, navy)
+    sf(11, white); doc.text('TOTAL:',       totX + 2, y + 8)
+    sf(13, white); doc.text('$' + formatNum(grand), W - ml, y + 8, { align: 'right' })
+    y += 22
+
+    // ══ NOTES ════════════════════════════════════════════════════════════════
     if (order.notes) {
-      doc.setDrawColor(180).setLineWidth(2).line(ml, y, ml, y + 9)
-      doc.setDrawColor(0).setFont('helvetica', 'normal').setFontSize(9).setTextColor(60)
-      doc.text(`Notes: ${order.notes}`, ml + 5, y + 5)
-      y += 16
+      sf(8, gray);  doc.text('NOTES', ml, y); y += 5
+      sf(9, black)
+      const noteLines = doc.splitTextToSize(order.notes, cw)
+      doc.text(noteLines, ml, y)
+      y += noteLines.length * 5 + 5
     }
 
-    // ── Signatures ────────────────────────────────────────────────────────────
-    const sigY      = 244
-    const sigW      = cw / 3 - 8
-    const sigLabels = ['Prepared by', 'Reviewed by', 'Approved by']
-    for (let i = 0; i < 3; i++) {
-      const sx = ml + i * (cw / 3)
-      doc.setLineWidth(0.4).setDrawColor(0).line(sx, sigY, sx + sigW, sigY)
-      doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(120)
-      doc.text(sigLabels[i], sx + sigW / 2, sigY + 5, { align: 'center' })
-    }
+    // ══ TERMS ════════════════════════════════════════════════════════════════
+    y += 5
+    ln(y, grayLt, 0.3)
+    y += 8
+    sf(9, navy); doc.text('Terms & Conditions', ml, y); y += 6
+    sf(8, gray)
+    const terms = [
+      '1. Payment terms: Net 30 days from invoice date.',
+      '2. Delivery: FOB destination. Supplier responsible for transport to delivery point.',
+      '3. Quality: All products must meet KR-10 fuel quality standards.',
+      '4. Quantity tolerance: ±2% of ordered quantity is acceptable.',
+      '5. This PO is subject to the terms of the master supply agreement between the parties.',
+    ]
+    terms.forEach(t => { doc.text(t, ml, y); y += 4.5 })
 
-    // ── Footer ────────────────────────────────────────────────────────────────
-    doc.setLineWidth(0.4).setDrawColor(200).line(ml, 278, ml + cw, 278)
-    doc.setFontSize(7).setTextColor(160)
-    doc.text('Kitty Kat Technologies — Fuel Management System', pageW / 2, 283, { align: 'center' })
-    doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, pageW / 2, 288, { align: 'center' })
+    // ══ SIGNATURES ═══════════════════════════════════════════════════════════
+    y += 10
+    sf(8, gray); doc.text('AUTHORIZED BY (BUYER)', ml, y)
+    doc.setDrawColor(0).setLineWidth(0.5).line(ml, y + 15, ml + 70, y + 15)
+    sf(8, gray); doc.text('Name / Signature / Date', ml, y + 20)
 
-    doc.save(`PO-${order.order_number}.pdf`)
+    sf(8, gray); doc.text('ACCEPTED BY (SUPPLIER)', colR, y)
+    doc.setDrawColor(0).setLineWidth(0.5).line(colR, y + 15, colR + 70, y + 15)
+    sf(8, gray); doc.text('Name / Signature / Date', colR, y + 20)
+
+    // ══ FOOTER ═══════════════════════════════════════════════════════════════
+    const footY = 279
+    rct(0, footY, W, 18, [249, 250, 251])
+    doc.setDrawColor(...grayLt).setLineWidth(0.3).line(0, footY, W, footY)
+    sf(7, gray)
+    doc.text('Kitty Kat Technologies — Fuel Supply Optimization System', ml, footY + 5)
+    doc.text('fuel.kittykat.tech/rev3', ml, footY + 10)
+    doc.text(`Generated: ${new Date().toLocaleString('en-GB')}`, W - ml, footY + 5, { align: 'right' })
+    doc.text('Page 1 of 1', W - ml, footY + 10, { align: 'right' })
+
+    // ══ SAVE ═════════════════════════════════════════════════════════════════
+    const fname = `${order.order_number}_${(order.station_name || '').replace(/[^a-zA-Z0-9\u0400-\u04FF]/g, '_')}.pdf`
+    doc.save(fname)
   } catch (e) {
     console.error('PDF generation failed', e)
+    alert(`PDF generation failed: ${e.message}`)
   } finally {
     pdfGenerating.value = false
   }
