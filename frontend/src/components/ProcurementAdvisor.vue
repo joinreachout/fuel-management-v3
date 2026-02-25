@@ -208,12 +208,11 @@
             </div>
           </div>
           <!-- Crisis cards grid -->
+          <div class="flex items-center gap-2 mb-3 px-1">
+            <span class="text-red-600 font-bold text-sm">🚨 Requires Immediate Action</span>
+            <span class="text-xs text-red-400">— no regular delivery can arrive in time</span>
+          </div>
           <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            <div class="flex items-center gap-2 mb-2 px-1">
-              <span class="text-red-600 font-bold text-sm">🚨 Requires Immediate Action</span>
-              <span class="text-xs text-red-400">— no regular delivery can arrive in time</span>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               <div
                 v-for="rec in crisisItems"
                 :key="rec.id"
@@ -293,9 +292,8 @@
                 </div>
               </div>
             </div><!-- end crisis grid -->
-          </div><!-- end crisis v-else -->
-        </div><!-- end immediate tab -->
-      </div><!-- end immediate conditional div -->
+        </div><!-- end crisis v-else -->
+      </div><!-- end immediate tab -->
 
       <!-- ── PROACTIVE PLANNING tab ────────────────────────────────────── -->
       <div v-if="activeTab === 'proactive'">
