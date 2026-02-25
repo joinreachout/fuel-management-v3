@@ -380,15 +380,28 @@
                     </div>
                   </td>
 
-                  <!-- Actions — only for purchase_orders -->
+                  <!-- Actions -->
                   <td class="px-5 py-3.5">
-                    <div class="flex items-center gap-2">
-                      <!-- Print: only for planned -->
-                      <button v-if="order.status === 'planned'"
-                        @click="printPO(order)"
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      <!-- Edit: any non-terminal status -->
+                      <button v-if="!['cancelled','delivered'].includes(order.status)"
+                        @click="openEditModal(order)"
+                        class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                        title="Edit order">
+                        <i class="fas fa-pencil-alt"></i> Edit
+                      </button>
+                      <!-- Print -->
+                      <button @click="printPO(order)"
                         class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                         title="Print PO">
                         <i class="fas fa-print"></i> Print
+                      </button>
+                      <!-- Download PDF -->
+                      <button @click="downloadPoPdf(order)" :disabled="pdfGenerating"
+                        class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors disabled:opacity-50"
+                        title="Download PDF">
+                        <i :class="pdfGenerating ? 'fas fa-spinner fa-spin' : 'fas fa-file-pdf'"></i>
+                        PDF
                       </button>
                       <!-- Cancel: only for planned -->
                       <button v-if="order.status === 'planned'"
@@ -464,6 +477,7 @@
                     Status <i :class="sortIconClass(erpSort, 'status')"></i>
                   </th>
                   <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Matched PO</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
@@ -515,6 +529,16 @@
                       Linked
                     </span>
                     <span v-else class="text-gray-300">—</span>
+                  </td>
+
+                  <!-- ERP Actions -->
+                  <td class="px-5 py-3.5">
+                    <button v-if="order.status !== 'cancelled'"
+                      @click="openEditModal(order)"
+                      class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                      title="Edit / advance status">
+                      <i class="fas fa-pencil-alt"></i> Edit
+                    </button>
                   </td>
 
                 </tr>
@@ -882,6 +906,139 @@
         </div>
       </Teleport>
 
+      <!-- ============================================================ -->
+      <!--  EDIT ORDER MODAL (PO + ERP)                              -->
+      <!-- ============================================================ -->
+      <Teleport to="body">
+        <div v-if="showEditModal"
+          class="fixed inset-0 z-[100] flex items-center justify-center"
+          @click.self="showEditModal = false">
+          <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[92vh] overflow-y-auto">
+            <div class="p-8">
+
+              <!-- Header -->
+              <div class="flex items-center justify-between mb-5">
+                <h2 class="text-xl font-bold text-gray-900">
+                  <i :class="editingOrder?.order_type === 'erp_order' ? 'fas fa-truck text-orange-500' : 'fas fa-file-alt text-blue-500'" class="mr-2"></i>
+                  Edit Order
+                  <span class="ml-2 text-sm font-normal text-gray-400 font-mono">{{ editingOrder?.order_number }}</span>
+                </h2>
+                <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-600 text-xl">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+
+              <form @submit.prevent="submitEdit">
+                <div class="space-y-4">
+
+                  <!-- Status (context-aware) -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <select v-model="editForm.status"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                      <template v-if="editingOrder?.order_type === 'purchase_order'">
+                        <option value="planned">Planned</option>
+                        <option value="matched">Matched (ERP confirmed)</option>
+                        <option value="expired">Expired</option>
+                      </template>
+                      <template v-else>
+                        <option value="confirmed">Confirmed (awaiting dispatch)</option>
+                        <option value="in_transit">In Transit (en route)</option>
+                        <option value="delivered">Delivered</option>
+                      </template>
+                    </select>
+                  </div>
+
+                  <!-- Station -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Station</label>
+                    <select v-model="editForm.station_id"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                      <option value="">Select station...</option>
+                      <option v-for="s in stations" :key="s.id" :value="s.id">{{ s.name }}</option>
+                    </select>
+                  </div>
+
+                  <!-- Fuel Type -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Fuel Type</label>
+                    <select v-model="editForm.fuel_type_id"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                      <option value="">Select fuel type...</option>
+                      <option v-for="f in fuelTypes" :key="f.id" :value="f.id">{{ f.name }} ({{ f.code }})</option>
+                    </select>
+                  </div>
+
+                  <!-- Supplier -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
+                    <select v-model="editForm.supplier_id"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                      <option value="">Select supplier...</option>
+                      <option v-for="s in suppliers" :key="s.id" :value="s.id">{{ s.name }}</option>
+                    </select>
+                  </div>
+
+                  <!-- Quantity (tons) -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantity (tons)</label>
+                    <input type="number" v-model.number="editForm.quantity_tons" min="0.1" step="0.1"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <p v-if="editForm.quantity_tons && selectedEditFuelDensity" class="mt-1 text-xs text-gray-500">
+                      ≈ {{ Math.round(editForm.quantity_tons * 1000 / selectedEditFuelDensity).toLocaleString() }} liters
+                    </p>
+                  </div>
+
+                  <!-- Price per ton -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Price per ton (USD)</label>
+                    <input type="number" v-model.number="editForm.price_per_ton" min="0" step="0.01"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <p v-if="editForm.quantity_tons && editForm.price_per_ton" class="mt-1 text-xs text-gray-500">
+                      Total ≈ ${{ (editForm.quantity_tons * editForm.price_per_ton).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}
+                    </p>
+                  </div>
+
+                  <!-- Delivery Date -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Delivery Date</label>
+                    <input type="date" v-model="editForm.delivery_date"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                  </div>
+
+                  <!-- Notes -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea v-model="editForm.notes" rows="2"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"></textarea>
+                  </div>
+
+                </div>
+
+                <!-- Actions -->
+                <div class="flex gap-3 mt-6">
+                  <button type="submit" :disabled="editSubmitting"
+                    class="flex-1 py-2.5 bg-black text-white rounded-xl font-medium text-sm hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fas fa-save mr-2"></i>
+                    {{ editSubmitting ? 'Saving...' : 'Save Changes' }}
+                  </button>
+                  <button type="button" @click="showEditModal = false"
+                    class="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition-colors">
+                    Cancel
+                  </button>
+                </div>
+
+                <p v-if="editError" class="mt-3 text-sm text-red-600 bg-red-50 rounded-lg px-4 py-2.5">
+                  <i class="fas fa-exclamation-circle mr-1"></i>{{ editError }}
+                </p>
+              </form>
+
+            </div>
+          </div>
+        </div>
+      </Teleport>
+
     </div>
     <!-- /main UI -->
 
@@ -981,7 +1138,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import { ordersApi, stationsApi, fuelTypesApi, suppliersApi, dashboardApi, procurementApi, parametersApi } from '../services/api.js'
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1062,8 +1219,25 @@ const cancelError      = ref('')
 const cancelReason     = ref('')
 const selectedOrder    = ref(null)
 
-// Print
-const printOrder = ref(null)
+// Edit modal (PO + ERP)
+const showEditModal  = ref(false)
+const editSubmitting = ref(false)
+const editError      = ref('')
+const editingOrder   = ref(null)
+const editForm = ref({
+  station_id:    '',
+  fuel_type_id:  '',
+  supplier_id:   '',
+  quantity_tons: null,
+  price_per_ton: null,
+  delivery_date: '',
+  status:        '',
+  notes:         ''
+})
+
+// Print + PDF
+const printOrder    = ref(null)
+const pdfGenerating = ref(false)
 
 const today = new Date().toISOString().split('T')[0]
 
@@ -1386,11 +1560,106 @@ async function submitCancel() {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Edit Order (PO + ERP)
+// ────────────────────────────────────────────────────────────────────────────
+function openEditModal(order) {
+  editingOrder.value = order
+  // Convert stored liters → tons for display using actual density
+  const ft      = fuelTypes.value.find(f => f.id == order.fuel_type_id)
+  const density = ft ? parseFloat(ft.density) : null
+  const qtyTons = density
+    ? Math.round((parseFloat(order.quantity_liters) * density / 1000) * 100) / 100
+    : parseFloat(order.quantity_tons) || null
+  editForm.value = {
+    station_id:    order.station_id   || '',
+    fuel_type_id:  order.fuel_type_id || '',
+    supplier_id:   order.supplier_id  || '',
+    quantity_tons: qtyTons,
+    price_per_ton: order.price_per_ton  ? parseFloat(order.price_per_ton)  : null,
+    delivery_date: order.delivery_date || '',
+    status:        order.status        || '',
+    notes:         order.notes         || ''
+  }
+  editError.value = ''
+  showEditModal.value = true
+}
+
+const selectedEditFuelDensity = computed(() => {
+  if (!editForm.value.fuel_type_id) return null
+  const ft = fuelTypes.value.find(f => f.id == editForm.value.fuel_type_id)
+  return ft ? parseFloat(ft.density) : null
+})
+
+async function submitEdit() {
+  if (!editingOrder.value) return
+  editError.value   = ''
+  editSubmitting.value = true
+  try {
+    const density       = selectedEditFuelDensity.value
+    const quantityLiters = density
+      ? Math.round(editForm.value.quantity_tons * 1000 / density)
+      : Math.round(editForm.value.quantity_tons)
+
+    const payload = {
+      station_id:      editForm.value.station_id    || null,
+      fuel_type_id:    editForm.value.fuel_type_id  || null,
+      supplier_id:     editForm.value.supplier_id   || null,
+      quantity_liters: quantityLiters,
+      price_per_ton:   editForm.value.price_per_ton || null,
+      delivery_date:   editForm.value.delivery_date,
+      status:          editForm.value.status,
+      notes:           editForm.value.notes         || null,
+    }
+    if (editForm.value.quantity_tons && editForm.value.price_per_ton) {
+      payload.total_amount = Math.round(editForm.value.quantity_tons * editForm.value.price_per_ton * 100) / 100
+    }
+
+    await ordersApi.update(editingOrder.value.id, payload)
+    showEditModal.value = false
+    await Promise.all([loadPOOrders(), loadERPOrders(), loadOrderStats()])
+  } catch (e) {
+    editError.value = e.response?.data?.error || 'Failed to update order'
+  } finally {
+    editSubmitting.value = false
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Print PO
 // ────────────────────────────────────────────────────────────────────────────
 function printPO(order) {
   printOrder.value = order
   setTimeout(() => window.print(), 100)
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Download PO as PDF (html2pdf.js — dynamic import to keep main bundle small)
+// ────────────────────────────────────────────────────────────────────────────
+async function downloadPoPdf(order) {
+  pdfGenerating.value = true
+  printOrder.value    = order
+  await nextTick()
+
+  const el = document.getElementById('print-po')
+  // Move offscreen so html2canvas can render it (it must be visible)
+  el.style.cssText = 'display:block!important;position:fixed;left:-9999px;top:0;width:210mm;background:#fff;'
+
+  try {
+    const html2pdf = (await import('html2pdf.js')).default
+    await html2pdf()
+      .set({
+        margin:      [10, 15, 10, 15],
+        filename:    `PO-${order.order_number}.pdf`,
+        image:       { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      })
+      .from(el)
+      .save()
+  } finally {
+    el.style.cssText  = ''
+    pdfGenerating.value = false
+  }
 }
 
 // ────────────────────────────────────────────────────────────────────────────

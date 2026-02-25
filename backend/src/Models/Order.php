@@ -174,12 +174,24 @@ class Order
         $params = [];
 
         $allowed = ['quantity_liters', 'price_per_ton', 'total_amount',
-                    'delivery_date', 'supplier_id', 'depot_id', 'notes'];
+                    'delivery_date', 'supplier_id', 'station_id', 'fuel_type_id',
+                    'depot_id', 'notes'];
 
         foreach ($allowed as $field) {
             if (array_key_exists($field, $data)) {
                 $fields[] = "{$field} = ?";
                 $params[] = $data[$field];
+            }
+        }
+
+        // Status — validated per order type
+        if (array_key_exists('status', $data)) {
+            $validStatuses = $order['order_type'] === 'purchase_order'
+                ? ['planned', 'matched', 'expired']
+                : ['confirmed', 'in_transit', 'delivered'];
+            if (in_array($data['status'], $validStatuses)) {
+                $fields[] = "status = ?";
+                $params[] = $data['status'];
             }
         }
 
