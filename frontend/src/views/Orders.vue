@@ -1628,43 +1628,18 @@ function printPO(order) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Roboto font loader (Cyrillic support) — cached after first load
-// ────────────────────────────────────────────────────────────────────────────
-let _robotoFontCache = null
-
-async function _loadRobotoFont() {
-  if (_robotoFontCache) return _robotoFontCache
-  const urls = [
-    `${import.meta.env.BASE_URL}fonts/Roboto-Regular.ttf`,
-    'https://cdnjs.cloudflare.com/ajax/libs/materialize/0.98.1/fonts/roboto/Roboto-Regular.ttf',
-    'https://cdnjs.cloudflare.com/ajax/libs/mdbootstrap/4.11.0/font/roboto/Roboto-Regular.ttf',
-    'https://cdn.jsdelivr.net/gh/google/fonts@main/apache/roboto/static/Roboto-Regular.ttf',
-  ]
-  for (const url of urls) {
-    try {
-      const r = await fetch(url, { mode: 'cors' })
-      if (!r.ok) continue
-      const buf = await r.arrayBuffer()
-      const arr = new Uint8Array(buf)
-      let binary = ''
-      for (let j = 0; j < arr.length; j += 8192) {
-        binary += String.fromCharCode(...arr.subarray(j, j + 8192))
-      }
-      _robotoFontCache = btoa(binary)
-      return _robotoFontCache
-    } catch { continue }
-  }
-  throw new Error('Could not load Roboto font from any source')
-}
-
-// ────────────────────────────────────────────────────────────────────────────
 // Download PO as PDF — REV 2.0 style: navy header bar, colored boxes,
 // items table, VAT, terms, signatures. Roboto for Cyrillic support.
+// Font is embedded as base64 in robotoBase64.js (pre-encoded by Python at
+// build time) — no fetch, no binary conversion bugs, no CDN dependency.
 // ────────────────────────────────────────────────────────────────────────────
 async function downloadPoPdf(order) {
   pdfGenerating.value = true
   try {
-    const [{ jsPDF }, fontB64] = await Promise.all([import('jspdf'), _loadRobotoFont()])
+    const [{ jsPDF }, { robotoBase64: fontB64 }] = await Promise.all([
+      import('jspdf'),
+      import('../utils/robotoBase64.js'),
+    ])
     const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
     const W   = 210
     const ml  = 20
