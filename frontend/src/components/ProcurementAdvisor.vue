@@ -133,12 +133,13 @@
 
             <!-- Legend -->
             <div class="flex items-center gap-3 mt-1 flex-wrap">
-              <div v-for="lv in urgencyLevels" :key="lv.key"
-                v-if="timelineItems.some(t => t.urgency === lv.key)"
-                class="flex items-center gap-1 text-xs">
-                <div class="w-3 h-3 rounded-full" :class="lv.dotClass"></div>
-                <span class="text-gray-500">{{ lv.shortLabel }}</span>
-              </div>
+              <template v-for="lv in urgencyLevels" :key="lv.key">
+                <div v-if="timelineItems.some(t => t.urgency === lv.key)"
+                  class="flex items-center gap-1 text-xs">
+                  <div class="w-3 h-3 rounded-full" :class="lv.dotClass"></div>
+                  <span class="text-gray-500">{{ lv.shortLabel }}</span>
+                </div>
+              </template>
             </div>
           </div>
 
@@ -168,20 +169,22 @@
           <div class="mb-4 bg-gray-50 rounded-xl p-3">
             <div class="flex items-center gap-2 mb-2 flex-wrap">
               <span class="text-xs font-bold text-gray-500 uppercase tracking-wide mr-1">Urgency</span>
-              <span v-for="lv in urgencyLevels" :key="lv.key"
-                v-if="urgencyCounts[lv.key] > 0"
-                class="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
-                :class="lv.chipClass">
-                {{ urgencyCounts[lv.key] }} {{ lv.shortLabel }}
-              </span>
+              <template v-for="lv in urgencyLevels" :key="lv.key">
+                <span v-if="urgencyCounts[lv.key] > 0"
+                  class="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
+                  :class="lv.chipClass">
+                  {{ urgencyCounts[lv.key] }} {{ lv.shortLabel }}
+                </span>
+              </template>
             </div>
             <div class="flex rounded-full overflow-hidden h-2.5 gap-px">
-              <div v-for="lv in urgencyLevels" :key="lv.key"
-                v-if="urgencyCounts[lv.key] > 0"
-                :class="lv.bgClass"
-                :style="{ flex: urgencyCounts[lv.key] }"
-                class="transition-all duration-500 first:rounded-l-full last:rounded-r-full">
-              </div>
+              <template v-for="lv in urgencyLevels" :key="lv.key">
+                <div v-if="urgencyCounts[lv.key] > 0"
+                  :class="lv.bgClass"
+                  :style="{ flex: urgencyCounts[lv.key] }"
+                  class="transition-all duration-500 first:rounded-l-full last:rounded-r-full">
+                </div>
+              </template>
             </div>
           </div>
 
