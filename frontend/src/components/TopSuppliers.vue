@@ -4,10 +4,10 @@
     <div class="bg-gray-900 px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-2">
         <i class="fas fa-trophy text-yellow-400 text-sm"></i>
-        <span class="text-white font-semibold text-sm">Suppliers</span>
+        <span class="text-white font-semibold text-sm">Поставщики</span>
       </div>
       <span class="bg-gray-700 text-gray-300 text-xs font-mono px-2 py-0.5 rounded-full">
-        {{ suppliers.length }} active
+        {{ suppliers.length }} активных
       </span>
     </div>
 
@@ -20,10 +20,7 @@
     <div v-else class="divide-y divide-gray-100">
 
       <!-- Top 3 -->
-      <div
-        v-for="(supplier, index) in top3"
-        :key="supplier.id"
-      >
+      <div v-for="(supplier, index) in top3" :key="supplier.id">
         <!-- Row -->
         <div
           class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors"
@@ -33,7 +30,7 @@
           <div
             class="flex-none w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm"
             :class="rankClass(index)"
-          >{{ index + 1 }}</div>
+          >#{{ index + 1 }}</div>
 
           <!-- Name + location -->
           <div class="flex-1 min-w-0">
@@ -41,90 +38,80 @@
             <div v-if="supplier.location" class="text-xs text-gray-400 truncate">{{ supplier.location }}</div>
           </div>
 
-          <!-- Chips -->
-          <div class="flex items-center gap-1.5 flex-none">
-            <!-- Delivery range -->
-            <span class="text-xs font-mono px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">
-              {{ deliveryRange(supplier) }}d
-            </span>
-            <!-- Stations -->
-            <span class="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600" title="Stations served">
-              {{ supplier.stations_served }}st
-            </span>
-            <!-- Delivered rate -->
-            <span
-              v-if="supplier.delivered_rate !== null"
-              class="text-xs px-1.5 py-0.5 rounded font-semibold"
-              :class="rateClass(supplier.delivered_rate)"
-              title="Delivered rate (not on-time — no timestamp data)"
-            >{{ supplier.delivered_rate }}%</span>
+          <!-- Delivery days -->
+          <div class="flex-none flex items-center gap-1 text-xs text-blue-600 font-medium" title="Срок доставки">
+            <i class="fas fa-truck text-blue-400" style="font-size:10px"></i>
+            <span>{{ deliveryRange(supplier) }}&nbsp;дн.</span>
           </div>
 
           <!-- Chevron -->
           <i
-            class="fas fa-chevron-down text-gray-400 text-xs flex-none transition-transform"
+            class="fas fa-chevron-down text-gray-400 flex-none transition-transform"
+            style="font-size:10px"
             :class="{ 'rotate-180': expandedId === supplier.id }"
           ></i>
         </div>
 
-        <!-- Expanded: prices per fuel type -->
+        <!-- Expanded -->
         <div
           v-if="expandedId === supplier.id"
-          class="bg-gray-50 px-4 py-3 border-t border-gray-100"
+          class="bg-gray-50 px-4 py-3 border-t border-gray-100 text-xs"
         >
-          <!-- Prices grid -->
+          <!-- Prices per fuel type -->
           <div v-if="supplier.prices?.length" class="mb-2">
-            <div class="text-xs font-semibold text-gray-500 mb-1.5">Prices ($/ton)</div>
-            <div class="grid grid-cols-2 gap-1.5">
+            <div class="font-semibold text-gray-500 mb-1.5">Цены ($/тонна)</div>
+            <div class="grid grid-cols-2 gap-1">
               <div
                 v-for="p in supplier.prices"
                 :key="p.fuel_type_id"
                 class="flex items-center justify-between bg-white rounded px-2 py-1 border border-gray-200"
               >
-                <span class="font-mono text-xs font-bold text-gray-600">{{ p.fuel_type_code }}</span>
-                <span class="text-xs font-semibold text-gray-800">${{ p.price_per_ton.toFixed(0) }}</span>
+                <span class="font-mono font-bold text-gray-600">{{ p.fuel_type_code }}</span>
+                <span class="font-semibold text-gray-800">${{ Math.round(p.price_per_ton) }}</span>
               </div>
             </div>
           </div>
-          <div v-else class="text-xs text-gray-400 italic mb-2">No price offers on file</div>
+          <div v-else class="italic text-gray-400 mb-2">Ценовых предложений нет</div>
 
-          <!-- Extra stats -->
-          <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-            <span>ERP orders: <strong class="text-gray-700">{{ supplier.erp_orders_count }}</strong></span>
-            <span>Volume: <strong class="text-gray-700">{{ supplier.total_volume_kl }} kL</strong></span>
-            <span>Spend: <strong class="text-gray-700">${{ fmtMoney(supplier.total_spend) }}</strong></span>
-            <span v-if="supplier.delivered_rate !== null" class="text-gray-400 italic">
-              (delivered rate, not on-time — no timestamp data)
+          <!-- Stats row -->
+          <div class="flex flex-wrap gap-x-3 gap-y-1 text-gray-500 mt-1">
+            <span><i class="fas fa-map-marker-alt mr-1 text-gray-400"></i>{{ supplier.stations_served }} станций</span>
+            <span><i class="fas fa-file-invoice mr-1 text-gray-400"></i>{{ supplier.erp_orders_count }} ERP-заказов</span>
+            <span v-if="supplier.delivered_rate !== null">
+              <i class="fas fa-check-circle mr-1 text-gray-400"></i>{{ supplier.delivered_rate }}% выполнено
+              <span class="text-gray-300 italic">(без учёта сроков)</span>
             </span>
           </div>
         </div>
       </div>
 
-      <!-- More suppliers (collapsed) -->
+      <!-- More suppliers toggle -->
       <div v-if="rest.length">
         <button
           class="w-full px-4 py-2 text-xs text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center gap-1 font-medium"
           @click="showRest = !showRest"
         >
-          <i class="fas fa-chevron-down text-xs transition-transform" :class="{ 'rotate-180': showRest }"></i>
-          {{ showRest ? 'Show less' : `${rest.length} more suppliers` }}
+          <i
+            class="fas fa-chevron-down transition-transform"
+            style="font-size:10px"
+            :class="{ 'rotate-180': showRest }"
+          ></i>
+          {{ showRest ? 'Скрыть' : `Ещё ${rest.length} поставщиков` }}
         </button>
 
         <div v-if="showRest" class="divide-y divide-gray-100">
           <div
             v-for="supplier in rest"
             :key="supplier.id"
-            class="flex items-center gap-3 px-4 py-2 hover:bg-gray-50"
+            class="flex items-center gap-3 px-4 py-2 text-xs hover:bg-gray-50"
           >
-            <div class="flex-none w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500 font-medium">
+            <div class="flex-none w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-medium">
               {{ supplier.priority }}
             </div>
-            <div class="flex-1 min-w-0">
-              <div class="text-xs font-medium text-gray-700 truncate">{{ supplier.name }}</div>
-            </div>
-            <div class="flex items-center gap-1.5 text-xs text-gray-400">
-              <span class="font-mono">{{ deliveryRange(supplier) }}d</span>
-              <span>{{ supplier.stations_served }}st</span>
+            <div class="flex-1 min-w-0 text-gray-700 truncate font-medium">{{ supplier.name }}</div>
+            <div class="flex-none flex items-center gap-1 text-blue-500" title="Срок доставки">
+              <i class="fas fa-truck text-blue-300" style="font-size:9px"></i>
+              <span>{{ deliveryRange(supplier) }}&nbsp;дн.</span>
             </div>
           </div>
         </div>
@@ -134,7 +121,7 @@
     <!-- Footer -->
     <div class="px-4 py-2.5 border-t border-gray-100 bg-gray-50">
       <router-link to="/parameters" class="text-xs text-blue-600 hover:text-blue-800 font-medium">
-        Manage supply offers in Parameters →
+        Управление предложениями в Параметрах →
       </router-link>
     </div>
   </div>
@@ -168,7 +155,6 @@ const toggleExpanded = (id) => {
   expandedId.value = expandedId.value === id ? null : id;
 };
 
-// "15–30d" if range differs, "15d" if same
 const deliveryRange = (s) => {
   if (s.min_delivery_days === null) return '—';
   if (s.min_delivery_days === s.max_delivery_days) return s.min_delivery_days;
@@ -179,19 +165,6 @@ const rankClass = (index) => {
   if (index === 0) return 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-white';
   if (index === 1) return 'bg-gradient-to-br from-gray-300 to-gray-500 text-white';
   return 'bg-gradient-to-br from-orange-300 to-orange-500 text-white';
-};
-
-const rateClass = (rate) => {
-  if (rate >= 90) return 'bg-green-100 text-green-700';
-  if (rate >= 70) return 'bg-yellow-100 text-yellow-700';
-  return 'bg-red-100 text-red-700';
-};
-
-const fmtMoney = (v) => {
-  if (!v) return '0';
-  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + 'M';
-  if (v >= 1_000)     return (v / 1_000).toFixed(0) + 'k';
-  return v.toFixed(0);
 };
 
 onMounted(loadData);

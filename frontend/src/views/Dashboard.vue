@@ -380,7 +380,7 @@
         </div>
 
         <!-- Suppliers: compact list (left) + best-by-station table (right) -->
-        <div class="mt-6 grid grid-cols-1 xl:grid-cols-[300px_1fr] gap-6 items-start">
+        <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           <TopSuppliers />
           <BestSuppliers />
         </div>
