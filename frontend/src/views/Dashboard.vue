@@ -370,15 +370,14 @@
           <WorkingCapital />
         </div>
 
-        <!-- Risk Exposure + Inventory Turnover + Top Suppliers (3-col) -->
-        <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          <!-- WIDGET 5: Risk Exposure Overview -->
+        <!-- Risk Exposure (full width) -->
+        <div class="mt-6">
           <RiskExposure />
+        </div>
 
-          <!-- WIDGET 6: Inventory Turnover Rate -->
+        <!-- Inventory Turnover + Top Suppliers (2-col) -->
+        <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
           <InventoryTurnover />
-
-          <!-- WIDGET: Top Suppliers compact list -->
           <TopSuppliers />
         </div>
 
