@@ -304,19 +304,33 @@
             <table class="w-full text-sm">
               <thead class="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">PO #</th>
-                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Station</th>
-                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fuel Type</th>
-                  <th class="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty (L)</th>
+                  <th @click="toggleSort(poSort, 'id')" class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap">
+                    PO # <i :class="sortIconClass(poSort, 'id')"></i>
+                  </th>
+                  <th @click="toggleSort(poSort, 'station_name')" class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap">
+                    Station <i :class="sortIconClass(poSort, 'station_name')"></i>
+                  </th>
+                  <th @click="toggleSort(poSort, 'fuel_type_name')" class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap">
+                    Fuel Type <i :class="sortIconClass(poSort, 'fuel_type_name')"></i>
+                  </th>
+                  <th @click="toggleSort(poSort, 'quantity_liters')" class="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap">
+                    Qty (L) <i :class="sortIconClass(poSort, 'quantity_liters')"></i>
+                  </th>
                   <th class="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty (T)</th>
-                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</th>
-                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Delivery Date</th>
-                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th @click="toggleSort(poSort, 'supplier_name')" class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap">
+                    Supplier <i :class="sortIconClass(poSort, 'supplier_name')"></i>
+                  </th>
+                  <th @click="toggleSort(poSort, 'delivery_date')" class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap">
+                    Delivery Date <i :class="sortIconClass(poSort, 'delivery_date')"></i>
+                  </th>
+                  <th @click="toggleSort(poSort, 'status')" class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap">
+                    Status <i :class="sortIconClass(poSort, 'status')"></i>
+                  </th>
                   <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
-                <tr v-for="order in poOrders" :key="order.id" class="hover:bg-gray-50 transition-colors">
+                <tr v-for="order in sortedPoOrders" :key="order.id" class="hover:bg-gray-50 transition-colors">
 
                   <td class="px-5 py-3.5 font-mono text-gray-700 font-medium whitespace-nowrap">
                     {{ order.order_number }}
@@ -424,20 +438,36 @@
             <table class="w-full text-sm">
               <thead class="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Order #</th>
-                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Station</th>
-                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fuel Type</th>
-                  <th class="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty (L)</th>
+                  <th @click="toggleSort(erpSort, 'id')" class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap">
+                    Order # <i :class="sortIconClass(erpSort, 'id')"></i>
+                  </th>
+                  <th @click="toggleSort(erpSort, 'station_name')" class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap">
+                    Station <i :class="sortIconClass(erpSort, 'station_name')"></i>
+                  </th>
+                  <th @click="toggleSort(erpSort, 'fuel_type_name')" class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap">
+                    Fuel Type <i :class="sortIconClass(erpSort, 'fuel_type_name')"></i>
+                  </th>
+                  <th @click="toggleSort(erpSort, 'quantity_liters')" class="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap">
+                    Qty (L) <i :class="sortIconClass(erpSort, 'quantity_liters')"></i>
+                  </th>
                   <th class="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty (T)</th>
-                  <th class="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Price / T</th>
-                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Supplier</th>
-                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Delivery Date</th>
-                  <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th @click="toggleSort(erpSort, 'price_per_ton')" class="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap">
+                    Price / T <i :class="sortIconClass(erpSort, 'price_per_ton')"></i>
+                  </th>
+                  <th @click="toggleSort(erpSort, 'supplier_name')" class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap">
+                    Supplier <i :class="sortIconClass(erpSort, 'supplier_name')"></i>
+                  </th>
+                  <th @click="toggleSort(erpSort, 'delivery_date')" class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap">
+                    Delivery Date <i :class="sortIconClass(erpSort, 'delivery_date')"></i>
+                  </th>
+                  <th @click="toggleSort(erpSort, 'status')" class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none whitespace-nowrap">
+                    Status <i :class="sortIconClass(erpSort, 'status')"></i>
+                  </th>
                   <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Matched PO</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
-                <tr v-for="order in erpOrders" :key="order.id" class="hover:bg-gray-50 transition-colors">
+                <tr v-for="order in sortedErpOrders" :key="order.id" class="hover:bg-gray-50 transition-colors">
 
                   <td class="px-5 py-3.5 font-mono text-gray-700 font-medium whitespace-nowrap">
                     {{ order.order_number }}
@@ -951,7 +981,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ordersApi, stationsApi, fuelTypesApi, suppliersApi, dashboardApi, procurementApi, parametersApi } from '../services/api.js'
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -966,6 +996,11 @@ const fuelTypes  = ref([])
 const suppliers  = ref([])
 const loadingPO  = ref(false)
 const loadingERP = ref(false)
+
+// Sort state — separate for each tab (default: newest first by id)
+// Using reactive() so template auto-unwrapping doesn't break helper functions
+const poSort  = reactive({ key: 'id', dir: 'desc' })
+const erpSort = reactive({ key: 'id', dir: 'desc' })
 
 // Stats bar
 const orderStats = ref([])   // raw array: [{order_type, status, cnt}]
@@ -1045,6 +1080,46 @@ const activeFilters = computed(() =>
 const currentOrders = computed(() =>
   activeTab.value === 'purchase_orders' ? poOrders.value : erpOrders.value
 )
+
+// ── Sort helpers ────────────────────────────────────────────────────────────
+
+const NUMERIC_SORT_KEYS = new Set(['id', 'quantity_liters', 'price_per_ton'])
+
+function applySortOrders(orders, { key, dir }) {
+  return [...orders].sort((a, b) => {
+    let va = a[key] ?? ''
+    let vb = b[key] ?? ''
+    if (NUMERIC_SORT_KEYS.has(key)) {
+      va = parseFloat(va) || 0
+      vb = parseFloat(vb) || 0
+      return dir === 'asc' ? va - vb : vb - va
+    }
+    va = String(va).toLowerCase()
+    vb = String(vb).toLowerCase()
+    if (va < vb) return dir === 'asc' ? -1 : 1
+    if (va > vb) return dir === 'asc' ? 1 : -1
+    return 0
+  })
+}
+
+const sortedPoOrders  = computed(() => applySortOrders(poOrders.value,  poSort))
+const sortedErpOrders = computed(() => applySortOrders(erpOrders.value, erpSort))
+
+function toggleSort(sortObj, key) {
+  if (sortObj.key === key) {
+    sortObj.dir = sortObj.dir === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortObj.key = key
+    sortObj.dir = 'asc'
+  }
+}
+
+function sortIconClass(sortObj, key) {
+  if (sortObj.key !== key) return 'fas fa-sort text-gray-300 ml-1'
+  return sortObj.dir === 'asc'
+    ? 'fas fa-sort-up text-blue-400 ml-1'
+    : 'fas fa-sort-down text-blue-400 ml-1'
+}
 
 const selectedFuelDensity = computed(() => {
   if (!form.value.fuel_type_id) return null
