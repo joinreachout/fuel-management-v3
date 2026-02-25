@@ -1628,31 +1628,128 @@ function printPO(order) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Download PO as PDF (html2pdf.js — dynamic import to keep main bundle small)
+// Download PO as PDF — built programmatically with jsPDF (no html2canvas,
+// so Tailwind v4 oklch colors don't cause parsing errors)
 // ────────────────────────────────────────────────────────────────────────────
 async function downloadPoPdf(order) {
   pdfGenerating.value = true
-  printOrder.value    = order
-  await nextTick()
-
-  const el = document.getElementById('print-po')
-  // Move offscreen so html2canvas can render it (it must be visible)
-  el.style.cssText = 'display:block!important;position:fixed;left:-9999px;top:0;width:210mm;background:#fff;'
-
   try {
-    const html2pdf = (await import('html2pdf.js')).default
-    await html2pdf()
-      .set({
-        margin:      [10, 15, 10, 15],
-        filename:    `PO-${order.order_number}.pdf`,
-        image:       { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
-        jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      })
-      .from(el)
-      .save()
+    const { jsPDF } = await import('jspdf')
+
+    const doc   = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })
+    const pageW = 210
+    const ml    = 15    // margin left
+    const cw    = 180   // content width
+    let   y     = 22
+
+    // ── Company ──────────────────────────────────────────────────────────────
+    doc.setFont('helvetica', 'bold').setFontSize(16).setTextColor(0)
+    doc.text('KITTY KAT TECHNOLOGIES', pageW / 2, y, { align: 'center' })
+    y += 5
+    doc.setLineWidth(0.6).setDrawColor(0).line(ml, y, ml + cw, y)
+    y += 7
+
+    // ── Title + number ────────────────────────────────────────────────────────
+    doc.setFontSize(12)
+    doc.text('FUEL PURCHASE ORDER', pageW / 2, y, { align: 'center' })
+    y += 5
+    doc.setFont('helvetica', 'normal').setFontSize(10)
+    doc.text(`No. ${order.order_number}`, pageW / 2, y, { align: 'center' })
+    y += 5
+    doc.setLineWidth(0.6).line(ml, y, ml + cw, y)
+    y += 8
+
+    // ── Meta rows ─────────────────────────────────────────────────────────────
+    const metaRows = [
+      ['Date:',    formatDate(order.order_date),  'Delivery Date:', formatDate(order.delivery_date)],
+      ['Station:', order.station_name  || '—',    'Supplier:',     order.supplier_name || '—'],
+    ]
+    if (order.depot_name) metaRows.push(['Depot:', order.depot_name, '', ''])
+
+    doc.setFontSize(9)
+    for (const [l1, v1, l2, v2] of metaRows) {
+      doc.setFont('helvetica', 'normal').setTextColor(110).text(l1, ml, y)
+      doc.setFont('helvetica', 'bold').setTextColor(0).text(v1, ml + 28, y)
+      if (l2) {
+        doc.setFont('helvetica', 'normal').setTextColor(110).text(l2, pageW / 2 + 5, y)
+        doc.setFont('helvetica', 'bold').setTextColor(0).text(v2, pageW / 2 + 38, y)
+      }
+      y += 6
+    }
+    y += 5
+
+    // ── Items table ───────────────────────────────────────────────────────────
+    const cols = [
+      { label: 'Fuel Type',    x: ml,       align: 'left'  },
+      { label: 'Qty (L)',      x: ml + 78,  align: 'right' },
+      { label: 'Qty (T)',      x: ml + 108, align: 'right' },
+      { label: 'Price / T',   x: ml + 143, align: 'right' },
+      { label: 'Total (USD)', x: ml + cw,  align: 'right' },
+    ]
+    const rowH = 8
+
+    // Header row
+    doc.setFillColor(25, 25, 25).rect(ml, y - rowH + 2, cw, rowH, 'F')
+    doc.setFont('helvetica', 'bold').setFontSize(8).setTextColor(255)
+    for (const col of cols) {
+      doc.text(col.label, col.align === 'right' ? col.x : col.x + 2, y, { align: col.align })
+    }
+    y += rowH
+
+    // Data row
+    doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(0)
+    const vals = [
+      `${order.fuel_type_name} (${order.fuel_type_code})`,
+      formatNum(order.quantity_liters),
+      String(order.quantity_tons ?? '—'),
+      order.price_per_ton ? '$' + formatNum(order.price_per_ton) : '—',
+      order.total_amount  ? '$' + formatNum(order.total_amount)  : '—',
+    ]
+    for (let i = 0; i < cols.length; i++) {
+      const col = cols[i]
+      doc.text(vals[i], col.align === 'right' ? col.x : col.x + 2, y, { align: col.align })
+    }
+    y += 4
+    doc.setLineWidth(0.2).setDrawColor(180).line(ml, y, ml + cw, y)
+    y += 5
+
+    // Total row
+    doc.setLineWidth(1.2).setDrawColor(0).line(ml, y - 3, ml + cw, y - 3)
+    doc.setFont('helvetica', 'bold').setFontSize(9).setTextColor(80)
+    doc.text('TOTAL:', ml + cw - 30, y)
+    doc.setFontSize(11).setTextColor(0)
+    doc.text(order.total_amount ? '$' + formatNum(order.total_amount) : '—', ml + cw, y, { align: 'right' })
+    y += 14
+
+    // ── Notes ─────────────────────────────────────────────────────────────────
+    if (order.notes) {
+      doc.setDrawColor(180).setLineWidth(2).line(ml, y, ml, y + 9)
+      doc.setDrawColor(0).setFont('helvetica', 'normal').setFontSize(9).setTextColor(60)
+      doc.text(`Notes: ${order.notes}`, ml + 5, y + 5)
+      y += 16
+    }
+
+    // ── Signatures ────────────────────────────────────────────────────────────
+    const sigY      = 244
+    const sigW      = cw / 3 - 8
+    const sigLabels = ['Prepared by', 'Reviewed by', 'Approved by']
+    for (let i = 0; i < 3; i++) {
+      const sx = ml + i * (cw / 3)
+      doc.setLineWidth(0.4).setDrawColor(0).line(sx, sigY, sx + sigW, sigY)
+      doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(120)
+      doc.text(sigLabels[i], sx + sigW / 2, sigY + 5, { align: 'center' })
+    }
+
+    // ── Footer ────────────────────────────────────────────────────────────────
+    doc.setLineWidth(0.4).setDrawColor(200).line(ml, 278, ml + cw, 278)
+    doc.setFontSize(7).setTextColor(160)
+    doc.text('Kitty Kat Technologies — Fuel Management System', pageW / 2, 283, { align: 'center' })
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, pageW / 2, 288, { align: 'center' })
+
+    doc.save(`PO-${order.order_number}.pdf`)
+  } catch (e) {
+    console.error('PDF generation failed', e)
   } finally {
-    el.style.cssText  = ''
     pdfGenerating.value = false
   }
 }
