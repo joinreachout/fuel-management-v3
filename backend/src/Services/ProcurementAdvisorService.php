@@ -171,7 +171,14 @@ class ProcurementAdvisorService
                 $additionalOrderNeeded = abs($stockAfterDelivery) * $density / 1000;
             }
 
-            // Calculate critical date and last order date
+            // Days until stock falls below critical threshold (the operationally meaningful number)
+            // More useful than days_until_empty because it shows WHEN to act, not when it's too late
+            $daysUntilCriticalLevel = $dailyConsumption > 0
+                ? max(0.0, round(($currentStockLiters - $criticalLevel) / $dailyConsumption, 1))
+                : 0.0;
+            $criticalLevelDate = date('Y-m-d', strtotime("+{$daysUntilCriticalLevel} days"));
+
+            // Calculate empty date and last order date
             $criticalDate = null;
             $lastOrderDate = null;
             $daysUntilCritical = null;
@@ -206,6 +213,9 @@ class ProcurementAdvisorService
                 'days_left' => $daysLeft,
                 'days_until_critical' => $daysUntilCritical,
                 'critical_date' => $criticalDate,
+                // When stock will fall BELOW the critical threshold (more actionable than empty date)
+                'days_until_critical_level' => $daysUntilCriticalLevel,
+                'critical_level_date' => $criticalLevelDate,
                 'last_order_date' => $lastOrderDate,
                 'current_stock_tons' => round($currentStockTons, 2),
                 'current_stock_liters' => round($currentStockLiters, 2),
