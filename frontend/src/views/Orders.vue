@@ -1134,7 +1134,13 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ordersApi, stationsApi, fuelTypesApi, suppliersApi, dashboardApi, procurementApi, parametersApi } from '../services/api.js'
+
+// ────────────────────────────────────────────────────────────────────────────
+// Router / Route
+// ────────────────────────────────────────────────────────────────────────────
+const route = useRoute()
 
 // ────────────────────────────────────────────────────────────────────────────
 // State
@@ -1908,16 +1914,36 @@ watch(selectedErpSupplierOffer, (offer) => {
   }
 })
 
-onMounted(() => {
+onMounted(async () => {
   // Load both tabs in parallel on mount so tab badge counts are accurate
   loadPOOrders()
   loadERPOrders()
   loadOrderStats()
   loadHeaderKpis()
-  loadStations()
-  loadFuelTypes()
-  loadSuppliers()
-  loadSupplierOffers()
+
+  // Wait for lookup data (needed before we can pre-fill the create modal)
+  await Promise.all([
+    loadStations(),
+    loadFuelTypes(),
+    loadSuppliers(),
+    loadSupplierOffers(),
+  ])
+
+  // Pre-fill Create PO modal when navigated from Procurement Advisor
+  // Usage: router.push({ path: '/orders', query: { action: 'create_po', station_id, fuel_type_id, ... } })
+  if (route.query.action === 'create_po') {
+    form.value = {
+      station_id:    route.query.station_id    ? Number(route.query.station_id)    : '',
+      fuel_type_id:  route.query.fuel_type_id  ? Number(route.query.fuel_type_id)  : '',
+      supplier_id:   route.query.supplier_id   ? Number(route.query.supplier_id)   : '',
+      quantity_tons: route.query.quantity_tons ? parseFloat(route.query.quantity_tons) : null,
+      price_per_ton: null,
+      delivery_date: route.query.delivery_date || '',
+      notes:         '',
+    }
+    createError.value     = ''
+    showCreateModal.value = true
+  }
 })
 </script>
 

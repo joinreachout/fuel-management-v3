@@ -229,6 +229,13 @@ class ProcurementAdvisorService
                     'formula' => 'recommended = min((target + consumption_during_delivery - current), (capacity × max_fill_pct) - (current - consumption))'
                 ],
                 'best_supplier' => $bestSupplier,
+                // Threshold percentages — needed by frontend stock level bar
+                'thresholds_pct' => [
+                    'critical' => round($criticalFillPct * 100, 1),
+                    'min'      => round($minFillPct * 100, 1),
+                    'target'   => round($plannedFillPct * 100, 1),
+                    'max'      => round($maxFillPct * 100, 1),
+                ],
                 'created_at' => date('Y-m-d H:i:s')
             ];
         }
