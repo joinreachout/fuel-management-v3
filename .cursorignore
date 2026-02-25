@@ -1,0 +1,19 @@
+# Cursor indexing exclusions
+
+# Claude Code worktrees — old branches, stale docs, NOT project source
+.claude/
+
+# Dependencies
+backend/vendor/
+frontend/node_modules/
+optimizer/.venv/
+optimizer/__pycache__/
+
+# Build output
+frontend/dist/
+backend/public/build/
+
+# Misc
+.DS_Store
+*.log
+.cache/
