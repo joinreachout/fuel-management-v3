@@ -601,11 +601,60 @@
                   <!-- Supplier -->
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
-                    <select v-model="form.supplier_id"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                      <option value="">Select supplier...</option>
-                      <option v-for="s in suppliers" :key="s.id" :value="s.id">{{ s.name }}</option>
-                    </select>
+
+                    <!-- When station/fuel not yet selected -->
+                    <div v-if="!form.station_id || !form.fuel_type_id"
+                      class="text-xs text-gray-500 mb-2">
+                      Select station and fuel type to see best contract suppliers.
+                    </div>
+
+                    <!-- No contract offers for this combination -->
+                    <div v-else-if="availableSupplierOffers.length === 0"
+                      class="text-xs text-amber-700 mb-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 flex items-start gap-2">
+                      <i class="fas fa-info-circle mt-0.5"></i>
+                      <span>No supplier offers found for this station and fuel type.</span>
+                    </div>
+
+                    <!-- Ranked supplier cards -->
+                    <div v-else class="space-y-2 mb-2">
+                      <label
+                        v-for="(offer, idx) in availableSupplierOffers"
+                        :key="offer.id || offer.supplier_id"
+                        class="flex items-center justify-between gap-3 px-3 py-2 rounded-xl border cursor-pointer transition-colors"
+                        :class="form.supplier_id === offer.supplier_id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/40'">
+                        <div class="flex items-center gap-3">
+                          <input
+                            type="radio"
+                            class="sr-only"
+                            :value="offer.supplier_id"
+                            v-model="form.supplier_id"
+                          />
+                          <div>
+                            <div class="flex items-center gap-2">
+                              <span class="text-sm font-semibold text-gray-900">
+                                {{ offer.supplier_name }}
+                              </span>
+                              <span v-if="idx === 0"
+                                class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-300">
+                                BEST
+                              </span>
+                            </div>
+                            <div class="text-xs text-gray-500">
+                              {{ offer.delivery_days }} days
+                              <span v-if="offer.price_per_ton">
+                                · ${{ offer.price_per_ton }}/t
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="text-xs text-gray-500 text-right">
+                          <div>Score: {{ offer.compositeScore }}</div>
+                        </div>
+                      </label>
+                    </div>
+
                     <!-- Delivery info auto-pulled from supplier offers -->
                     <div v-if="selectedSupplierOffer" class="mt-2 flex items-center gap-3 px-3 py-2 bg-blue-50 rounded-lg border border-blue-100 text-xs text-blue-700">
                       <i class="fas fa-shipping-fast text-blue-400"></i>
@@ -1331,6 +1380,27 @@ const selectedErpSupplierOffer = computed(() => {
   ) || null
 })
 
+// Ranked supplier offers for Create PO modal — filtered by station + fuel and
+// sorted by composite score: price + delivery_days × 5 (lower is better)
+const availableSupplierOffers = computed(() => {
+  const stationId = form.value.station_id
+  const fuelTypeId = form.value.fuel_type_id
+  if (!stationId || !fuelTypeId) return []
+
+  const dayCost = 5
+  return supplierOffers.value
+    .filter(o => o.station_id == stationId && o.fuel_type_id == fuelTypeId)
+    .map(o => {
+      const price = o.price_per_ton ? parseFloat(o.price_per_ton) : 0
+      const days  = o.delivery_days ? parseInt(o.delivery_days) : 0
+      return {
+        ...o,
+        compositeScore: price + days * dayCost,
+      }
+    })
+    .sort((a, b) => a.compositeScore - b.compositeScore)
+})
+
 // Stats bar — helper + per-status computed
 function statsCount(orderType, status) {
   const found = orderStats.value.find(s => s.order_type === orderType && s.status === status)
@@ -1911,6 +1981,15 @@ watch(selectedErpSupplierOffer, (offer) => {
   }
   if (offer.price_per_ton && !erpForm.value.price_per_ton) {
     erpForm.value.price_per_ton = parseFloat(offer.price_per_ton)
+  }
+})
+
+// Auto-select best supplier when Create PO modal opens and offers are available
+watch(availableSupplierOffers, (offers) => {
+  if (!showCreateModal.value) return
+  if (!offers.length) return
+  if (!form.value.supplier_id) {
+    form.value.supplier_id = offers[0].supplier_id
   }
 })
 

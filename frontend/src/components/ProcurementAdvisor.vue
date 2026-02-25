@@ -68,38 +68,52 @@
             </div>
           </div>
 
-          <!-- KPI cards — clickable, switch to Recommendations tab -->
-          <div class="grid grid-cols-2 gap-3">
-            <div
+          <!-- Urgency KPI grid — Mandatory / Act Soon / Planned -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <!-- Mandatory: CATASTROPHE + CRITICAL -->
+            <button
+              type="button"
               @click="activeTab = 'recommendations'"
-              class="bg-red-50 p-3 rounded-lg cursor-pointer hover:bg-red-100 transition-colors group">
-              <div class="text-xs text-red-600 font-semibold mb-1 flex items-center justify-between">
-                Mandatory Orders
-                <i class="fas fa-arrow-right text-red-300 group-hover:text-red-500 transition-colors text-xs"></i>
+              class="text-left bg-red-50 p-3 rounded-lg cursor-pointer hover:bg-red-100 transition-colors group border border-red-100">
+              <div class="text-xs text-red-700 font-semibold mb-1 flex items-center justify-between">
+                Mandatory
+                <i class="fas fa-arrow-right text-red-300 group-hover:text-red-600 transition-colors text-xs"></i>
               </div>
-              <div class="text-2xl font-bold text-red-900">{{ summary.mandatory_orders || 0 }}</div>
+              <div class="text-2xl font-bold text-red-900">
+                {{ mandatoryCount }}
+              </div>
               <div class="text-xs text-red-500 mt-1">CATASTROPHE + CRITICAL</div>
-            </div>
-            <div
+            </button>
+
+            <!-- Act Soon: MUST_ORDER + WARNING -->
+            <button
+              type="button"
               @click="activeTab = 'recommendations'"
-              class="bg-orange-50 p-3 rounded-lg cursor-pointer hover:bg-orange-100 transition-colors group">
-              <div class="text-xs text-orange-600 font-semibold mb-1 flex items-center justify-between">
-                Recommended Orders
-                <i class="fas fa-arrow-right text-orange-300 group-hover:text-orange-500 transition-colors text-xs"></i>
+              class="text-left bg-orange-50 p-3 rounded-lg cursor-pointer hover:bg-orange-100 transition-colors group border border-orange-100">
+              <div class="text-xs text-orange-700 font-semibold mb-1 flex items-center justify-between">
+                Act Soon
+                <i class="fas fa-arrow-right text-orange-300 group-hover:text-orange-600 transition-colors text-xs"></i>
               </div>
-              <div class="text-2xl font-bold text-orange-900">{{ summary.recommended_orders || 0 }}</div>
+              <div class="text-2xl font-bold text-orange-900">
+                {{ actSoonCount }}
+              </div>
               <div class="text-xs text-orange-500 mt-1">MUST ORDER + WARNING</div>
-            </div>
-            <div class="bg-purple-50 p-3 rounded-lg">
-              <div class="text-xs text-purple-600 font-semibold mb-1">Avg Lead Time</div>
-              <div class="text-2xl font-bold text-purple-900">{{ summary.avg_lead_time_days || 0 }} days</div>
-              <div class="text-xs text-purple-500 mt-1">Based on suppliers</div>
-            </div>
-            <div class="bg-emerald-50 p-3 rounded-lg">
-              <div class="text-xs text-emerald-600 font-semibold mb-1">Total Value</div>
-              <div class="text-2xl font-bold text-emerald-900">{{ formatCurrency(summary.total_value_estimate) }}</div>
-              <div class="text-xs text-emerald-500 mt-1">Recommended orders</div>
-            </div>
+            </button>
+
+            <!-- Planned: PLANNED -->
+            <button
+              type="button"
+              @click="activeTab = 'recommendations'"
+              class="text-left bg-blue-50 p-3 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors group border border-blue-100">
+              <div class="text-xs text-blue-700 font-semibold mb-1 flex items-center justify-between">
+                Planned
+                <i class="fas fa-arrow-right text-blue-300 group-hover:text-blue-600 transition-colors text-xs"></i>
+              </div>
+              <div class="text-2xl font-bold text-blue-900">
+                {{ plannedCount }}
+              </div>
+              <div class="text-xs text-blue-500 mt-1">Planned opportunities</div>
+            </button>
           </div>
 
           <!-- 14-day Timeline -->
@@ -197,7 +211,7 @@
               v-for="rec in recommendations"
               :key="rec.id"
               class="border-2 rounded-xl p-3 flex flex-col gap-2 bg-white"
-              :class="getBorderClass(rec.urgency)">
+              :class="rec.po_pending ? 'border-green-400 bg-green-50/40' : getBorderClass(rec.urgency)">
 
               <!-- Row 1: Station + urgency badge -->
               <div class="flex items-start justify-between gap-1">
@@ -442,6 +456,7 @@ const recommendations = computed(() =>
     station_id:               s.station_id,
     station_name:             s.station_name,
     depot_name:               s.depot_name,
+    fuel_type_id:             s.fuel_type_id,
     fuel_type:                s.fuel_type_name,
     fuel_type_code:           s.fuel_type_code,
     urgency:                  s.urgency,
@@ -470,6 +485,17 @@ const urgencyCounts = computed(() => {
   }
   return counts;
 });
+
+// Aggregated urgency buckets for Briefing KPI grid
+const mandatoryCount = computed(() =>
+  (urgencyCounts.value.CATASTROPHE || 0) + (urgencyCounts.value.CRITICAL || 0)
+);
+const actSoonCount = computed(() =>
+  (urgencyCounts.value.MUST_ORDER || 0) + (urgencyCounts.value.WARNING || 0)
+);
+const plannedCount = computed(() =>
+  urgencyCounts.value.PLANNED || 0
+);
 
 // ── Computed: "next action" header chip ──────────────────────────────────────
 const nextActionChip = computed(() => {
