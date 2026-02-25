@@ -382,33 +382,28 @@
 
                   <!-- Actions -->
                   <td class="px-5 py-3.5">
-                    <div class="flex items-center gap-1.5 flex-wrap">
-                      <!-- Edit: any non-terminal status -->
+                    <div class="flex items-center gap-0.5">
                       <button v-if="!['cancelled','delivered'].includes(order.status)"
                         @click="openEditModal(order)"
-                        class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                        class="w-7 h-7 inline-flex items-center justify-center text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
                         title="Edit order">
-                        <i class="fas fa-pencil-alt"></i> Edit
+                        <i class="fas fa-pencil-alt" style="font-size:11px"></i>
                       </button>
-                      <!-- Print -->
                       <button @click="printPO(order)"
-                        class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        class="w-7 h-7 inline-flex items-center justify-center text-gray-400 hover:bg-gray-100 rounded-lg transition-colors"
                         title="Print PO">
-                        <i class="fas fa-print"></i> Print
+                        <i class="fas fa-print" style="font-size:11px"></i>
                       </button>
-                      <!-- Download PDF -->
                       <button @click="downloadPoPdf(order)" :disabled="pdfGenerating"
-                        class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors disabled:opacity-50"
+                        class="w-7 h-7 inline-flex items-center justify-center text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-40"
                         title="Download PDF">
-                        <i :class="pdfGenerating ? 'fas fa-spinner fa-spin' : 'fas fa-file-pdf'"></i>
-                        PDF
+                        <i :class="pdfGenerating ? 'fas fa-spinner fa-spin' : 'fas fa-file-pdf'" style="font-size:11px"></i>
                       </button>
-                      <!-- Cancel: only for planned -->
                       <button v-if="order.status === 'planned'"
                         @click="openCancelModal(order)"
-                        class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                        class="w-7 h-7 inline-flex items-center justify-center text-red-400 hover:bg-red-50 rounded-lg transition-colors"
                         title="Cancel this PO">
-                        <i class="fas fa-times"></i> Cancel
+                        <i class="fas fa-times" style="font-size:11px"></i>
                       </button>
                     </div>
                   </td>
@@ -535,9 +530,9 @@
                   <td class="px-5 py-3.5">
                     <button v-if="order.status !== 'cancelled'"
                       @click="openEditModal(order)"
-                      class="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                      class="w-7 h-7 inline-flex items-center justify-center text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
                       title="Edit / advance status">
-                      <i class="fas fa-pencil-alt"></i> Edit
+                      <i class="fas fa-pencil-alt" style="font-size:11px"></i>
                     </button>
                   </td>
 
