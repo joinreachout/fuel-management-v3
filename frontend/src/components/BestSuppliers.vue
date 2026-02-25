@@ -1,16 +1,18 @@
 <template>
   <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
     <!-- Header -->
-    <div class="bg-gray-900 px-5 py-4 flex items-center justify-between gap-3">
-      <div class="flex items-center gap-2">
-        <i class="fas fa-trophy text-yellow-400"></i>
-        <span class="text-white font-semibold text-sm">Best Suppliers</span>
-        <span class="text-gray-400 text-xs">by price + lead time</span>
+    <div class="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-3">
+      <div>
+        <h3 class="text-lg font-bold text-gray-800">
+          <i class="fas fa-trophy text-yellow-500 mr-2"></i>
+          Best Suppliers
+        </h3>
+        <p class="text-xs text-gray-500 mt-1">Best option per station &amp; fuel type by price + lead time</p>
       </div>
       <!-- Station filter -->
       <select
         v-model="selectedStation"
-        class="bg-gray-800 border border-gray-600 text-gray-200 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        class="bg-white border border-gray-300 text-gray-700 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
       >
         <option :value="null">All Stations</option>
         <option v-for="st in stations" :key="st.id" :value="st.id">{{ st.name }}</option>

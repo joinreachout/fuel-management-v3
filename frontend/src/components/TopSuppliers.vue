@@ -1,12 +1,15 @@
 <template>
   <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
     <!-- Header -->
-    <div class="bg-gray-900 px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <i class="fas fa-trophy text-yellow-400 text-sm"></i>
-        <span class="text-white font-semibold text-sm">Suppliers</span>
+    <div class="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      <div>
+        <h3 class="text-lg font-bold text-gray-800">
+          <i class="fas fa-trophy text-yellow-500 mr-2"></i>
+          Top Suppliers
+        </h3>
+        <p class="text-xs text-gray-500 mt-1">Ranked by delivery speed &amp; coverage</p>
       </div>
-      <span class="bg-gray-700 text-gray-300 text-xs font-mono px-2 py-0.5 rounded-full">
+      <span class="bg-gray-100 text-gray-500 text-xs font-mono px-2 py-0.5 rounded-full border border-gray-200">
         {{ suppliers.length }} active
       </span>
     </div>
