@@ -205,11 +205,104 @@
             </div>
           </div>
 
-          <!-- 3-column compact card grid -->
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            <div
-              v-for="rec in recommendations"
-              :key="rec.id"
+          <!-- ── CRISIS section: CATASTROPHE items (delivery already too late) ── -->
+          <div v-if="crisisItems.length" class="mb-5">
+            <div class="flex items-center gap-2 mb-2 px-1">
+              <span class="text-red-600 font-bold text-sm">🚨 Requires Immediate Action</span>
+              <span class="text-xs text-red-400">— no regular delivery can arrive in time</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              <div
+                v-for="rec in crisisItems"
+                :key="rec.id"
+                class="border-2 rounded-xl p-3 flex flex-col gap-2 bg-white"
+                :class="rec.po_pending ? 'border-green-400 bg-green-50/40' : getBorderClass(rec.urgency)">
+                <!-- Row 1-5: same card internals — reuse slot below via include pattern -->
+                <div class="flex items-start justify-between gap-1">
+                  <div class="min-w-0">
+                    <div class="font-bold text-gray-800 text-sm leading-tight truncate">{{ shortName(rec.station_name) }}</div>
+                    <div class="text-xs text-gray-500 truncate">{{ rec.depot_name }} · {{ rec.fuel_type }}</div>
+                  </div>
+                  <span class="shrink-0 px-1.5 py-0.5 rounded-md text-xs font-bold" :class="getUrgencyClass(rec.urgency)">{{ urgencyShortLabel(rec.urgency) }}</span>
+                </div>
+                <div>
+                  <div class="flex justify-between text-xs mb-1">
+                    <span class="text-gray-500">{{ formatTons(rec.current_stock_tons) }}</span>
+                    <span class="font-semibold" :class="getDaysTextClass(rec.urgency)">{{ rec.fill_percentage }}%</span>
+                  </div>
+                  <div class="relative h-2.5 rounded-full bg-gray-100 overflow-hidden">
+                    <div class="absolute inset-y-0 left-0 bg-red-100" :style="{ width: rec.thresholds.critical + '%' }"></div>
+                    <div class="absolute inset-y-0 bg-orange-50" :style="{ left: rec.thresholds.critical + '%', width: (rec.thresholds.min - rec.thresholds.critical) + '%' }"></div>
+                    <div class="absolute inset-y-0 bg-yellow-50" :style="{ left: rec.thresholds.min + '%', width: (rec.thresholds.target - rec.thresholds.min) + '%' }"></div>
+                    <div class="absolute inset-y-0 bg-green-50" :style="{ left: rec.thresholds.target + '%', width: (rec.thresholds.max - rec.thresholds.target) + '%' }"></div>
+                    <div class="absolute inset-y-0 left-0 rounded-full" :class="getFillBarClass(rec.urgency)" :style="{ width: Math.min(rec.fill_percentage, 100) + '%' }"></div>
+                    <div class="absolute inset-y-0 w-px bg-red-400 opacity-70" :style="{ left: rec.thresholds.critical + '%' }"></div>
+                    <div class="absolute inset-y-0 w-px bg-orange-400 opacity-70" :style="{ left: rec.thresholds.min + '%' }"></div>
+                    <div class="absolute inset-y-0 w-px bg-green-500 opacity-70" :style="{ left: rec.thresholds.target + '%' }"></div>
+                  </div>
+                </div>
+                <div class="flex gap-2 items-stretch">
+                  <div class="shrink-0 flex flex-col items-center justify-center px-3 py-2 rounded-xl border-2 text-center min-w-[60px]" :class="getDaysBoxClass(rec.urgency)">
+                    <div class="text-2xl font-black leading-none tabular-nums" :class="getDaysTextClass(rec.urgency)">
+                      {{ rec.days_until_critical_level == null ? '∞' : rec.days_until_critical_level === 0 ? '!' : Math.round(rec.days_until_critical_level) }}
+                    </div>
+                    <div class="leading-tight mt-0.5" style="font-size: 10px; font-weight: 600" :class="getDaysTextClass(rec.urgency)">
+                      {{ rec.days_until_critical_level == null ? 'no data' : rec.days_until_critical_level === 0 ? 'CRITICAL' : 'to crit.' }}
+                    </div>
+                  </div>
+                  <div class="flex-1 grid grid-cols-2 gap-1 text-xs">
+                    <div class="bg-gray-50 rounded-lg px-2 py-1.5 col-span-2">
+                      <div class="text-gray-400 leading-tight">Critical level date</div>
+                      <div class="font-medium text-gray-700 mt-0.5">{{ rec.critical_level_date }}</div>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg px-2 py-1.5 col-span-2">
+                      <div class="text-gray-400 leading-tight">Stock needed</div>
+                      <div class="font-bold text-emerald-700 mt-0.5">{{ formatTons(rec.recommended_order_tons) }}</div>
+                    </div>
+                  </div>
+                </div>
+                <div v-if="rec.best_supplier" class="flex items-center justify-between text-xs bg-gray-50 rounded-lg px-2 py-1.5">
+                  <span class="font-medium text-gray-700 truncate">{{ rec.best_supplier.name }}</span>
+                  <span class="text-gray-500 shrink-0 ml-1"><i class="fas fa-truck text-blue-400 mr-0.5"></i>{{ rec.best_supplier.avg_delivery_days }}d</span>
+                </div>
+                <div v-if="rec.po_pending && rec.active_po" class="bg-blue-50 border border-blue-200 rounded-lg px-2 py-1.5 text-xs">
+                  <div class="flex items-center gap-1.5">
+                    <i class="fas fa-clipboard-check text-blue-500 shrink-0"></i>
+                    <span class="font-semibold text-blue-800">{{ rec.active_po.order_number }}</span>
+                    <span class="text-blue-600 flex-1 truncate">· {{ rec.active_po.quantity_tons }}t · {{ rec.active_po.delivery_date }}</span>
+                    <template v-if="cancelingId === rec.active_po.id">
+                      <button type="button" @click="confirmRemovePO(rec.active_po.id)" :disabled="cancelLoading" class="shrink-0 px-1.5 py-0.5 bg-red-500 text-white rounded font-bold hover:bg-red-600 transition-colors disabled:opacity-50">
+                        <i v-if="cancelLoading" class="fas fa-spinner fa-spin"></i><span v-else>Delete?</span>
+                      </button>
+                      <button type="button" @click="cancelingId = null" class="shrink-0 px-1.5 py-0.5 bg-gray-200 text-gray-600 rounded hover:bg-gray-300 transition-colors">No</button>
+                    </template>
+                    <button v-else type="button" @click="cancelingId = rec.active_po.id" class="shrink-0 px-1.5 py-0.5 rounded text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors" title="Remove PO"><i class="fas fa-times"></i></button>
+                  </div>
+                  <div v-if="cancelingId === rec.active_po.id" class="mt-1 text-red-600 font-medium" style="font-size: 10px">Remove PO? System will recalculate.</div>
+                </div>
+                <!-- Crisis actions: Escalate + Consider Transfer (no Create PO button) -->
+                <div class="mt-auto grid grid-cols-2 gap-1.5">
+                  <button type="button" class="py-2 text-xs font-semibold rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-all border border-red-200">
+                    <i class="fas fa-phone-alt mr-1"></i>Escalate
+                  </button>
+                  <button type="button" @click="router.push('/transfers')" class="py-2 text-xs font-semibold rounded-lg bg-orange-100 text-orange-700 hover:bg-orange-200 transition-all border border-orange-200">
+                    <i class="fas fa-exchange-alt mr-1"></i>Transfer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── PROACTIVE PLANNING section: CRITICAL / MUST_ORDER / WARNING / PLANNED ── -->
+          <div v-if="proactiveItems.length">
+            <div class="flex items-center gap-2 mb-2 px-1">
+              <span class="text-gray-700 font-bold text-sm">📋 Proactive Planning</span>
+              <span class="text-xs text-gray-400">— order ahead to prevent stockouts</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              <div
+                v-for="rec in proactiveItems"
+                :key="rec.id"
               class="border-2 rounded-xl p-3 flex flex-col gap-2 bg-white"
               :class="rec.po_pending ? 'border-green-400 bg-green-50/40' : getBorderClass(rec.urgency)">
 
@@ -280,11 +373,11 @@
                   :class="getDaysBoxClass(rec.urgency)">
                   <div class="text-2xl font-black leading-none tabular-nums"
                     :class="getDaysTextClass(rec.urgency)">
-                    {{ rec.days_until_critical_level === 0 ? '!' : Math.round(rec.days_until_critical_level) }}
+                    {{ rec.days_until_critical_level == null ? '∞' : rec.days_until_critical_level === 0 ? '!' : Math.round(rec.days_until_critical_level) }}
                   </div>
                   <div class="leading-tight mt-0.5" style="font-size: 10px; font-weight: 600"
                     :class="getDaysTextClass(rec.urgency)">
-                    {{ rec.days_until_critical_level === 0 ? 'CRITICAL' : 'to crit.' }}
+                    {{ rec.days_until_critical_level == null ? 'no data' : rec.days_until_critical_level === 0 ? 'CRITICAL' : 'to crit.' }}
                   </div>
                 </div>
 
@@ -376,7 +469,8 @@
               </button>
 
             </div>
-          </div>
+          </div><!-- end proactive grid -->
+          </div><!-- end proactive section -->
         </div>
       </div>
 
@@ -461,8 +555,9 @@ const recommendations = computed(() =>
     fuel_type_code:           s.fuel_type_code,
     urgency:                  s.urgency,
     days_left:                s.days_left,
-    // Key new field: days until stock falls below critical threshold (e.g. 20%)
-    days_until_critical_level: s.days_until_critical_level ?? s.days_left,
+    // null when consumption = 0 (show ∞ in hero); do NOT fall back to days_left
+    days_until_critical_level: s.days_until_critical_level ?? null,
+    procurement_too_late:      s.procurement_too_late ?? false,
     critical_level_date:      s.critical_level_date || s.critical_date,
     critical_date:            s.critical_date,
     last_order_date:          s.last_order_date,
@@ -485,6 +580,10 @@ const urgencyCounts = computed(() => {
   }
   return counts;
 });
+
+// ── Computed: crisis vs proactive split ───────────────────────────────────────
+const crisisItems    = computed(() => recommendations.value.filter(r => r.urgency === 'CATASTROPHE'))
+const proactiveItems = computed(() => recommendations.value.filter(r => r.urgency !== 'CATASTROPHE'))
 
 // Aggregated urgency buckets for Briefing KPI grid
 const mandatoryCount = computed(() =>
@@ -518,7 +617,7 @@ const nextActionChip = computed(() => {
 const timelineItems = computed(() => {
   const dotByUrgency = { CATASTROPHE:'bg-red-600', CRITICAL:'bg-red-400', MUST_ORDER:'bg-orange-500', WARNING:'bg-yellow-400', PLANNED:'bg-blue-400' };
   return shortages.value
-    .filter(s => s.days_until_critical_level >= 0 && s.days_until_critical_level <= 14)
+    .filter(s => s.days_until_critical_level != null && s.days_until_critical_level >= 0 && s.days_until_critical_level <= 14)
     .sort((a, b) => a.days_until_critical_level - b.days_until_critical_level)
     .map(s => ({
       days:         s.days_until_critical_level,

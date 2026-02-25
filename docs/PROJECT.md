@@ -149,8 +149,9 @@ cancelled & delivered: terminal — blocked from further updates
 ## Roadmap
 
 ### 🔴 HIGH (next up)
-1. **Stock Policies data** — migration 004 ready, needs to run on server; then UI shows real thresholds
-2. **Best Supplier Selection Widget** — recommend supplier per station/fuel based on price + delivery days; surfaced on Dashboard and in Create PO modal
+1. **Fix #5 (backend urgency rewrite)** — time-based urgency, zero-consumption bug, procurement_too_late field, crisis/proactive split in UI; see MEMORY.md Fix #5
+2. **Fixes 1–4 (Procurement Advisor frontend)** — fuel_type_id, KPI grid, supplier picker, green card tint; see MEMORY.md
+3. **Stock Policies data** — migration 004 ready, needs to run on server; then UI shows real thresholds
 
 ### 🟠 MEDIUM
 3. **ERP Status Transitions** — quick-action buttons in ERP table (confirmed→in_transit→delivered) without opening full Edit modal
@@ -169,6 +170,44 @@ cancelled & delivered: terminal — blocked from further updates
 ---
 
 ## Session Log
+
+### 2026-02-25 — InfrastructureService critical bug fix
+- **Root cause:** `InfrastructureService` called `Database::execute()` and `Database::lastInsertId()` — neither method exists in `Database.php`
+- **All 4 write operations were broken** (500 on any save in Infrastructure tab):
+  - `updateStation`, `updateDepot`, `updateTank` → `Database::execute()` → `Database::query()->rowCount()`
+  - `addTank` → `Database::execute()` → `Database::query()` + `getConnection()->lastInsertId()`
+- Tank capacity edit now works (user was trying to fix BiMM A-80: 312,595 → 1,312,595 L)
+
+### 2026-02-25 — Urgency Logic Bug + Spec Review (Fix #5 diagnosed — NOT YET FIXED)
+- **Root cause:** Urgency based on fill% vs thresholds, NOT time. Items at 33% fill show CRITICAL even if 44 days remain before threshold breach.
+- **Correct formula** (from spec §4.5.2 + §3.2): `daysToAct = days_until_critical - (delivery_days + delivery_buffer_days)` where `delivery_buffer_days = 15` per spec
+- **Zero-consumption bug:** Backend returns `0.0` for `days_until_critical_level` when consumption = 0. Frontend `?? s.days_left` fallback then shows days-until-empty (44/47 days) as if it were days-to-critical. Fix: return `null` when consumption = 0; remove fallback.
+- **`procurement_too_late` field** to add: `lastOrderDate < today` → delivery cannot arrive before critical date → CATASTROPHE mode
+- **Two operational modes** confirmed by spec §4.4.4: (1) PROACTIVE PLANNING — prevent stockouts with normal POs; (2) CRISIS (CATASTROPHE) — delivery too late, needs transfers/escalation, NO "Create PO" button
+- **Spec reviewed:** `fuel_planning_system_functional_spec_final_draft.pdf` + `fuel_planning_implementation_qa_Claude_v3.pdf` — key findings captured in MEMORY.md "Spec Key Findings" section
+- **Full Fix #5 spec in MEMORY.md** — backend code + frontend splits + urgency thresholds
+
+### 2026-02-25 — 4 Bugs Diagnosed (NOT YET FIXED — pending for Cursor/next session)
+- **Fix 1 (CRITICAL):** `fuel_type_id` is missing from `recommendations` computed map in `ProcurementAdvisor.vue`
+  - `rec.fuel_type_id` = undefined → URL param absent → Create PO modal shows "Select fuel type…" instead of pre-filling
+  - Fix: add `fuel_type_id: s.fuel_type_id,` inside the `.map(s => ({...}))` block, after `depot_name`
+- **Fix 2:** Briefing KPI "Recommended Orders = 0" is misleading (all items are CATASTROPHE/CRITICAL or PLANNED)
+  - Fix: add `mandatoryCount`/`actSoonCount`/`plannedCount` computed refs; replace 2-card grid with 3-card urgency grid
+- **Fix 3:** Create PO modal shows plain `<select>` with all suppliers, not filtered by station+fuel
+  - Fix: add `availableSupplierOffers` computed (filter by station_id + fuel_type_id, sort by composite score); replace `<select>` with visual radio-card picker showing price + delivery days + BEST badge; auto-watch to select best
+- **Fix 4:** Recommendation cards look identical whether or not a PO already exists
+  - Fix: when `rec.po_pending === true` → `border-green-400 bg-green-50/40` instead of urgency-based border + `bg-white`
+
+### 2026-02-25 — Procurement Advisor Round 2 + Inline PO Management
+- Backend: `days_until_critical_level` (days until stock hits critical threshold %, not empty date), `critical_level_date`, `thresholds_pct`
+- Frontend: compact 3-column card grid (`grid-cols-1 md:grid-cols-2 xl:grid-cols-3`), "to crit." days hero, clickable Briefing KPI cards
+- Stock level bar with colored threshold zones (uses `thresholds_pct` from API, fallback 20/40/80/95)
+- Timeline label: "Upcoming — Next 14 Days" → "Stock hits critical level — next 14 days" (was misleading)
+- Inline Remove PO on recommendation cards: 2-step confirm → `DELETE /api/orders/{id}` → `loadData()` (recalculate)
+- `loadData()` extracted as reusable fn; `confirmRemovePO()` uses `ordersApi.delete()`
+- "Create Purchase Order" → `router.push('/orders', { query: { action:'create_po', station_id, fuel_type_id, quantity_tons, supplier_id, delivery_date } })`
+- Orders.vue onMounted reads query params and pre-fills + auto-opens Create PO modal
+- Backend already has `Order::findActivePO(station_id, fuel_type_id)` — returns first planned PO with future delivery date
 
 ### 2026-02-25 — Orders UX + PDF
 - Sortable columns (reactive() fix)

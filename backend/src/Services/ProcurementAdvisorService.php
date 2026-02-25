@@ -109,7 +109,7 @@ class ProcurementAdvisorService
             $minFillPct       = self::param('min_fill_pct', 40.0)      / 100;
             $plannedFillPct   = self::param('target_fill_pct', 80.0)   / 100;
             $maxFillPct       = self::param('max_useful_volume_pct', 95.0) / 100;
-            $safetyBufferDays = (int)self::param('delivery_buffer_days', 2);
+            $safetyBufferDays = (int)self::param('delivery_buffer_days', 15); // spec §3.2 default
             $defaultLeadDays  = (int)self::param('default_lead_days', 7);
 
             // Use per-depot stock_policies if set; fall back to global % of capacity
@@ -125,21 +125,8 @@ class ProcurementAdvisorService
                 ? (float)$row['target_level_liters']
                 : $capacityLiters * $plannedFillPct;
 
-            // Determine urgency level (thresholds from system_parameters)
-            $urgency = self::calculateUrgency(
-                $currentStockLiters,
-                $minLevel,
-                $criticalLevel,
-                $daysLeft,
-                (int)self::param('catastrophe_threshold_days', 1),
-                (int)self::param('critical_threshold_days', 2),
-                (int)self::param('must_order_threshold_days', 5),
-                (int)self::param('warning_threshold_days', 7)
-            );
-
-            // Get best supplier for this fuel type and station (needed for delivery time calculation)
-            $bestSupplier = self::getBestSupplier($row['fuel_type_id'], $row['station_id'], $urgency);
-
+            // Get best supplier first — delivery days are required for time-based urgency formula
+            $bestSupplier = self::getBestSupplier($row['fuel_type_id'], $row['station_id'], 'PLANNED');
             $deliveryDays = $bestSupplier['avg_delivery_days'] ?? $defaultLeadDays;
 
             // Calculate consumption during delivery period
@@ -171,27 +158,38 @@ class ProcurementAdvisorService
                 $additionalOrderNeeded = abs($stockAfterDelivery) * $density / 1000;
             }
 
-            // Days until stock falls below critical threshold (the operationally meaningful number)
-            // More useful than days_until_empty because it shows WHEN to act, not when it's too late
-            $daysUntilCriticalLevel = $dailyConsumption > 0
-                ? max(0.0, round(($currentStockLiters - $criticalLevel) / $dailyConsumption, 1))
-                : 0.0;
-            $criticalLevelDate = date('Y-m-d', strtotime("+{$daysUntilCriticalLevel} days"));
+            // Time-based urgency per spec §4.5.2 + §3.2
+            // daysToAct = days we have left to PLACE the order so delivery arrives before critical date
+            // Returns null when consumption = 0 (no meaningful forecast — show ∞ in UI)
+            if ($dailyConsumption <= 0) {
+                $daysUntilCriticalLevel = null;
+                $criticalLevelDate      = null;
+                $lastOrderDate          = null;
+                $procurementTooLate     = false;
+                $urgency                = 'PLANNED';
+            } else {
+                $daysUntilCriticalLevel = max(0, round(
+                    ($currentStockLiters - $criticalLevel) / $dailyConsumption, 1
+                ));
+                $criticalLevelDate = date('Y-m-d', strtotime("+{$daysUntilCriticalLevel} days"));
 
-            // Calculate empty date and last order date
-            $criticalDate = null;
-            $lastOrderDate = null;
-            $daysUntilCritical = null;
+                // Last order date per spec §4.5.2: critical_date - delivery_days - buffer
+                $lastOrderDate = date('Y-m-d', strtotime(
+                    "+{$daysUntilCriticalLevel} days -{$deliveryDays} days -{$safetyBufferDays} days"
+                ));
+                $procurementTooLate = ($lastOrderDate < date('Y-m-d'));
 
-            if ($daysLeft > 0) {
-                $criticalDate = date('Y-m-d', strtotime("+{$daysLeft} days"));
-
-                // Last order date: when we must order to receive delivery before critical
-                $orderLeadTime = $deliveryDays + $safetyBufferDays;
-                $daysUntilMustOrder = max(0, $daysLeft - $orderLeadTime);
-                $lastOrderDate = date('Y-m-d', strtotime("+{$daysUntilMustOrder} days"));
-                $daysUntilCritical = max(0, $daysLeft);
+                $daysToAct = $daysUntilCriticalLevel - ($deliveryDays + $safetyBufferDays);
+                if      ($daysToAct < 0)  $urgency = 'CATASTROPHE';
+                elseif  ($daysToAct < 3)  $urgency = 'CRITICAL';
+                elseif  ($daysToAct < 7)  $urgency = 'MUST_ORDER';
+                elseif  ($daysToAct < 21) $urgency = 'WARNING';
+                else                      $urgency = 'PLANNED';
             }
+
+            // days_until_critical and critical_date (days until empty) — kept for timeline / backwards compat
+            $criticalDate      = $daysLeft > 0 ? date('Y-m-d', strtotime("+{$daysLeft} days")) : null;
+            $daysUntilCritical = $daysLeft > 0 ? max(0, $daysLeft) : null;
 
             // Check for an active Purchase Order for this station + fuel type
             // If one exists, we show "PO pending" badge instead of pushing a new recommendation
@@ -207,13 +205,14 @@ class ProcurementAdvisorService
                 'fuel_type_name' => $row['fuel_type_name'],
                 'fuel_type_code' => $row['fuel_type_code'],
                 'urgency' => $urgency,
+                'procurement_too_late' => $procurementTooLate,
                 // PO tracking fields
                 'po_pending' => $activePO !== null,
                 'active_po' => $activePO,
                 'days_left' => $daysLeft,
                 'days_until_critical' => $daysUntilCritical,
                 'critical_date' => $criticalDate,
-                // When stock will fall BELOW the critical threshold (more actionable than empty date)
+                // Days until stock falls BELOW the critical threshold (null = no consumption data)
                 'days_until_critical_level' => $daysUntilCriticalLevel,
                 'critical_level_date' => $criticalLevelDate,
                 'last_order_date' => $lastOrderDate,
@@ -408,9 +407,11 @@ class ProcurementAdvisorService
 
         $summary['total_value_estimate'] = round($summary['total_value_estimate'], 2);
 
-        // Calculate critical counts
+        // Calculate high-priority + overall recommendation counts
+        // - mandatory_orders: only CATASTROPHE + CRITICAL (must act immediately)
+        // - recommended_orders: all shortage positions (what user perceives as total recommendations)
         $summary['mandatory_orders'] = $summary['by_urgency']['CATASTROPHE'] + $summary['by_urgency']['CRITICAL'];
-        $summary['recommended_orders'] = $summary['by_urgency']['MUST_ORDER'] + $summary['by_urgency']['WARNING'];
+        $summary['recommended_orders'] = $summary['total_shortages'];
 
         return $summary;
     }
