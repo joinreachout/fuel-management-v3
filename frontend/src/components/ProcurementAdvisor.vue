@@ -106,9 +106,9 @@
           <div v-if="timelineItems.length > 0" class="mt-4 bg-gray-50 rounded-xl p-4">
             <div class="flex items-center justify-between mb-3">
               <span class="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                Upcoming — Next 14 Days
+                Stock hits critical level — next 14 days
               </span>
-              <span class="text-xs text-gray-400">{{ timelineItems.length }} items</span>
+              <span class="text-xs text-gray-400">{{ timelineItems.length }} events</span>
             </div>
 
             <div class="relative" style="height: 52px">
@@ -131,8 +131,8 @@
                 </div>
               </div>
 
-              <div class="absolute text-xs text-gray-400 font-medium" style="top: 34px; left: 0">TODAY</div>
-              <div class="absolute text-xs text-gray-400 font-medium" style="top: 34px; right: 0">14d</div>
+              <div class="absolute text-gray-400 font-medium" style="top: 34px; left: 0; font-size: 10px">TODAY</div>
+              <div class="absolute text-gray-400 font-medium" style="top: 34px; right: 0; font-size: 10px">+14 days</div>
             </div>
 
             <!-- Legend -->
