@@ -137,11 +137,11 @@ class InfrastructureService
 
     public static function updateStation(int $id, string $name, string $code, int $isActive): bool
     {
-        $affected = Database::execute(
+        $stmt = Database::query(
             "UPDATE stations SET name = ?, code = ?, is_active = ? WHERE id = ?",
             [$name, $code, $isActive, $id]
         );
-        return $affected > 0;
+        return $stmt->rowCount() > 0;
     }
 
     // ─────────────────────────────────────────────
@@ -150,11 +150,11 @@ class InfrastructureService
 
     public static function updateDepot(int $id, string $name, string $code, ?string $category, int $isActive): bool
     {
-        $affected = Database::execute(
+        $stmt = Database::query(
             "UPDATE depots SET name = ?, code = ?, category = ?, is_active = ? WHERE id = ?",
             [$name, $code, $category, $isActive, $id]
         );
-        return $affected > 0;
+        return $stmt->rowCount() > 0;
     }
 
     // ─────────────────────────────────────────────
@@ -180,13 +180,13 @@ class InfrastructureService
             throw new \InvalidArgumentException("Stock cannot exceed capacity");
         }
 
-        $affected = Database::execute(
+        $stmt = Database::query(
             "UPDATE depot_tanks
              SET capacity_liters = ?, current_stock_liters = ?, updated_at = NOW()
              WHERE id = ?",
             [$capacityLiters, $currentStockLiters, $id]
         );
-        return $affected > 0;
+        return $stmt->rowCount() > 0;
     }
 
     /**
@@ -214,12 +214,12 @@ class InfrastructureService
             throw new \InvalidArgumentException("Fuel type not found: $fuelTypeId");
         }
 
-        Database::execute(
+        Database::query(
             "INSERT INTO depot_tanks (depot_id, fuel_type_id, capacity_liters, current_stock_liters, updated_at)
              VALUES (?, ?, ?, ?, NOW())",
             [$depotId, $fuelTypeId, $capacityLiters, $currentStockLiters]
         );
 
-        return (int)Database::lastInsertId();
+        return (int)Database::getConnection()->lastInsertId();
     }
 }
