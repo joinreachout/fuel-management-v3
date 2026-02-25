@@ -149,9 +149,8 @@ cancelled & delivered: terminal — blocked from further updates
 ## Roadmap
 
 ### 🔴 HIGH (next up)
-1. **Fix #5 (backend urgency rewrite)** — time-based urgency, zero-consumption bug, procurement_too_late field, crisis/proactive split in UI; see MEMORY.md Fix #5
-2. **Fixes 1–4 (Procurement Advisor frontend)** — fuel_type_id, KPI grid, supplier picker, green card tint; see MEMORY.md
-3. **Stock Policies data** — migration 004 ready, needs to run on server; then UI shows real thresholds
+1. **Crisis Resolution System** — Split Delivery + Transfer workflows for CATASTROPHE cases; full spec below and in MEMORY.md
+2. **Stock Policies data** — migration 004 ready, needs to run on server; then UI shows real thresholds
 
 ### 🟠 MEDIUM
 3. **ERP Status Transitions** — quick-action buttons in ERP table (confirmed→in_transit→delivered) without opening full Edit modal
@@ -166,6 +165,235 @@ cancelled & delivered: terminal — blocked from further updates
 10. **User authentication** (login/roles)
 11. **Full test suite** (PHPUnit + integration)
 12. **Python optimizer** (advanced procurement math)
+
+---
+
+## Crisis Resolution System — Feature Spec (2026-02-25)
+
+> **Status: DESIGNED, NOT YET IMPLEMENTED**
+> Full implementation guide in `memory/MEMORY.md` § "Crisis Resolution"
+
+### Purpose
+
+When a depot reaches CATASTROPHE urgency (no regular delivery can arrive before critical date),
+the system proposes intelligent resolutions instead of just showing "Escalate".
+System only **proposes** — humans decide and execute.
+
+### Two Resolution Types
+
+#### Type 1: Split In-Transit Delivery (preferred)
+A sibling depot at the same station has an ERP order `in_transit` that:
+- Has the same `fuel_type`
+- Will arrive **before** the critical depot's `critical_level_date`
+- Has enough quantity that the donor can spare some and still survive
+
+The system proposes redirecting part of that delivery to the critical depot.
+
+#### Type 2: Transfer from Sibling Depot (fallback)
+No in-transit delivery available, but a sibling depot has surplus stock it can safely give away.
+Max safe transfer = `donor.current_stock - donor.min_safe_stock_until_next_delivery`
+
+### User Flow (5 steps)
+
+```
+1. PROPOSAL    — Immediate Action card shows "💡 Split Delivery Available" or "↔ Transfer Available"
+                 with key numbers (how much, from where, arrives when)
+
+2. REVIEW      — User clicks "Review" → opens CrisisResolutionModal with full impact breakdown:
+                 • Receiving depot: before/after stock levels
+                 • Donor depot: before/after stock levels, safety check
+                 • Suggested split qty (pre-calculated)
+                 User can adjust qty within safe range
+
+3. ACCEPT      — User clicks "Accept Proposal" → system:
+                 a. Creates crisis_cases record (status: accepted)
+                 b. Appends note to donor ERP order: "Split: Xt → [DepotName], Case #ID"
+                 c. Shows Step 4
+
+4. TWO POs     — System presents 2 pre-filled PO creation modals in sequence:
+
+   PO #1 (for CRITICAL depot — immediate):
+     qty = target_level_tons - current_stock_tons - split_received_tons
+     label: "Emergency restocking after delivery split"
+     urgency: HIGH — order ASAP
+
+   PO #2 (for DONOR depot — compensating):
+     qty = split_qty_tons
+     label: "Compensating order after delivery split, Case #ID"
+     urgency: MEDIUM — order within normal lead time
+
+   Both are pre-filled; user reviews and confirms each.
+   Either can be skipped (but system warns if skipped).
+   If depot already has an active PO → offer to increase qty instead.
+
+5. MONITORING  — Case moves to "📊 Cases" tab (new 5th tab in Procurement Advisor)
+                 Status: monitoring
+                 Resolved manually when situation is handled
+```
+
+### Cases Tab (new 5th tab)
+
+Columns: Case# | Type | Critical Depot | Donor | Split Qty | Status | Compensating POs | Date | Actions
+
+Statuses:
+- `proposed`   — system found an option, not yet reviewed by user
+- `accepted`   — user accepted, actions taken
+- `monitoring` — tracking until resolved
+- `resolved`   — marked done by user (archived, shown collapsed)
+
+### DB Schema — `crisis_cases` table
+
+```sql
+CREATE TABLE crisis_cases (
+  id                    INT AUTO_INCREMENT PRIMARY KEY,
+  case_type             ENUM('split_delivery','transfer') NOT NULL,
+  status                ENUM('proposed','accepted','monitoring','resolved') DEFAULT 'proposed',
+
+  -- Receiving (critical) depot
+  receiving_depot_id    INT NOT NULL,
+  fuel_type_id          INT NOT NULL,
+  qty_needed_tons       DECIMAL(10,2),
+
+  -- Donor
+  donor_order_id        INT NULL,          -- ERP order being split (split_delivery)
+  donor_depot_id        INT NULL,          -- depot giving stock (transfer)
+  split_qty_tons        DECIMAL(10,2),
+
+  -- Compensating orders (created in step 4)
+  po_for_critical_id    INT NULL,          -- PO #1 for critical depot
+  po_for_donor_id       INT NULL,          -- PO #2 for donor depot
+
+  notes                 TEXT,
+  created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  resolved_at           TIMESTAMP NULL,
+
+  FOREIGN KEY (receiving_depot_id) REFERENCES depots(id),
+  FOREIGN KEY (fuel_type_id)       REFERENCES fuel_types(id),
+  FOREIGN KEY (donor_order_id)     REFERENCES orders(id),
+  FOREIGN KEY (donor_depot_id)     REFERENCES depots(id),
+  FOREIGN KEY (po_for_critical_id) REFERENCES orders(id),
+  FOREIGN KEY (po_for_donor_id)    REFERENCES orders(id)
+);
+```
+
+### Calculation Formulas
+
+> These formulas are used in `CrisisResolutionService.php` and explain the logic to clients.
+
+#### 1. Does the split delivery arrive in time?
+
+```
+Condition: donor_order.delivery_date  <  critical_depot.critical_level_date
+
+Where:
+  critical_level_date = TODAY + days_until_critical_level
+  days_until_critical_level = (current_stock_liters - critical_threshold_liters)
+                              ÷ daily_consumption_liters_per_day
+```
+
+#### 2. How much can the donor safely give away? (max_split)
+
+The donor must survive on its own stock until its (now partially-redirected) delivery arrives,
+plus a safety buffer in case delivery is delayed:
+
+```
+donor_days_to_delivery  =  donor_order.delivery_date  −  TODAY           [days]
+
+donor_min_safe_liters   =  donor.daily_consumption
+                         × (donor_days_to_delivery + DELIVERY_BUFFER_DAYS)
+                                                       ↑ 15 days (spec §3.2)
+
+donor_spare_liters      =  donor.current_stock_liters  −  donor_min_safe_liters
+
+max_split_tons          =  max(0,  donor_spare_liters) ÷ 1000 × fuel_type.density
+```
+
+If `max_split_tons = 0` → this donor cannot help without risking its own stockout.
+
+#### 3. How much does the critical depot need?
+
+The goal is to bring the critical depot to its **target level**, not just barely above critical:
+
+```
+qty_needed_liters  =  target_level_liters  −  critical_depot.current_stock_liters
+
+target_level_liters  =  tank.capacity_liters × target_threshold_pct ÷ 100
+
+qty_needed_tons  =  qty_needed_liters ÷ 1000 × fuel_type.density
+```
+
+#### 4. Optimal split quantity
+
+```
+split_qty_tons  =  min(max_split_tons,  qty_needed_tons)
+```
+
+If one donor isn't enough, aggregate from multiple donors:
+```
+split_qty_tons  =  min(Σ max_split_tons[all eligible donors],  qty_needed_tons)
+```
+
+#### 5. Two compensating Purchase Orders (created in Step 4 of user flow)
+
+```
+PO #1 — Emergency restock for CRITICAL depot:
+  qty  =  roundUpTons(qty_needed_tons  −  split_qty_tons)
+  Note: covers the gap between what the split provides and the target level
+
+PO #2 — Compensation for DONOR depot:
+  qty  =  roundUpTons(split_qty_tons)
+  Note: replaces exactly the volume diverted from donor's incoming delivery
+```
+
+`roundUpTons()` rounds to the nearest sensible order unit:
+- < 50 t → round to nearest 5 t
+- 50–200 t → round to nearest 10 t
+- 200–500 t → round to nearest 25 t
+- > 500 t → round to nearest 50 t
+
+#### 6. Validation: donor remains safe after the split
+
+After accepting the proposal, verify:
+```
+donor_stock_after_split     =  donor.current_stock_liters  −  split_liters
+donor_stock_after_delivery  =  donor_stock_after_split  +  (order.quantity_liters − split_liters)
+
+Must hold:
+  donor_stock_after_split     >  donor.critical_threshold_liters     ✓ or ✗
+  donor_stock_after_delivery  >  donor.min_threshold_liters          ✓ or ✗
+```
+
+Both conditions must be ✓. If either fails → reduce split_qty or disqualify this donor.
+
+### Backend: Split Opportunity Detection
+
+Endpoint: `GET /api/crisis/options?depot_id=X&fuel_type_id=Y`
+
+For **split_delivery** — finds eligible sibling ERP orders:
+```sql
+SELECT o.*, d.name AS depot_name, d.id AS donor_depot_id,
+       sp.liters_per_day AS donor_daily_consumption
+FROM orders o
+JOIN depots d ON o.depot_id = d.id
+LEFT JOIN sales_params sp ON sp.depot_id = o.depot_id
+                          AND sp.fuel_type_id = o.fuel_type_id
+WHERE d.station_id = (SELECT station_id FROM depots WHERE id = :depot_id)
+  AND d.id != :depot_id
+  AND o.fuel_type_id = :fuel_type_id
+  AND o.order_type = 'erp_order'
+  AND o.status = 'in_transit'
+  AND o.delivery_date <= :critical_level_date   -- arrives in time
+ORDER BY o.delivery_date ASC
+```
+
+Then apply formulas above in PHP to compute `max_split_tons` per candidate.
+Return only candidates where `max_split_tons > 0`.
+
+### Safeguards
+- Never propose split that would push donor below `critical_threshold` (validation formula #6)
+- If no eligible options found → show only "Escalate" button (no false promises)
+- Both POs are optional at Step 4 (user can skip) but system warns with amber alert
+- `Order::findActivePO(depot_id, fuel_type_id)` checked before each PO — offer to increase existing qty instead of creating a duplicate
 
 ---
 
