@@ -92,7 +92,7 @@ class Order
             $params[] = $filters['date_to'];
         }
 
-        $sql .= " ORDER BY o.delivery_date ASC, o.id DESC";
+        $sql .= " ORDER BY o.created_at DESC, o.id DESC";
         return Database::fetchAll($sql, $params);
     }
 
