@@ -112,6 +112,10 @@ export const procurementApi = {
     api.get('/procurement/supplier-recommendations', {
       params: { fuel_type_id: fuelTypeId, required_tons: requiredTons, urgency }
     }),
+  getBestSuppliers: (stationId = null, dayCost = 5) =>
+    api.get('/procurement/best-suppliers', {
+      params: { ...(stationId ? { station_id: stationId } : {}), day_cost: dayCost }
+    }),
 };
 
 // Parameters API
@@ -129,6 +133,8 @@ export const parametersApi = {
   updateSalesParam:     (id, data)     => api.put(`/parameters/sales-params/${id}`, data),
   updateStockPolicy:    (id, data)     => api.put(`/parameters/stock-policies/${id}`, data),
   updateSupplierOffer:  (id, data)     => api.put(`/parameters/supplier-offers/${id}`, data),
+  // POST
+  seedStockPolicies:    ()             => api.post('/parameters/stock-policies/seed-defaults'),
 };
 
 // Infrastructure (Hierarchy Manager) API

@@ -384,6 +384,11 @@
           <TopSuppliers />
         </div>
 
+        <!-- Best Suppliers by Station/Fuel (full width) -->
+        <div class="mt-6">
+          <BestSuppliers />
+        </div>
+
         <!-- Cost Analysis + Transfer Activity Grid -->
         <div class="mt-6 grid grid-cols-1 xl:grid-cols-2 gap-6">
           <!-- WIDGET 7: Cost Analysis Dashboard -->
@@ -427,6 +432,7 @@ import WorkingCapital from '../components/WorkingCapital.vue';
 import RiskExposure from '../components/RiskExposure.vue';
 import InventoryTurnover from '../components/InventoryTurnover.vue';
 import TopSuppliers from '../components/TopSuppliers.vue';
+import BestSuppliers from '../components/BestSuppliers.vue';
 import CostAnalysis from '../components/CostAnalysis.vue';
 import TransferActivity from '../components/TransferActivity.vue';
 import RegionalComparison from '../components/RegionalComparison.vue';

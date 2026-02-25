@@ -285,6 +285,9 @@ try {
     } elseif ($requestMethod === 'GET' && $path === '/api/procurement/supplier-recommendations') {
         $procurementAdvisorController->getSupplierRecommendations();
 
+    } elseif ($requestMethod === 'GET' && $path === '/api/procurement/best-suppliers') {
+        $procurementAdvisorController->getBestSuppliers();
+
     // ==================== PARAMETERS ====================
     } elseif ($requestMethod === 'GET' && $path === '/api/parameters/system') {
         $parametersController->getSystemParameters();
@@ -306,6 +309,9 @@ try {
 
     } elseif ($requestMethod === 'GET' && $path === '/api/parameters/stock-policies') {
         $parametersController->getStockPolicies();
+
+    } elseif ($requestMethod === 'POST' && $path === '/api/parameters/stock-policies/seed-defaults') {
+        $parametersController->seedStockPolicies();
 
     } elseif ($requestMethod === 'PUT' && preg_match('#^/api/parameters/stock-policies/(\d+)$#', $path, $matches)) {
         $parametersController->updateStockPolicy((int)$matches[1]);

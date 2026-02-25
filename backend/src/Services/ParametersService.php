@@ -270,6 +270,38 @@ class ParametersService
     }
 
     // ─────────────────────────────────────────────
+    // STOCK POLICIES — seed helpers
+    // ─────────────────────────────────────────────
+
+    /**
+     * Seed stock_policies from depot_tanks capacities using % defaults.
+     * Uses INSERT ... ON DUPLICATE KEY UPDATE — safe to re-run.
+     * Defaults: critical=20%, min=40%, target=80% of tank capacity.
+     * Returns total row count after seeding.
+     */
+    public static function seedStockPoliciesDefaults(): int
+    {
+        Database::query(
+            "INSERT INTO stock_policies (depot_id, fuel_type_id, critical_level_liters, min_level_liters, target_level_liters)
+             SELECT
+                 dt.depot_id,
+                 dt.fuel_type_id,
+                 ROUND(SUM(dt.capacity_liters) * 0.20) AS critical_level_liters,
+                 ROUND(SUM(dt.capacity_liters) * 0.40) AS min_level_liters,
+                 ROUND(SUM(dt.capacity_liters) * 0.80) AS target_level_liters
+             FROM depot_tanks dt
+             GROUP BY dt.depot_id, dt.fuel_type_id
+             ON DUPLICATE KEY UPDATE
+                 critical_level_liters = VALUES(critical_level_liters),
+                 min_level_liters      = VALUES(min_level_liters),
+                 target_level_liters   = VALUES(target_level_liters)"
+        );
+
+        $row = Database::fetchOne("SELECT COUNT(*) AS cnt FROM stock_policies");
+        return (int)($row['cnt'] ?? 0);
+    }
+
+    // ─────────────────────────────────────────────
     // HELPERS
     // ─────────────────────────────────────────────
 

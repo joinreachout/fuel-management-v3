@@ -75,6 +75,43 @@ class ProcurementAdvisorController
     }
 
     /**
+     * GET /api/procurement/best-suppliers
+     * Get best supplier for each (station, fuel_type) combination.
+     *
+     * Query params:
+     * - station_id: Filter to a specific station (optional)
+     * - day_cost:   USD/ton penalty per delivery day, default 5 (optional)
+     *
+     * @return void
+     */
+    public function getBestSuppliers(): void
+    {
+        try {
+            $stationId = isset($_GET['station_id']) ? (int)$_GET['station_id'] : null;
+            $dayCost   = isset($_GET['day_cost'])   ? (float)$_GET['day_cost'] : 5.0;
+
+            $data = ProcurementAdvisorService::getBestSuppliersTable($stationId, $dayCost);
+
+            http_response_code(200);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success'    => true,
+                'data'       => $data,
+                'count'      => count($data),
+                'day_cost_usd' => $dayCost,
+            ], JSON_PRETTY_PRINT);
+
+        } catch (\Exception $e) {
+            http_response_code(500);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'error'   => $e->getMessage(),
+            ], JSON_PRETTY_PRINT);
+        }
+    }
+
+    /**
      * GET /api/procurement/supplier-recommendations
      * Get ranked supplier recommendations for fuel type
      *

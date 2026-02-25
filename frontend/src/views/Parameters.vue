@@ -277,6 +277,36 @@
                ═══════════════════════════════════════════════ -->
           <div v-else-if="activeTab === 'stock-policies'">
 
+            <!-- Seed Defaults toolbar -->
+            <div class="mb-5 flex items-center gap-4">
+              <div class="flex-1 p-4 rounded-lg text-sm border"
+                   :class="stockPolicies.length === 0
+                     ? 'bg-orange-50 border-orange-200 text-orange-800'
+                     : 'bg-purple-50 border-purple-200 text-purple-800'">
+                <i class="mr-2" :class="stockPolicies.length === 0 ? 'fas fa-exclamation-triangle' : 'fas fa-layer-group'"></i>
+                <template v-if="stockPolicies.length === 0">
+                  <strong>No stock policies found.</strong>
+                  Click "Seed Defaults" to auto-fill thresholds for all depots based on tank capacities
+                  (Critical=20%, Min=40%, Target=80%).
+                </template>
+                <template v-else>
+                  Per-depot thresholds override the global % defaults below. Click any value to edit.
+                </template>
+              </div>
+              <button
+                @click="seedStockPolicies"
+                :disabled="seedingPolicies"
+                class="flex-shrink-0 flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition-colors"
+                :class="stockPolicies.length === 0
+                  ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300'"
+              >
+                <i v-if="seedingPolicies" class="fas fa-spinner fa-spin"></i>
+                <i v-else class="fas fa-magic"></i>
+                {{ seedingPolicies ? 'Seeding…' : (stockPolicies.length === 0 ? 'Seed Defaults' : 'Re-seed Defaults') }}
+              </button>
+            </div>
+
             <!-- Global defaults block -->
             <div class="mb-6 border border-purple-200 rounded-xl overflow-hidden shadow-sm">
               <div class="bg-purple-900 px-4 py-3 flex items-center gap-2">
@@ -888,6 +918,30 @@ const groupedSalesParams = computed(() => {
       }),
     }));
 });
+
+// ─── Seed Stock Policies ──────────────────────────────────────────────────────
+
+const seedingPolicies = ref(false);
+
+const seedStockPolicies = async () => {
+  seedingPolicies.value = true;
+  try {
+    const res = await parametersApi.seedStockPolicies();
+    if (res.data.success) {
+      // Reload stock policies to show the new rows
+      const polRes = await parametersApi.getStockPolicies();
+      if (polRes.data.success) stockPolicies.value = polRes.data.data;
+      flashSave(true);
+    } else {
+      flashSave(false);
+    }
+  } catch (e) {
+    console.error('seedStockPolicies error:', e.response?.data || e);
+    flashSave(false);
+  } finally {
+    seedingPolicies.value = false;
+  }
+};
 
 // ─── Add Fuel Type ────────────────────────────────────────────────────────────
 

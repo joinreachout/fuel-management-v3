@@ -471,6 +471,109 @@ class ProcurementAdvisorService
     }
 
     /**
+     * Get best supplier rankings for each (station, fuel_type) combination.
+     * Returns top-3 suppliers per combination ranked by composite score.
+     * Composite score = price_per_ton + delivery_days * day_cost_usd (lower is better).
+     *
+     * @param int|null $stationId Filter to a specific station (null = all stations)
+     * @param float    $dayCostUsd Penalty per delivery day in USD/ton equivalent (default 5)
+     * @return array Grouped by station, each with fuel_type rows and ranked suppliers
+     */
+    public static function getBestSuppliersTable(?int $stationId = null, float $dayCostUsd = 5.0): array
+    {
+        $params  = $stationId ? [$stationId] : [];
+        $filter  = $stationId ? 'AND sso.station_id = ?' : '';
+
+        // All offers: one row per (supplier, station, fuel_type) with price + days
+        $sql = "
+            SELECT
+                st.id   AS station_id,
+                st.name AS station_name,
+                ft.id   AS fuel_type_id,
+                ft.name AS fuel_type_name,
+                ft.code AS fuel_type_code,
+                s.id    AS supplier_id,
+                s.name  AS supplier_name,
+                sso.price_per_ton,
+                sso.delivery_days,
+                sso.currency
+            FROM supplier_station_offers sso
+            INNER JOIN suppliers   s   ON sso.supplier_id  = s.id
+            INNER JOIN stations    st  ON sso.station_id   = st.id
+            INNER JOIN fuel_types  ft  ON sso.fuel_type_id = ft.id
+            WHERE sso.is_active = 1
+              AND s.is_active   = 1
+              AND sso.price_per_ton IS NOT NULL
+              AND sso.price_per_ton > 0
+              $filter
+            ORDER BY st.name, ft.name, sso.price_per_ton ASC
+        ";
+
+        $rows = Database::fetchAll($sql, $params);
+
+        // Group by station → fuel_type and rank suppliers
+        $map = [];
+        foreach ($rows as $row) {
+            $key = $row['station_id'] . '_' . $row['fuel_type_id'];
+
+            if (!isset($map[$key])) {
+                $map[$key] = [
+                    'station_id'     => (int)$row['station_id'],
+                    'station_name'   => $row['station_name'],
+                    'fuel_type_id'   => (int)$row['fuel_type_id'],
+                    'fuel_type_name' => $row['fuel_type_name'],
+                    'fuel_type_code' => $row['fuel_type_code'],
+                    'suppliers'      => [],
+                ];
+            }
+
+            $price    = (float)$row['price_per_ton'];
+            $days     = (int)$row['delivery_days'];
+            $composite = round($price + $days * $dayCostUsd, 2); // lower = better
+
+            $map[$key]['suppliers'][] = [
+                'supplier_id'   => (int)$row['supplier_id'],
+                'supplier_name' => $row['supplier_name'],
+                'price_per_ton' => $price,
+                'delivery_days' => $days,
+                'currency'      => $row['currency'],
+                'composite_score' => $composite,
+            ];
+        }
+
+        // Sort suppliers within each combo by composite score (ascending = better first)
+        // Add rank + best_by flags, keep top 3
+        $result = [];
+        foreach ($map as $combo) {
+            $suppliers = $combo['suppliers'];
+            usort($suppliers, fn($a, $b) => $a['composite_score'] <=> $b['composite_score']);
+
+            // Find cheapest and fastest
+            $minPrice = min(array_column($suppliers, 'price_per_ton'));
+            $minDays  = min(array_column($suppliers, 'delivery_days'));
+
+            foreach ($suppliers as &$sup) {
+                $sup['is_cheapest'] = ($sup['price_per_ton'] === $minPrice);
+                $sup['is_fastest']  = ($sup['delivery_days'] === $minDays);
+                $sup['is_best']     = ($sup === $suppliers[0]); // already sorted by composite
+            }
+            unset($sup);
+
+            $combo['suppliers'] = array_slice($suppliers, 0, 3); // top 3
+            $combo['best_supplier'] = $suppliers[0] ?? null;
+            $result[] = $combo;
+        }
+
+        // Sort result: station name, then fuel type name
+        usort($result, function($a, $b) {
+            $s = strcmp($a['station_name'], $b['station_name']);
+            return $s !== 0 ? $s : strcmp($a['fuel_type_name'], $b['fuel_type_name']);
+        });
+
+        return $result;
+    }
+
+    /**
      * Calculate urgency score based on delivery time
      *
      * @param string $urgency Urgency level

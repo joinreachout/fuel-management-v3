@@ -139,6 +139,20 @@ class ParametersController
         }
     }
 
+    public function seedStockPolicies(): void
+    {
+        try {
+            $count = ParametersService::seedStockPoliciesDefaults();
+            $this->ok([
+                'seeded' => true,
+                'total_rows' => $count,
+                'message' => "Stock policies seeded: {$count} rows (critical=20%, min=40%, target=80% of capacity)",
+            ]);
+        } catch (\Exception $e) {
+            $this->error($e->getMessage());
+        }
+    }
+
     public function updateStockPolicy(int $id): void
     {
         try {
