@@ -146,4 +146,12 @@ export const infrastructureApi = {
   addTank:         (data)     => api.post('/infrastructure/tanks', data),
 };
 
+// Import API
+export const importApi = {
+  syncErp: (baseUrl, periodDays) => api.post('/import/sync-erp', {
+    base_url:    baseUrl,
+    period_days: periodDays,
+  }),
+};
+
 export default api;

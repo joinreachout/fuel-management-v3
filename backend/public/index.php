@@ -65,6 +65,8 @@ require_once __DIR__ . '/../src/Controllers/ProcurementAdvisorController.php';
 require_once __DIR__ . '/../src/Controllers/ParametersController.php';
 require_once __DIR__ . '/../src/Controllers/InfrastructureController.php';
 require_once __DIR__ . '/../src/Controllers/WorkingCapitalController.php';
+require_once __DIR__ . '/../src/Services/ImportService.php';
+require_once __DIR__ . '/../src/Controllers/ImportController.php';
 
 use App\Core\Response;
 use App\Controllers\StationController;
@@ -81,6 +83,7 @@ use App\Controllers\ProcurementAdvisorController;
 use App\Controllers\ParametersController;
 use App\Controllers\InfrastructureController;
 use App\Controllers\WorkingCapitalController;
+use App\Controllers\ImportController;
 
 // Simple router
 try {
@@ -110,6 +113,7 @@ try {
     $parametersController = new ParametersController();
     $infrastructureController = new InfrastructureController();
     $workingCapitalController = new WorkingCapitalController();
+    $importController = new ImportController();
 
     // ==================== STATIONS ====================
     if ($requestMethod === 'GET' && $path === '/api/stations') {
@@ -287,6 +291,10 @@ try {
 
     } elseif ($requestMethod === 'GET' && $path === '/api/procurement/best-suppliers') {
         $procurementAdvisorController->getBestSuppliers();
+
+    // ==================== IMPORT ====================
+    } elseif ($requestMethod === 'POST' && $path === '/api/import/sync-erp') {
+        $importController->syncErp();
 
     // ==================== PARAMETERS ====================
     } elseif ($requestMethod === 'GET' && $path === '/api/parameters/system') {
