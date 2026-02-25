@@ -1,212 +1,162 @@
 <template>
   <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
     <!-- Header -->
-    <div class="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200 px-6 py-4">
-      <h3 class="text-lg font-bold text-gray-800">
-        <i class="fas fa-trophy text-yellow-500 mr-2"></i>
-        Top 3 Suppliers
-      </h3>
-      <p class="text-xs text-gray-500 mt-1">Ranked by composite score: delivery speed (50%) + pricing (50%)</p>
+    <div class="bg-gray-900 px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <i class="fas fa-trophy text-yellow-400 text-sm"></i>
+        <span class="text-white font-semibold text-sm">Suppliers</span>
+      </div>
+      <span class="bg-gray-700 text-gray-300 text-xs font-mono px-2 py-0.5 rounded-full">
+        {{ suppliers.length }} active
+      </span>
     </div>
 
-    <!-- Content -->
-    <div class="px-6 py-6">
-      <div v-if="loading" class="flex items-center justify-center py-12">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>
-      </div>
+    <!-- Loading -->
+    <div v-if="loading" class="flex items-center justify-center py-8">
+      <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-500"></div>
+    </div>
 
-      <div v-else class="space-y-4">
-        <!-- Supplier Card -->
+    <!-- List -->
+    <div v-else class="divide-y divide-gray-100">
+
+      <!-- Top 3 -->
+      <div
+        v-for="(supplier, index) in top3"
+        :key="supplier.id"
+      >
+        <!-- Row -->
         <div
-          v-for="(supplier, index) in suppliers"
-          :key="supplier.id"
-          class="relative overflow-hidden rounded-xl border-2 transition-all hover:shadow-lg cursor-pointer"
-          :class="{
-            'border-yellow-400 bg-gradient-to-br from-yellow-50 to-amber-50': index === 0,
-            'border-gray-300 bg-gradient-to-br from-gray-50 to-slate-50': index === 1,
-            'border-orange-300 bg-gradient-to-br from-orange-50 to-amber-50': index === 2
-          }"
-          @click="toggleDetails(supplier.id)">
+          class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors"
+          @click="toggleExpanded(supplier.id)"
+        >
+          <!-- Rank badge -->
+          <div
+            class="flex-none w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm"
+            :class="rankClass(index)"
+          >{{ index + 1 }}</div>
 
-          <!-- Rank Badge -->
-          <div class="absolute top-3 right-3 w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shadow-lg"
-               :class="{
-                 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-white': index === 0,
-                 'bg-gradient-to-br from-gray-300 to-gray-500 text-white': index === 1,
-                 'bg-gradient-to-br from-orange-400 to-orange-600 text-white': index === 2
-               }">
-            #{{ index + 1 }}
+          <!-- Name + location -->
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-semibold text-gray-900 truncate">{{ supplier.name }}</div>
+            <div v-if="supplier.location" class="text-xs text-gray-400 truncate">{{ supplier.location }}</div>
           </div>
 
-          <!-- Main Info -->
-          <div class="p-5">
-            <div class="flex items-start gap-4 mb-4">
-              <!-- Logo/Icon -->
-              <div class="w-16 h-16 rounded-lg flex items-center justify-center text-2xl shadow-md"
-                   :class="{
-                     'bg-yellow-100 text-yellow-600': index === 0,
-                     'bg-gray-100 text-gray-600': index === 1,
-                     'bg-orange-100 text-orange-600': index === 2
-                   }">
-                <i class="fas fa-truck-loading"></i>
-              </div>
+          <!-- Chips -->
+          <div class="flex items-center gap-1.5 flex-none">
+            <!-- Delivery range -->
+            <span class="text-xs font-mono px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">
+              {{ deliveryRange(supplier) }}d
+            </span>
+            <!-- Stations -->
+            <span class="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600" title="Stations served">
+              {{ supplier.stations_served }}st
+            </span>
+            <!-- Delivered rate -->
+            <span
+              v-if="supplier.delivered_rate !== null"
+              class="text-xs px-1.5 py-0.5 rounded font-semibold"
+              :class="rateClass(supplier.delivered_rate)"
+              title="Delivered rate (not on-time — no timestamp data)"
+            >{{ supplier.delivered_rate }}%</span>
+          </div>
 
-              <!-- Supplier Details -->
-              <div class="flex-1">
-                <h4 class="text-lg font-bold text-gray-900 mb-1">{{ supplier.name }}</h4>
-                <div class="text-xs text-gray-500 mb-2">{{ supplier.location }}</div>
+          <!-- Chevron -->
+          <i
+            class="fas fa-chevron-down text-gray-400 text-xs flex-none transition-transform"
+            :class="{ 'rotate-180': expandedId === supplier.id }"
+          ></i>
+        </div>
 
-                <!-- Composite Score -->
-                <div class="flex items-center gap-2">
-                  <div class="text-2xl font-bold"
-                       :class="{
-                         'text-yellow-600': index === 0,
-                         'text-gray-600': index === 1,
-                         'text-orange-600': index === 2
-                       }">
-                    {{ supplier.compositeScore }}
-                  </div>
-                  <div class="text-xs text-gray-500">/ 100</div>
-                  <div class="ml-2 flex items-center gap-1">
-                    <i v-for="star in 5" :key="star"
-                       class="fas fa-star text-xs"
-                       :class="star <= Math.round(supplier.compositeScore / 20) ? 'text-yellow-400' : 'text-gray-300'"></i>
-                  </div>
-                </div>
+        <!-- Expanded: prices per fuel type -->
+        <div
+          v-if="expandedId === supplier.id"
+          class="bg-gray-50 px-4 py-3 border-t border-gray-100"
+        >
+          <!-- Prices grid -->
+          <div v-if="supplier.prices?.length" class="mb-2">
+            <div class="text-xs font-semibold text-gray-500 mb-1.5">Prices ($/ton)</div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <div
+                v-for="p in supplier.prices"
+                :key="p.fuel_type_id"
+                class="flex items-center justify-between bg-white rounded px-2 py-1 border border-gray-200"
+              >
+                <span class="font-mono text-xs font-bold text-gray-600">{{ p.fuel_type_code }}</span>
+                <span class="text-xs font-semibold text-gray-800">${{ p.price_per_ton.toFixed(0) }}</span>
               </div>
             </div>
+          </div>
+          <div v-else class="text-xs text-gray-400 italic mb-2">No price offers on file</div>
 
-            <!-- Score Breakdown -->
-            <div class="grid grid-cols-2 gap-3 mb-4">
-              <!-- Delivery Speed -->
-              <div class="p-3 rounded-lg bg-white border border-gray-200">
-                <div class="flex items-center gap-2 mb-2">
-                  <i class="fas fa-shipping-fast text-blue-500"></i>
-                  <span class="text-xs font-semibold text-gray-700">Delivery Speed</span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <div class="text-lg font-bold text-blue-600">{{ supplier.deliveryScore }}</div>
-                  <div class="text-xs text-gray-500">50% weight</div>
-                </div>
-                <div class="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div class="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-1000"
-                       :style="{ width: `${supplier.deliveryScore}%` }">
-                  </div>
-                </div>
-              </div>
-
-              <!-- Pricing -->
-              <div class="p-3 rounded-lg bg-white border border-gray-200">
-                <div class="flex items-center gap-2 mb-2">
-                  <i class="fas fa-dollar-sign text-green-500"></i>
-                  <span class="text-xs font-semibold text-gray-700">Pricing</span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <div class="text-lg font-bold text-green-600">{{ supplier.pricingScore }}</div>
-                  <div class="text-xs text-gray-500">50% weight</div>
-                </div>
-                <div class="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div class="h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all duration-1000"
-                       :style="{ width: `${supplier.pricingScore}%` }">
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Quick Stats -->
-            <div class="grid grid-cols-3 gap-2 text-center">
-              <div class="p-2 rounded bg-white border border-gray-200">
-                <div class="text-xs text-gray-500">Avg Lead Time</div>
-                <div class="text-sm font-bold text-gray-800">{{ supplier.avgLeadTime }}d</div>
-              </div>
-              <div class="p-2 rounded bg-white border border-gray-200">
-                <div class="text-xs text-gray-500">On-Time Rate</div>
-                <div class="text-sm font-bold text-gray-800">{{ supplier.onTimeRate }}%</div>
-              </div>
-              <div class="p-2 rounded bg-white border border-gray-200">
-                <div class="text-xs text-gray-500">Orders YTD</div>
-                <div class="text-sm font-bold text-gray-800">{{ supplier.ordersYTD }}</div>
-              </div>
-            </div>
-
-            <!-- Expandable Details -->
-            <div v-if="expandedId === supplier.id" class="mt-4 pt-4 border-t border-gray-200">
-              <div class="space-y-3">
-                <div class="flex items-center justify-between text-sm">
-                  <span class="text-gray-600">Reliability Score</span>
-                  <span class="font-semibold text-gray-900">{{ supplier.reliabilityScore }}/10</span>
-                </div>
-                <div class="flex items-center justify-between text-sm">
-                  <span class="text-gray-600">Quality Rating</span>
-                  <span class="font-semibold text-gray-900">{{ supplier.qualityRating }}/10</span>
-                </div>
-                <div class="flex items-center justify-between text-sm">
-                  <span class="text-gray-600">Payment Terms</span>
-                  <span class="font-semibold text-gray-900">{{ supplier.paymentTerms }}</span>
-                </div>
-                <div class="flex items-center justify-between text-sm">
-                  <span class="text-gray-600">Min Order Quantity</span>
-                  <span class="font-semibold text-gray-900">{{ supplier.minOrderQty }} L</span>
-                </div>
-                <div class="mt-3">
-                  <a href="#" class="text-xs text-blue-600 hover:text-blue-800 font-medium">
-                    Full profile in Parameters →
-                  </a>
-                </div>
-              </div>
-            </div>
-
-            <!-- Expand Button -->
-            <button
-              class="w-full mt-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center justify-center gap-2"
-              @click.stop="toggleDetails(supplier.id)">
-              <span>{{ expandedId === supplier.id ? 'Show Less' : 'Show More' }}</span>
-              <i class="fas fa-chevron-down transition-transform"
-                 :class="{ 'rotate-180': expandedId === supplier.id }"></i>
-            </button>
+          <!-- Extra stats -->
+          <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+            <span>ERP orders: <strong class="text-gray-700">{{ supplier.erp_orders_count }}</strong></span>
+            <span>Volume: <strong class="text-gray-700">{{ supplier.total_volume_kl }} kL</strong></span>
+            <span>Spend: <strong class="text-gray-700">${{ fmtMoney(supplier.total_spend) }}</strong></span>
+            <span v-if="supplier.delivered_rate !== null" class="text-gray-400 italic">
+              (delivered rate, not on-time — no timestamp data)
+            </span>
           </div>
         </div>
       </div>
 
-      <!-- View All Link -->
-      <div class="mt-6 text-center">
-        <a href="#" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-          View all suppliers in Parameters →
-        </a>
+      <!-- More suppliers (collapsed) -->
+      <div v-if="rest.length">
+        <button
+          class="w-full px-4 py-2 text-xs text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center gap-1 font-medium"
+          @click="showRest = !showRest"
+        >
+          <i class="fas fa-chevron-down text-xs transition-transform" :class="{ 'rotate-180': showRest }"></i>
+          {{ showRest ? 'Show less' : `${rest.length} more suppliers` }}
+        </button>
+
+        <div v-if="showRest" class="divide-y divide-gray-100">
+          <div
+            v-for="supplier in rest"
+            :key="supplier.id"
+            class="flex items-center gap-3 px-4 py-2 hover:bg-gray-50"
+          >
+            <div class="flex-none w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-500 font-medium">
+              {{ supplier.priority }}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-medium text-gray-700 truncate">{{ supplier.name }}</div>
+            </div>
+            <div class="flex items-center gap-1.5 text-xs text-gray-400">
+              <span class="font-mono">{{ deliveryRange(supplier) }}d</span>
+              <span>{{ supplier.stations_served }}st</span>
+            </div>
+          </div>
+        </div>
       </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="px-4 py-2.5 border-t border-gray-100 bg-gray-50">
+      <router-link to="/parameters" class="text-xs text-blue-600 hover:text-blue-800 font-medium">
+        Manage supply offers in Parameters →
+      </router-link>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { suppliersApi } from '../services/api.js';
 
-const loading = ref(true);
+const loading    = ref(true);
+const suppliers  = ref([]);
 const expandedId = ref(null);
-const suppliers = ref([]);
+const showRest   = ref(false);
+
+const top3 = computed(() => suppliers.value.slice(0, 3));
+const rest = computed(() => suppliers.value.slice(3));
 
 const loadData = async () => {
   loading.value = true;
   try {
     const res = await suppliersApi.getTop();
-    const raw = res.data?.data || [];
-
-    suppliers.value = raw.map(s => ({
-      id: s.id,
-      name: s.name,
-      location: s.location || '—',
-      compositeScore: Math.round(s.composite_score ?? 0),
-      deliveryScore: Math.round(s.delivery_score ?? 0),
-      pricingScore: Math.round(s.pricing_score ?? 0),
-      avgLeadTime: Math.round(s.avg_delivery_days ?? 0),
-      onTimeRate: Math.round(s.on_time_rate ?? 0),
-      ordersYTD: s.order_count ?? 0,
-      reliabilityScore: parseFloat(s.delivery_score / 10).toFixed(1),
-      qualityRating: '—',
-      paymentTerms: '—',
-      minOrderQty: '—',
-    }));
+    suppliers.value = res.data?.data || [];
   } catch (e) {
     console.error('TopSuppliers: failed to load', e);
   } finally {
@@ -214,17 +164,35 @@ const loadData = async () => {
   }
 };
 
-const toggleDetails = (id) => {
+const toggleExpanded = (id) => {
   expandedId.value = expandedId.value === id ? null : id;
 };
 
-onMounted(() => {
-  loadData();
-});
-</script>
+// "15–30d" if range differs, "15d" if same
+const deliveryRange = (s) => {
+  if (s.min_delivery_days === null) return '—';
+  if (s.min_delivery_days === s.max_delivery_days) return s.min_delivery_days;
+  return `${s.min_delivery_days}–${s.max_delivery_days}`;
+};
 
-<style scoped>
-.rotate-180 {
-  transform: rotate(180deg);
-}
-</style>
+const rankClass = (index) => {
+  if (index === 0) return 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-white';
+  if (index === 1) return 'bg-gradient-to-br from-gray-300 to-gray-500 text-white';
+  return 'bg-gradient-to-br from-orange-300 to-orange-500 text-white';
+};
+
+const rateClass = (rate) => {
+  if (rate >= 90) return 'bg-green-100 text-green-700';
+  if (rate >= 70) return 'bg-yellow-100 text-yellow-700';
+  return 'bg-red-100 text-red-700';
+};
+
+const fmtMoney = (v) => {
+  if (!v) return '0';
+  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + 'M';
+  if (v >= 1_000)     return (v / 1_000).toFixed(0) + 'k';
+  return v.toFixed(0);
+};
+
+onMounted(loadData);
+</script>

@@ -379,13 +379,9 @@
           <InventoryTurnover />
         </div>
 
-        <!-- Top 3 Suppliers -->
-        <div class="mt-6">
+        <!-- Suppliers: compact list (left) + best-by-station table (right) -->
+        <div class="mt-6 grid grid-cols-1 xl:grid-cols-[300px_1fr] gap-6 items-start">
           <TopSuppliers />
-        </div>
-
-        <!-- Best Suppliers by Station/Fuel (full width) -->
-        <div class="mt-6">
           <BestSuppliers />
         </div>
 
