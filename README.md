@@ -1,9 +1,21 @@
 # Fuel Management System — REV 3.0
 
-Fuel supply optimization system for a network of 9 gas stations across 3 regions of Kyrgyzstan.
-Tracks stock levels, forecasts shortages, recommends procurement orders, and manages transfers between depots.
+Fuel supply optimization for 9 gas stations across 3 regions of Kyrgyzstan.
+Tracks stock levels, forecasts shortages, recommends procurement orders, manages transfers.
 
 **Live:** https://fuel.kittykat.tech/rev3/
+
+---
+
+## Documentation → start here
+
+| File | What's inside |
+|------|--------------|
+| **[docs/README.md](docs/README.md)** | 🗺️ Navigation map — what's where, quick-reference table |
+| [docs/PROJECT.md](docs/PROJECT.md) | Project status, data model, what's built, roadmap, session log |
+| [docs/TECH_DECISIONS.md](docs/TECH_DECISIONS.md) | Architecture, units/conversions, PDF, Vue gotchas, deploy pipeline |
+| [docs/API.md](docs/API.md) | All API endpoints with request/response examples |
+| [docs/SERVER_SETUP.md](docs/SERVER_SETUP.md) | Server config, hosting, deploy trigger |
 
 ---
 
@@ -11,54 +23,39 @@ Tracks stock levels, forecasts shortages, recommends procurement orders, and man
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | PHP 8.1 (no framework), custom router, PDO/MySQL |
-| Frontend | Vue 3 + Vite + TailwindCSS + Chart.js |
-| Database | MySQL 8.0 (`d105380_fuelv3` on shared hosting) |
-| Deploy | `npm run build` → `git push` → `git pull` on server |
+| Backend | PHP 8.1, no framework — custom Router + PDO/MySQL, MVC+Services |
+| Frontend | Vue 3 + Vite + TailwindCSS v4 + Chart.js (`<script setup>`) |
+| PDF | jsPDF v2.5.1 + Roboto font (Cyrillic) |
+| Database | MySQL 8.0 (`d105380_fuelv3`, shared hosting) |
+| Deploy | `npm run build` → `git add -f frontend/dist/` → `git push` → `update.html` on server |
 
 ---
 
 ## Project Structure
 
 ```
-REV 3.0/
 ├── backend/
-│   ├── public/index.php        # Router + all endpoints
+│   ├── public/index.php          # Router + all route registrations
 │   └── src/
-│       ├── Controllers/        # HTTP request handlers
-│       ├── Models/             # DB models (raw SQL)
-│       └── Services/           # Business logic
-│           ├── ForecastService.php
-│           ├── ProcurementAdvisorService.php
-│           ├── AlertService.php
-│           └── ...
+│       ├── Controllers/          # HTTP request handlers
+│       ├── Services/             # Business logic
+│       ├── Models/               # DB wrappers
+│       └── Utils/UnitConverter.php
 ├── frontend/
 │   └── src/
-│       ├── views/              # Pages (Dashboard, Orders, Transfers, Parameters)
-│       ├── components/         # Reusable widgets
-│       └── services/api.js     # All API calls
+│       ├── views/                # Dashboard, Orders, Transfers, Parameters, Import
+│       ├── components/           # Reusable widgets
+│       ├── services/api.js       # All API calls
+│       └── utils/robotoBase64.js # Pre-encoded Roboto font for PDF
 ├── database/
-│   └── migrations/             # SQL migration files (001, 002, ...)
-└── docs/                       # Documentation (see below)
-```
-
----
-
-## Deploy
-
-```bash
-# Build frontend
-cd frontend && npm run build
-
-# Push to server (auto-deploys via git pull hook)
-git add -f frontend/dist/
-git commit -m "deploy: ..."
-git push
-
-# SSH to server (if needed)
-ssh -i ~/.ssh/id_kittykat virt105026@kittykat.tech
-# cd /data01/virt105026/domeenid/www.kittykat.tech/fuel/rev3/
-# git pull origin main
+│   └── migrations/               # SQL migrations 001–008
+└── docs/
+    ├── README.md                 # ← Navigation map (start here)
+    ├── PROJECT.md
+    ├── TECH_DECISIONS.md
+    ├── API.md
+    ├── SERVER_SETUP.md
+    └── archive/                  # Old sessions, audits, superseded docs
 ```
 
 ---
@@ -69,38 +66,20 @@ ssh -i ~/.ssh/id_kittykat virt105026@kittykat.tech
 # Frontend
 cd frontend && npm install && npm run dev
 
-# Backend — PHP built-in server
+# Backend
 cd backend/public && php -S localhost:8000
 ```
 
-Copy `.env.example` to `.env` and set DB credentials.
+Copy `.env.example` → `.env`, set DB credentials.
 
 ---
 
-## Documentation
+## Critical Rules (quick reminder)
 
-| File | Description |
-|------|-------------|
-| [docs/SYSTEM_KNOWLEDGE_BASE.md](docs/SYSTEM_KNOWLEDGE_BASE.md) | Full system reference: DB schema, calculations, business logic |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Units, conversions, data model |
-| [docs/SERVER_SETUP.md](docs/SERVER_SETUP.md) | Server configuration & SSH setup |
-| [docs/features/PROCUREMENT_ADVISOR.md](docs/features/PROCUREMENT_ADVISOR.md) | Procurement Advisor feature details |
-| [docs/features/WORKING_CAPITAL.md](docs/features/WORKING_CAPITAL.md) | Working Capital analysis |
-| [docs/audits/](docs/audits/) | Code audit trail (Feb 2026) |
-| [DEVELOPMENT_PRINCIPLES.md](DEVELOPMENT_PRINCIPLES.md) | Coding standards for this project |
-| [API_DOCUMENTATION.md](API_DOCUMENTATION.md) | API endpoints reference |
-| [PROGRESS.md](PROGRESS.md) | Current status + backlog |
-
----
-
-## Key Business Rules
-
-- Stock tracked in **liters** in DB, displayed in **tons** in UI
-- Density per fuel type used for liter↔ton conversion (see docs/ARCHITECTURE.md)
-- Forecast = linear consumption curve + scheduled order deliveries (`confirmed`/`in_transit`)
-- Procurement threshold = `(stock - min_level) / daily_consumption < lead_time_days`
-- All SQL divisions protected with `NULLIF(x, 0)` to prevent division by zero
-
----
+- Stock in **liters** in DB; displayed in **tons** in UI — never `tons = liters/1000`, always use density
+- `UnitConverter::litreToTon()` / `::tonToLitre()` — never inline the formula
+- jsPDF must stay **v2.5.1** — v4 breaks Cyrillic font
+- `reactive()` not `ref()` for sort objects passed as template function args
+- English only in code/comments; Russian only in DB content (station names)
 
 *Private — All Rights Reserved*
