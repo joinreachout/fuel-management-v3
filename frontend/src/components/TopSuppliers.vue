@@ -4,10 +4,10 @@
     <div class="bg-gray-900 px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-2">
         <i class="fas fa-trophy text-yellow-400 text-sm"></i>
-        <span class="text-white font-semibold text-sm">Поставщики</span>
+        <span class="text-white font-semibold text-sm">Suppliers</span>
       </div>
       <span class="bg-gray-700 text-gray-300 text-xs font-mono px-2 py-0.5 rounded-full">
-        {{ suppliers.length }} активных
+        {{ suppliers.length }} active
       </span>
     </div>
 
@@ -21,7 +21,6 @@
 
       <!-- Top 3 -->
       <div v-for="(supplier, index) in top3" :key="supplier.id">
-        <!-- Row -->
         <div
           class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors"
           @click="toggleExpanded(supplier.id)"
@@ -39,9 +38,12 @@
           </div>
 
           <!-- Delivery days -->
-          <div class="flex-none flex items-center gap-1 text-xs text-blue-600 font-medium" title="Срок доставки">
+          <div
+            class="flex-none flex items-center gap-1 text-xs text-blue-600 font-medium"
+            title="Delivery days"
+          >
             <i class="fas fa-truck text-blue-400" style="font-size:10px"></i>
-            <span>{{ deliveryRange(supplier) }}&nbsp;дн.</span>
+            <span>{{ deliveryRange(supplier) }}&thinsp;days</span>
           </div>
 
           <!-- Chevron -->
@@ -52,14 +54,14 @@
           ></i>
         </div>
 
-        <!-- Expanded -->
+        <!-- Expanded: prices + stats -->
         <div
           v-if="expandedId === supplier.id"
           class="bg-gray-50 px-4 py-3 border-t border-gray-100 text-xs"
         >
           <!-- Prices per fuel type -->
           <div v-if="supplier.prices?.length" class="mb-2">
-            <div class="font-semibold text-gray-500 mb-1.5">Цены ($/тонна)</div>
+            <div class="font-semibold text-gray-500 mb-1.5">Prices ($/ton)</div>
             <div class="grid grid-cols-2 gap-1">
               <div
                 v-for="p in supplier.prices"
@@ -71,21 +73,28 @@
               </div>
             </div>
           </div>
-          <div v-else class="italic text-gray-400 mb-2">Ценовых предложений нет</div>
+          <div v-else class="italic text-gray-400 mb-2">No price offers on file</div>
 
-          <!-- Stats row -->
+          <!-- Stats -->
           <div class="flex flex-wrap gap-x-3 gap-y-1 text-gray-500 mt-1">
-            <span><i class="fas fa-map-marker-alt mr-1 text-gray-400"></i>{{ supplier.stations_served }} станций</span>
-            <span><i class="fas fa-file-invoice mr-1 text-gray-400"></i>{{ supplier.erp_orders_count }} ERP-заказов</span>
+            <span>
+              <i class="fas fa-map-marker-alt mr-1 text-gray-400"></i>
+              {{ supplier.stations_served }} stations
+            </span>
+            <span>
+              <i class="fas fa-file-invoice mr-1 text-gray-400"></i>
+              {{ supplier.erp_orders_count }} ERP orders
+            </span>
             <span v-if="supplier.delivered_rate !== null">
-              <i class="fas fa-check-circle mr-1 text-gray-400"></i>{{ supplier.delivered_rate }}% выполнено
-              <span class="text-gray-300 italic">(без учёта сроков)</span>
+              <i class="fas fa-check-circle mr-1 text-gray-400"></i>
+              {{ supplier.delivered_rate }}% delivered
+              <span class="text-gray-300 italic ml-1">(no on-time data)</span>
             </span>
           </div>
         </div>
       </div>
 
-      <!-- More suppliers toggle -->
+      <!-- Show more toggle -->
       <div v-if="rest.length">
         <button
           class="w-full px-4 py-2 text-xs text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center gap-1 font-medium"
@@ -96,7 +105,7 @@
             style="font-size:10px"
             :class="{ 'rotate-180': showRest }"
           ></i>
-          {{ showRest ? 'Скрыть' : `Ещё ${rest.length} поставщиков` }}
+          {{ showRest ? 'Show less' : `${rest.length} more suppliers` }}
         </button>
 
         <div v-if="showRest" class="divide-y divide-gray-100">
@@ -109,9 +118,9 @@
               {{ supplier.priority }}
             </div>
             <div class="flex-1 min-w-0 text-gray-700 truncate font-medium">{{ supplier.name }}</div>
-            <div class="flex-none flex items-center gap-1 text-blue-500" title="Срок доставки">
+            <div class="flex-none flex items-center gap-1 text-blue-500" title="Delivery days">
               <i class="fas fa-truck text-blue-300" style="font-size:9px"></i>
-              <span>{{ deliveryRange(supplier) }}&nbsp;дн.</span>
+              <span>{{ deliveryRange(supplier) }}&thinsp;days</span>
             </div>
           </div>
         </div>
@@ -121,7 +130,7 @@
     <!-- Footer -->
     <div class="px-4 py-2.5 border-t border-gray-100 bg-gray-50">
       <router-link to="/parameters" class="text-xs text-blue-600 hover:text-blue-800 font-medium">
-        Управление предложениями в Параметрах →
+        Manage supply offers in Parameters →
       </router-link>
     </div>
   </div>
