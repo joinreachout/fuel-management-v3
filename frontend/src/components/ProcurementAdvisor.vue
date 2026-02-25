@@ -27,12 +27,20 @@
           @click="activeTab = 'briefing'">
           <i class="fas fa-bullhorn mr-1"></i>Briefing
         </button>
-        <button type="button" class="pa-tab" :class="{ active: activeTab === 'recommendations' }"
-          @click="activeTab = 'recommendations'">
-          Recommendations
-          <span v-if="!loading && recommendations.length"
-            class="ml-1.5 px-1.5 py-0.5 rounded-full text-xs font-bold bg-red-500 text-white">
-            {{ recommendations.length }}
+        <button type="button" class="pa-tab" :class="{ active: activeTab === 'immediate' }"
+          @click="activeTab = 'immediate'">
+          🚨 Immediate Action
+          <span v-if="!loading && crisisItems.length"
+            class="ml-1.5 px-1.5 py-0.5 rounded-full text-xs font-bold bg-red-600 text-white">
+            {{ crisisItems.length }}
+          </span>
+        </button>
+        <button type="button" class="pa-tab" :class="{ active: activeTab === 'proactive' }"
+          @click="activeTab = 'proactive'">
+          📋 Proactive Planning
+          <span v-if="!loading && proactiveItems.length"
+            class="ml-1.5 px-1.5 py-0.5 rounded-full text-xs font-bold bg-blue-500 text-white">
+            {{ proactiveItems.length }}
           </span>
         </button>
         <button type="button" class="pa-tab" :class="{ active: activeTab === 'pricecheck' }"
@@ -73,7 +81,7 @@
             <!-- Mandatory: CATASTROPHE + CRITICAL -->
             <button
               type="button"
-              @click="activeTab = 'recommendations'"
+              @click="activeTab = 'immediate'"
               class="text-left bg-red-50 p-3 rounded-lg cursor-pointer hover:bg-red-100 transition-colors group border border-red-100">
               <div class="text-xs text-red-700 font-semibold mb-1 flex items-center justify-between">
                 Mandatory
@@ -88,7 +96,7 @@
             <!-- Act Soon: MUST_ORDER + WARNING -->
             <button
               type="button"
-              @click="activeTab = 'recommendations'"
+              @click="activeTab = 'proactive'"
               class="text-left bg-orange-50 p-3 rounded-lg cursor-pointer hover:bg-orange-100 transition-colors group border border-orange-100">
               <div class="text-xs text-orange-700 font-semibold mb-1 flex items-center justify-between">
                 Act Soon
@@ -103,7 +111,7 @@
             <!-- Planned: PLANNED -->
             <button
               type="button"
-              @click="activeTab = 'recommendations'"
+              @click="activeTab = 'proactive'"
               class="text-left bg-blue-50 p-3 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors group border border-blue-100">
               <div class="text-xs text-blue-700 font-semibold mb-1 flex items-center justify-between">
                 Planned
@@ -168,21 +176,19 @@
         </div>
       </div>
 
-      <!-- ── RECOMMENDATIONS ───────────────────────────────────────────── -->
-      <div v-if="activeTab === 'recommendations'">
+      <!-- ── IMMEDIATE ACTION tab ─────────────────────────────────────── -->
+      <div v-if="activeTab === 'immediate'">
         <div v-if="loading" class="text-center py-8">
           <i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i>
-          <p class="text-sm text-gray-500 mt-2">Loading recommendations...</p>
+          <p class="text-sm text-gray-500 mt-2">Loading...</p>
         </div>
-
-        <div v-else-if="recommendations.length === 0" class="text-center py-8">
+        <div v-else-if="crisisItems.length === 0" class="text-center py-8">
           <i class="fas fa-check-circle text-green-500 text-3xl"></i>
-          <p class="text-sm text-gray-600 mt-2 font-semibold">All stock levels are healthy!</p>
-          <p class="text-xs text-gray-500 mt-1">No urgent procurement needed at this time.</p>
+          <p class="text-sm text-gray-600 mt-2 font-semibold">No crisis situations!</p>
+          <p class="text-xs text-gray-500 mt-1">All deliveries can arrive before critical dates.</p>
         </div>
-
         <div v-else>
-          <!-- Urgency Distribution Bar -->
+          <!-- Urgency bar -->
           <div class="mb-4 bg-gray-50 rounded-xl p-3">
             <div class="flex items-center gap-2 mb-2 flex-wrap">
               <span class="text-xs font-bold text-gray-500 uppercase tracking-wide mr-1">Urgency</span>
@@ -196,17 +202,13 @@
             </div>
             <div class="flex rounded-full overflow-hidden h-2 gap-px">
               <template v-for="lv in urgencyLevels" :key="lv.key">
-                <div v-if="urgencyCounts[lv.key] > 0"
-                  :class="lv.bgClass"
-                  :style="{ flex: urgencyCounts[lv.key] }"
-                  class="transition-all duration-500">
-                </div>
+                <div v-if="urgencyCounts[lv.key] > 0" :class="lv.bgClass"
+                  :style="{ flex: urgencyCounts[lv.key] }" class="transition-all duration-500"></div>
               </template>
             </div>
           </div>
-
-          <!-- ── CRISIS section: CATASTROPHE items (delivery already too late) ── -->
-          <div v-if="crisisItems.length" class="mb-5">
+          <!-- Crisis cards grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             <div class="flex items-center gap-2 mb-2 px-1">
               <span class="text-red-600 font-bold text-sm">🚨 Requires Immediate Action</span>
               <span class="text-xs text-red-400">— no regular delivery can arrive in time</span>
@@ -290,15 +292,43 @@
                   </button>
                 </div>
               </div>
+            </div><!-- end crisis grid -->
+          </div><!-- end crisis v-else -->
+        </div><!-- end immediate tab -->
+      </div><!-- end immediate conditional div -->
+
+      <!-- ── PROACTIVE PLANNING tab ────────────────────────────────────── -->
+      <div v-if="activeTab === 'proactive'">
+        <div v-if="loading" class="text-center py-8">
+          <i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i>
+          <p class="text-sm text-gray-500 mt-2">Loading...</p>
+        </div>
+        <div v-else-if="proactiveItems.length === 0" class="text-center py-8">
+          <i class="fas fa-check-circle text-green-500 text-3xl"></i>
+          <p class="text-sm text-gray-600 mt-2 font-semibold">All stock levels are healthy!</p>
+          <p class="text-xs text-gray-500 mt-1">No orders needed at this time.</p>
+        </div>
+        <div v-else>
+          <!-- Urgency bar -->
+          <div class="mb-4 bg-gray-50 rounded-xl p-3">
+            <div class="flex items-center gap-2 mb-2 flex-wrap">
+              <span class="text-xs font-bold text-gray-500 uppercase tracking-wide mr-1">Urgency</span>
+              <template v-for="lv in urgencyLevels" :key="lv.key">
+                <span v-if="urgencyCounts[lv.key] > 0"
+                  class="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
+                  :class="lv.chipClass">
+                  {{ urgencyCounts[lv.key] }} {{ lv.shortLabel }}
+                </span>
+              </template>
+            </div>
+            <div class="flex rounded-full overflow-hidden h-2 gap-px">
+              <template v-for="lv in urgencyLevels" :key="lv.key">
+                <div v-if="urgencyCounts[lv.key] > 0" :class="lv.bgClass"
+                  :style="{ flex: urgencyCounts[lv.key] }" class="transition-all duration-500"></div>
+              </template>
             </div>
           </div>
-
-          <!-- ── PROACTIVE PLANNING section: CRITICAL / MUST_ORDER / WARNING / PLANNED ── -->
-          <div v-if="proactiveItems.length">
-            <div class="flex items-center gap-2 mb-2 px-1">
-              <span class="text-gray-700 font-bold text-sm">📋 Proactive Planning</span>
-              <span class="text-xs text-gray-400">— order ahead to prevent stockouts</span>
-            </div>
+          <!-- Proactive cards grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               <div
                 v-for="rec in proactiveItems"
@@ -468,11 +498,10 @@
                 <i class="fas fa-plus mr-1"></i>Create Purchase Order
               </button>
 
-            </div>
-          </div><!-- end proactive grid -->
-          </div><!-- end proactive section -->
-        </div>
-      </div>
+              </div><!-- end proactive card -->
+            </div><!-- end proactive grid -->
+          </div><!-- end proactive v-else -->
+        </div><!-- end proactive tab -->
 
       <!-- ── PRICE CHECK ────────────────────────────────────────────────── -->
       <div v-if="activeTab === 'pricecheck'" class="space-y-4">
@@ -651,6 +680,14 @@ const getFillBarClass   = (u) => ({ CATASTROPHE:'bg-red-500',   CRITICAL:'bg-red
 const getDaysBoxClass   = (u) => ({ CATASTROPHE:'bg-red-100 border-red-300', CRITICAL:'bg-red-50 border-red-200', MUST_ORDER:'bg-orange-50 border-orange-300', WARNING:'bg-yellow-50 border-yellow-300', PLANNED:'bg-blue-50 border-blue-200' }[u] || 'bg-gray-50 border-gray-200');
 const getDaysTextClass  = (u) => ({ CATASTROPHE:'text-red-700', CRITICAL:'text-red-600', MUST_ORDER:'text-orange-600', WARNING:'text-yellow-700', PLANNED:'text-blue-600' }[u] || 'text-gray-700');
 
+// ── Round tonnage up to a "nice" order quantity ───────────────────────────────
+// 1357 → 1500 (nearest 500), 850 → 900 (nearest 100), 70 → 100 (nearest 50), 12 → 20 (nearest 10)
+function roundUpTons(tons) {
+  if (!tons || tons <= 0) return 0
+  const step = tons >= 1000 ? 500 : tons >= 200 ? 100 : tons >= 50 ? 50 : 10
+  return Math.ceil(tons / step) * step
+}
+
 // ── Create Order: navigate to Orders with pre-fill ────────────────────────────
 function createOrder(rec) {
   router.push({
@@ -659,7 +696,7 @@ function createOrder(rec) {
       action:        'create_po',
       station_id:    rec.station_id,
       fuel_type_id:  rec.fuel_type_id,
-      quantity_tons: rec.recommended_order_tons,
+      quantity_tons: roundUpTons(rec.recommended_order_tons),
       supplier_id:   rec.best_supplier?.id || '',
       delivery_date: rec.last_order_date   || '',
     },
@@ -687,7 +724,7 @@ async function loadData() {
   try {
     const [summaryRes, shortagesRes] = await Promise.all([
       procurementApi.getSummary(),
-      procurementApi.getUpcomingShortages(14),
+      procurementApi.getUpcomingShortages(90),
     ]);
     if (summaryRes.data.success)   summary.value   = summaryRes.data.data;
     if (shortagesRes.data.success) shortages.value = shortagesRes.data.data;
