@@ -43,6 +43,14 @@
             {{ proactiveItems.length }}
           </span>
         </button>
+        <button type="button" class="pa-tab" :class="{ active: activeTab === 'cases' }"
+          @click="activeTab = 'cases'; loadCases()">
+          <i class="fas fa-clipboard-list mr-1"></i>Cases
+          <span v-if="activeCasesCount > 0"
+            class="ml-1.5 px-1.5 py-0.5 rounded-full text-xs font-bold bg-purple-600 text-white">
+            {{ activeCasesCount }}
+          </span>
+        </button>
         <button type="button" class="pa-tab" :class="{ active: activeTab === 'pricecheck' }"
           @click="activeTab = 'pricecheck'">
           <i class="fas fa-tag mr-1"></i>Price Check
@@ -281,13 +289,16 @@
                   </div>
                   <div v-if="cancelingId === rec.active_po.id" class="mt-1 text-red-600 font-medium" style="font-size: 10px">Remove PO? System will recalculate.</div>
                 </div>
-                <!-- Crisis actions: Escalate + Consider Transfer (no Create PO button) -->
-                <div class="mt-auto grid grid-cols-2 gap-1.5">
-                  <button type="button" class="py-2 text-xs font-semibold rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-all border border-red-200">
-                    <i class="fas fa-phone-alt mr-1"></i>Escalate
+                <!-- Crisis actions: Resolve (primary) + Escalate (fallback) -->
+                <div class="mt-auto flex flex-col gap-1.5">
+                  <button type="button"
+                    @click="openCrisisModal(rec)"
+                    class="w-full py-2 text-xs font-bold rounded-lg bg-gradient-to-r from-red-600 to-orange-600 text-white hover:from-red-700 hover:to-orange-700 transition-all">
+                    <i class="fas fa-bolt mr-1"></i>Resolve Crisis
                   </button>
-                  <button type="button" @click="router.push('/transfers')" class="py-2 text-xs font-semibold rounded-lg bg-orange-100 text-orange-700 hover:bg-orange-200 transition-all border border-orange-200">
-                    <i class="fas fa-exchange-alt mr-1"></i>Transfer
+                  <button type="button"
+                    class="w-full py-1.5 text-xs font-semibold rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all border border-gray-200">
+                    <i class="fas fa-phone-alt mr-1"></i>Escalate to Management
                   </button>
                 </div>
               </div>
@@ -501,6 +512,103 @@
           </div><!-- end proactive v-else -->
         </div><!-- end proactive tab -->
 
+      <!-- ── CASES tab ────────────────────────────────────────────────── -->
+      <div v-if="activeTab === 'cases'" class="space-y-3">
+        <div v-if="casesLoading" class="text-center py-8">
+          <i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i>
+          <p class="text-sm text-gray-500 mt-2">Loading cases...</p>
+        </div>
+        <div v-else-if="!cases.length" class="text-center py-10">
+          <i class="fas fa-clipboard-check text-gray-300 text-4xl mb-3"></i>
+          <p class="text-sm font-semibold text-gray-500">No crisis cases yet</p>
+          <p class="text-xs text-gray-400 mt-1">
+            Cases appear here when you accept a proposal from the
+            <button type="button" @click="activeTab = 'immediate'"
+              class="text-red-500 font-semibold underline hover:text-red-700">
+              Immediate Action
+            </button> tab.
+          </p>
+        </div>
+        <div v-else class="space-y-3">
+          <div v-for="c in cases" :key="c.id"
+            class="border rounded-xl p-4 transition-all"
+            :class="c.status === 'resolved'
+              ? 'border-gray-200 bg-gray-50/50 opacity-70'
+              : 'border-orange-300 bg-orange-50/20'">
+            <!-- Case header: status badge + type badge + resolve button -->
+            <div class="flex items-start justify-between gap-3 mb-3">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs font-black px-2 py-0.5 rounded-full"
+                  :class="{
+                    'bg-red-100 text-red-700':      c.status === 'accepted',
+                    'bg-orange-100 text-orange-700': c.status === 'monitoring',
+                    'bg-green-100 text-green-700':   c.status === 'resolved',
+                    'bg-gray-100 text-gray-600':     c.status === 'proposed',
+                  }">
+                  {{ c.status?.toUpperCase() }}
+                </span>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                  {{ c.case_type === 'split_delivery' ? '✂️ Split Delivery' : '🔄 Transfer' }}
+                </span>
+                <span class="text-xs text-gray-400">#{{ c.id }}</span>
+              </div>
+              <button v-if="c.status !== 'resolved'"
+                type="button"
+                @click="resolveCrisisCase(c.id)"
+                class="shrink-0 text-xs px-3 py-1 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition-all">
+                ✓ Mark Resolved
+              </button>
+            </div>
+            <!-- Details grid -->
+            <div class="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs mb-3">
+              <div>
+                <span class="text-gray-400">Critical depot:</span>
+                <span class="font-semibold text-gray-800 ml-1">{{ c.receiving_depot_name || ('Depot #' + c.receiving_depot_id) }}</span>
+              </div>
+              <div>
+                <span class="text-gray-400">Fuel:</span>
+                <span class="font-semibold text-gray-800 ml-1">{{ c.fuel_type_code || c.fuel_type_name || ('Type #' + c.fuel_type_id) }}</span>
+              </div>
+              <div>
+                <span class="text-gray-400">Split qty:</span>
+                <span class="font-semibold text-orange-700 ml-1">{{ c.split_qty_tons }} t</span>
+              </div>
+              <div>
+                <span class="text-gray-400">Qty needed:</span>
+                <span class="font-semibold text-gray-800 ml-1">{{ c.qty_needed_tons }} t</span>
+              </div>
+              <div v-if="c.case_type === 'split_delivery'">
+                <span class="text-gray-400">Donor order:</span>
+                <span class="font-semibold text-gray-800 ml-1">{{ c.donor_order_number || ('#' + c.donor_order_id) }}</span>
+              </div>
+              <div v-if="c.case_type === 'transfer'">
+                <span class="text-gray-400">Donor depot:</span>
+                <span class="font-semibold text-gray-800 ml-1">{{ c.donor_depot_name || ('Depot #' + c.donor_depot_id) }}</span>
+              </div>
+              <div>
+                <span class="text-gray-400">Created:</span>
+                <span class="text-gray-600 ml-1">{{ c.created_at?.substring(0, 10) }}</span>
+              </div>
+            </div>
+            <!-- PO link status -->
+            <div class="flex gap-6 pt-2 border-t border-gray-200">
+              <div class="flex items-center gap-1.5 text-xs"
+                :class="c.po_for_critical_id ? 'text-green-600' : 'text-gray-400'">
+                <i :class="c.po_for_critical_id ? 'fas fa-check-circle' : 'far fa-circle'"></i>
+                <span>PO — Critical depot</span>
+                <span v-if="c.po_for_critical_number" class="font-bold ml-0.5">{{ c.po_for_critical_number }}</span>
+              </div>
+              <div class="flex items-center gap-1.5 text-xs"
+                :class="c.po_for_donor_id ? 'text-green-600' : 'text-gray-400'">
+                <i :class="c.po_for_donor_id ? 'fas fa-check-circle' : 'far fa-circle'"></i>
+                <span>PO — Donor</span>
+                <span v-if="c.po_for_donor_number" class="font-bold ml-0.5">{{ c.po_for_donor_number }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ── PRICE CHECK ────────────────────────────────────────────────── -->
       <div v-if="activeTab === 'pricecheck'" class="space-y-4">
         <div class="bg-gray-50 p-4 rounded-lg">
@@ -532,12 +640,21 @@
 
     </div>
   </div>
+
+  <!-- Crisis Resolution Modal — fixed overlay, outside overflow-hidden parent -->
+  <CrisisResolutionModal
+    v-if="showCrisisModal && crisisModalRec"
+    :rec="crisisModalRec"
+    @close="showCrisisModal = false"
+    @resolved="onCrisisResolved"
+  />
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { procurementApi, ordersApi } from '../services/api';
+import { procurementApi, ordersApi, crisisApi } from '../services/api';
+import CrisisResolutionModal from './CrisisResolutionModal.vue';
 
 const router = useRouter();
 
@@ -555,6 +672,19 @@ const summary      = ref({
 // PO inline remove — two-step confirm: first click sets cancelingId, second confirms delete
 const cancelingId  = ref(null);
 const cancelLoading = ref(false);
+
+// ── Crisis Resolution Modal ───────────────────────────────────────────────────
+const showCrisisModal = ref(false);
+const crisisModalRec  = ref(null);
+
+// ── Cases tab ────────────────────────────────────────────────────────────────
+const cases        = ref([]);
+const casesLoading = ref(false);
+
+// Count of non-resolved cases for the tab badge
+const activeCasesCount = computed(() =>
+  cases.value.filter(c => c.status !== 'resolved').length
+);
 
 const marketPrices = [
   { fuel: 'Diesel B7',  price: '€1.42/L', trend: 'up',   change: '2.1%' },
@@ -716,6 +846,40 @@ async function confirmRemovePO(poId) {
   }
 }
 
+// ── Crisis Modal ──────────────────────────────────────────────────────────────
+function openCrisisModal(rec) {
+  crisisModalRec.value  = rec;
+  showCrisisModal.value = true;
+}
+
+// Called by modal @resolved — reload data + cases, close modal
+async function onCrisisResolved() {
+  showCrisisModal.value = false;
+  await Promise.all([loadData(), loadCases()]);
+}
+
+// ── Cases tab: load + resolve ──────────────────────────────────────────────────
+async function loadCases() {
+  casesLoading.value = true;
+  try {
+    const res = await crisisApi.getCases();
+    if (res.data.success) cases.value = res.data.data;
+  } catch (e) {
+    console.error('loadCases error:', e);
+  } finally {
+    casesLoading.value = false;
+  }
+}
+
+async function resolveCrisisCase(id) {
+  try {
+    await crisisApi.resolveCase(id);
+    await loadCases();
+  } catch (e) {
+    console.error('resolveCrisisCase error:', e);
+  }
+}
+
 // ── Data loading ──────────────────────────────────────────────────────────────
 async function loadData() {
   loading.value = true;
@@ -733,7 +897,10 @@ async function loadData() {
   }
 }
 
-onMounted(loadData);
+onMounted(() => {
+  loadData();
+  loadCases(); // pre-load so the Cases badge shows count immediately
+});
 </script>
 
 <style scoped>

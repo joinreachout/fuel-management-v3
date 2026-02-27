@@ -50,7 +50,7 @@ class ProcurementAdvisorService
      * @param int|null $daysThreshold Show shortages within N days (default: 14)
      * @return array List of upcoming shortages with recommendations
      */
-    public static function getUpcomingShortages(?int $daysThreshold = 14): array
+    public static function getUpcomingShortages(?int $daysThreshold = 90): array
     {
         // Get all depots with their fuel stock and consumption rates
         $sql = "
@@ -364,7 +364,7 @@ class ProcurementAdvisorService
      */
     public static function getProcurementSummary(): array
     {
-        $shortages = self::getUpcomingShortages(14);
+        $shortages = self::getUpcomingShortages(90);
 
         $summary = [
             'total_shortages' => count($shortages),

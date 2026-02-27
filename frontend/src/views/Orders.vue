@@ -1184,7 +1184,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ordersApi, stationsApi, fuelTypesApi, suppliersApi, dashboardApi, procurementApi, parametersApi } from '../services/api.js'
+import { ordersApi, stationsApi, fuelTypesApi, suppliersApi, dashboardApi, procurementApi, parametersApi, crisisApi } from '../services/api.js'
 
 // ────────────────────────────────────────────────────────────────────────────
 // Router / Route
@@ -1237,6 +1237,9 @@ const erpFilters = ref({
 const showCreateModal = ref(false)
 const formSubmitting  = ref(false)
 const createError     = ref('')
+// Crisis link-back: set from query params when navigating from CrisisResolutionModal
+// After PO creation, auto-calls crisisApi.linkPO to wire the new PO into the crisis case
+const pendingCrisisLink = ref(null) // { case_id: int, po_role: 'critical'|'donor' } | null
 const form = ref({
   station_id:     '',
   fuel_type_id:   '',
@@ -1561,7 +1564,21 @@ async function submitCreate() {
       : Math.round(form.value.quantity_tons)  // fallback: treat as liters
     const payload = { ...form.value, quantity_liters: quantityLiters }
     delete payload.quantity_tons
-    await ordersApi.create(payload)
+    const res = await ordersApi.create(payload)
+    const newPoId = res.data?.data?.id
+
+    // If this PO was created as part of a crisis case, auto-link it back
+    if (newPoId && pendingCrisisLink.value) {
+      const { case_id, po_role } = pendingCrisisLink.value
+      try {
+        await crisisApi.linkPO(case_id, po_role, newPoId)
+      } catch (linkErr) {
+        console.warn('Crisis linkPO failed (non-fatal):', linkErr)
+        // Non-fatal: PO was created, just the link didn't work. User can retry from Cases tab.
+      }
+      pendingCrisisLink.value = null
+    }
+
     showCreateModal.value = false
     await Promise.all([loadPOOrders(), loadOrderStats()])
   } catch (e) {
@@ -2008,8 +2025,9 @@ onMounted(async () => {
     loadSupplierOffers(),
   ])
 
-  // Pre-fill Create PO modal when navigated from Procurement Advisor
+  // Pre-fill Create PO modal when navigated from Procurement Advisor or CrisisResolutionModal
   // Usage: router.push({ path: '/orders', query: { action: 'create_po', station_id, fuel_type_id, ... } })
+  // Crisis usage adds: crisis_case_id, crisis_po_role ('critical'|'donor')
   if (route.query.action === 'create_po') {
     form.value = {
       station_id:    route.query.station_id    ? Number(route.query.station_id)    : '',
@@ -2018,7 +2036,16 @@ onMounted(async () => {
       quantity_tons: route.query.quantity_tons ? parseFloat(route.query.quantity_tons) : null,
       price_per_ton: null,
       delivery_date: route.query.delivery_date || '',
-      notes:         '',
+      notes:         route.query.crisis_case_id
+        ? `Crisis case #${route.query.crisis_case_id} — ${route.query.crisis_po_role === 'donor' ? 'Compensating PO for donor depot' : 'Compensating PO for critical depot'}`
+        : '',
+    }
+    // Store crisis link params so we can wire the PO back after creation
+    if (route.query.crisis_case_id && route.query.crisis_po_role) {
+      pendingCrisisLink.value = {
+        case_id: Number(route.query.crisis_case_id),
+        po_role: route.query.crisis_po_role,
+      }
     }
     createError.value     = ''
     showCreateModal.value = true

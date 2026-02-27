@@ -154,4 +154,26 @@ export const importApi = {
   }),
 };
 
+// Crisis Resolution API
+export const crisisApi = {
+  // Get split_delivery + transfer options for a critical depot
+  getOptions: (depotId, fuelTypeId) =>
+    api.get('/crisis/options', { params: { depot_id: depotId, fuel_type_id: fuelTypeId } }),
+
+  // Accept a proposal → creates crisis_case record
+  // type: 'split_delivery' | 'transfer'
+  acceptProposal: (data) => api.post('/crisis/accept', data),
+
+  // Link a compensating PO to an existing case (after user creates PO in step 4)
+  linkPO: (caseId, poRole, poId) =>
+    api.post('/crisis/link-po', { case_id: caseId, po_role: poRole, po_id: poId }),
+
+  // List all cases (optionally filter by status)
+  getCases: (status = null) =>
+    api.get('/crisis/cases', status ? { params: { status } } : {}),
+
+  // Mark a case as resolved
+  resolveCase: (id) => api.post(`/crisis/cases/${id}/resolve`),
+};
+
 export default api;

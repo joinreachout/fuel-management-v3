@@ -67,6 +67,9 @@ require_once __DIR__ . '/../src/Controllers/InfrastructureController.php';
 require_once __DIR__ . '/../src/Controllers/WorkingCapitalController.php';
 require_once __DIR__ . '/../src/Services/ImportService.php';
 require_once __DIR__ . '/../src/Controllers/ImportController.php';
+require_once __DIR__ . '/../src/Models/CrisisCase.php';
+require_once __DIR__ . '/../src/Services/CrisisResolutionService.php';
+require_once __DIR__ . '/../src/Controllers/CrisisController.php';
 
 use App\Core\Response;
 use App\Controllers\StationController;
@@ -84,6 +87,7 @@ use App\Controllers\ParametersController;
 use App\Controllers\InfrastructureController;
 use App\Controllers\WorkingCapitalController;
 use App\Controllers\ImportController;
+use App\Controllers\CrisisController;
 
 // Simple router
 try {
@@ -113,7 +117,8 @@ try {
     $parametersController = new ParametersController();
     $infrastructureController = new InfrastructureController();
     $workingCapitalController = new WorkingCapitalController();
-    $importController = new ImportController();
+    $importController  = new ImportController();
+    $crisisController  = new CrisisController();
 
     // ==================== STATIONS ====================
     if ($requestMethod === 'GET' && $path === '/api/stations') {
@@ -332,6 +337,22 @@ try {
 
     } elseif ($requestMethod === 'GET' && $path === '/api/parameters/depot-tanks') {
         $parametersController->getDepotTanks();
+
+    // ==================== CRISIS RESOLUTION ====================
+    } elseif ($requestMethod === 'GET' && $path === '/api/crisis/options') {
+        $crisisController->getOptions();
+
+    } elseif ($requestMethod === 'POST' && $path === '/api/crisis/accept') {
+        $crisisController->acceptProposal();
+
+    } elseif ($requestMethod === 'POST' && $path === '/api/crisis/link-po') {
+        $crisisController->linkPO();
+
+    } elseif ($requestMethod === 'GET' && $path === '/api/crisis/cases') {
+        $crisisController->getCases();
+
+    } elseif ($requestMethod === 'POST' && preg_match('#^/api/crisis/cases/(\d+)/resolve$#', $path, $matches)) {
+        $crisisController->resolveCase((int)$matches[1]);
 
     // ==================== INFRASTRUCTURE ====================
     } elseif ($requestMethod === 'GET' && $path === '/api/infrastructure/hierarchy') {
