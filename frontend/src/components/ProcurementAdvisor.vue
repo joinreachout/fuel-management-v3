@@ -51,6 +51,14 @@
             {{ activeCasesCount }}
           </span>
         </button>
+        <button type="button" class="pa-tab" :class="{ active: activeTab === 'orderplan' }"
+          @click="activeTab = 'orderplan'">
+          <i class="fas fa-boxes mr-1"></i>Order Plan
+          <span v-if="!loading && orderPlanStats.totalItems > 0"
+            class="ml-1.5 px-1.5 py-0.5 rounded-full text-xs font-bold bg-emerald-600 text-white">
+            {{ orderPlanStats.totalItems }}
+          </span>
+        </button>
         <button type="button" class="pa-tab" :class="{ active: activeTab === 'pricecheck' }"
           @click="activeTab = 'pricecheck'">
           <i class="fas fa-tag mr-1"></i>Price Check
@@ -623,6 +631,141 @@
         </div>
       </div>
 
+      <!-- ── ORDER PLAN (Consolidated Order) ─────────────────────────────── -->
+      <div v-if="activeTab === 'orderplan'">
+        <div v-if="loading" class="text-center py-8">
+          <i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i>
+          <p class="text-sm text-gray-500 mt-2">Loading...</p>
+        </div>
+        <div v-else-if="!consolidatedBySupplier.length && !noSupplierItems.length" class="text-center py-10">
+          <i class="fas fa-check-circle text-green-500 text-3xl mb-3"></i>
+          <p class="text-sm font-semibold text-gray-600">No orders needed at this time</p>
+          <p class="text-xs text-gray-400 mt-1">All stock levels are within safe thresholds</p>
+        </div>
+        <div v-else class="space-y-4">
+
+          <!-- Summary strip -->
+          <div class="flex flex-wrap items-center gap-3 text-xs bg-gray-50 rounded-xl px-4 py-3">
+            <span class="font-bold text-gray-800 text-sm">{{ orderPlanStats.totalItems }} positions</span>
+            <span class="text-gray-300">|</span>
+            <span class="font-black text-gray-800">{{ orderPlanStats.totalTons.toLocaleString() }} t total</span>
+            <span class="text-gray-300">|</span>
+            <span v-if="orderPlanStats.mandatoryItems"
+              class="flex items-center gap-1 font-bold text-red-600">
+              <span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
+              {{ orderPlanStats.mandatoryItems }} mandatory (CATASTROPHE / CRITICAL)
+            </span>
+            <span v-if="orderPlanStats.recommendedItems"
+              class="flex items-center gap-1 font-semibold text-blue-600">
+              <span class="w-2 h-2 rounded-full bg-blue-400 inline-block"></span>
+              {{ orderPlanStats.recommendedItems }} recommended
+            </span>
+          </div>
+
+          <!-- Per-supplier blocks -->
+          <div v-for="supplier in consolidatedBySupplier" :key="supplier.supplier_id"
+            class="border border-gray-200 rounded-xl overflow-hidden">
+
+            <!-- Supplier header -->
+            <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+              <div class="flex items-center gap-3">
+                <i class="fas fa-industry text-blue-500 text-sm"></i>
+                <span class="font-bold text-gray-800">{{ supplier.supplier_name }}</span>
+                <span class="text-xs text-gray-400 flex items-center gap-1">
+                  <i class="fas fa-truck text-blue-300"></i>{{ supplier.avg_delivery_days }}d
+                </span>
+                <span v-if="supplier.price_per_ton" class="text-xs text-gray-400">
+                  · {{ Number(supplier.price_per_ton).toLocaleString() }} $/t
+                </span>
+              </div>
+              <div class="flex items-center gap-3 text-sm">
+                <span v-if="supplier.mandatory_tons > 0"
+                  class="font-bold text-red-600">{{ supplier.mandatory_tons.toLocaleString() }}t <span class="font-normal text-red-400 text-xs">mand.</span></span>
+                <span v-if="supplier.recommended_tons > 0"
+                  class="font-semibold text-blue-600">{{ supplier.recommended_tons.toLocaleString() }}t <span class="font-normal text-blue-400 text-xs">rec.</span></span>
+                <span class="font-black text-gray-900 border-l border-gray-300 pl-3">
+                  {{ supplier.total_tons.toLocaleString() }} t
+                </span>
+              </div>
+            </div>
+
+            <!-- Items table -->
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="bg-white border-b border-gray-100">
+                  <th class="text-left px-4 py-2 font-semibold text-gray-400">Station</th>
+                  <th class="text-left px-3 py-2 font-semibold text-gray-400">Fuel</th>
+                  <th class="text-right px-3 py-2 font-semibold text-gray-400">Qty (t)</th>
+                  <th class="text-center px-3 py-2 font-semibold text-gray-400">Days to crit.</th>
+                  <th class="text-left px-3 py-2 font-semibold text-gray-400">Order by</th>
+                  <th class="text-center px-3 py-2 font-semibold text-gray-400"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-50">
+                <tr v-for="item in supplier.items" :key="item.id"
+                  class="hover:bg-gray-50 transition-colors"
+                  :class="item.mandatory ? 'bg-red-50/30' : ''">
+                  <td class="px-4 py-2 font-medium text-gray-800">{{ shortName(item.station_name) }}</td>
+                  <td class="px-3 py-2 text-gray-600">{{ item.fuel_type_code || item.fuel_type }}</td>
+                  <td class="px-3 py-2 text-right font-bold text-gray-800">
+                    {{ item.quantity_tons > 0 ? item.quantity_tons.toLocaleString() : '—' }}
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <span v-if="item.days_until_critical != null"
+                      class="font-bold" :class="getDaysTextClass(item.urgency)">
+                      {{ Math.round(item.days_until_critical) }}d
+                    </span>
+                    <span v-else class="text-gray-300">∞</span>
+                  </td>
+                  <td class="px-3 py-2 font-medium whitespace-nowrap"
+                    :class="item.last_order_date ? 'text-orange-600' : 'text-gray-300'">
+                    {{ item.last_order_date || '—' }}
+                  </td>
+                  <td class="px-3 py-2 text-center">
+                    <span class="px-1.5 py-0.5 rounded font-bold text-[10px]"
+                      :class="item.mandatory ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'">
+                      {{ item.mandatory ? 'MAND.' : 'REC.' }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="border-t-2 border-gray-200 bg-gray-50/80 font-bold">
+                  <td colspan="2" class="px-4 py-2 text-gray-600">TOTAL — {{ supplier.supplier_name }}</td>
+                  <td class="px-3 py-2 text-right text-gray-900 font-black">{{ supplier.total_tons.toLocaleString() }} t</td>
+                  <td colspan="3"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <!-- Items with no supplier configured -->
+          <div v-if="noSupplierItems.length"
+            class="border border-dashed border-red-200 rounded-xl p-4 bg-red-50/20">
+            <div class="flex items-center gap-2 text-xs font-bold text-red-600 mb-3">
+              <i class="fas fa-exclamation-circle"></i>
+              No supplier offers configured for {{ noSupplierItems.length }} position(s)
+            </div>
+            <div class="space-y-1">
+              <div v-for="item in noSupplierItems" :key="item.id"
+                class="flex items-center gap-3 text-xs py-1.5 border-b border-red-100 last:border-0">
+                <span class="font-medium text-gray-800">{{ shortName(item.station_name) }}</span>
+                <span class="text-gray-400">·</span>
+                <span class="text-gray-600">{{ item.fuel_type }}</span>
+                <span class="ml-auto px-1.5 py-0.5 rounded font-bold text-[10px]"
+                  :class="item.mandatory ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'">
+                  {{ item.mandatory ? 'MAND.' : 'REC.' }}
+                </span>
+              </div>
+            </div>
+            <p class="text-xs text-red-400 mt-3 italic">
+              Go to Parameters → Supply Offers to configure supplier prices for these station + fuel combinations.
+            </p>
+          </div>
+
+        </div><!-- end v-else -->
+      </div><!-- end orderplan tab -->
+
       <!-- ── PRICE CHECK ────────────────────────────────────────────────── -->
       <div v-if="activeTab === 'pricecheck'" class="space-y-4">
         <div class="bg-gray-50 p-4 rounded-lg">
@@ -779,6 +922,72 @@ const actSoonCount = computed(() =>
 const plannedCount = computed(() =>
   urgencyCounts.value.PLANNED || 0
 );
+
+// ── Computed: consolidated order plan — grouped by best_supplier ──────────────
+const consolidatedBySupplier = computed(() => {
+  const map = {}
+  for (const s of shortages.value) {
+    if (!s.best_supplier?.id) continue  // no supplier → shown separately
+    const suppId = s.best_supplier.id
+    if (!map[suppId]) {
+      map[suppId] = {
+        supplier_id:       suppId,
+        supplier_name:     s.best_supplier.name,
+        avg_delivery_days: s.best_supplier.avg_delivery_days,
+        price_per_ton:     s.best_supplier.price_per_ton,
+        items:             [],
+        total_tons:        0,
+        mandatory_tons:    0,
+        recommended_tons:  0,
+      }
+    }
+    const isMandatory = ['CATASTROPHE', 'CRITICAL'].includes(s.urgency)
+    const qty = s.recommended_order_tons || 0
+    map[suppId].items.push({
+      id:                  s.depot_id + '_' + s.fuel_type_id,
+      station_name:        s.station_name,
+      fuel_type:           s.fuel_type_name,
+      fuel_type_code:      s.fuel_type_code,
+      quantity_tons:       qty,
+      urgency:             s.urgency,
+      mandatory:           isMandatory,
+      days_until_critical: s.days_until_critical_level,
+      last_order_date:     s.last_order_date,
+    })
+    map[suppId].total_tons       += qty
+    if (isMandatory) map[suppId].mandatory_tons    += qty
+    else             map[suppId].recommended_tons  += qty
+  }
+  // Sort: suppliers with mandatory items first, then by total descending
+  return Object.values(map).sort((a, b) =>
+    b.mandatory_tons - a.mandatory_tons || b.total_tons - a.total_tons
+  )
+})
+
+// Positions where no supplier offer exists for station+fuel
+const noSupplierItems = computed(() =>
+  shortages.value
+    .filter(s => !s.best_supplier?.id)
+    .map(s => ({
+      id:           s.depot_id + '_' + s.fuel_type_id,
+      station_name: s.station_name,
+      fuel_type:    s.fuel_type_name,
+      urgency:      s.urgency,
+      mandatory:    ['CATASTROPHE', 'CRITICAL'].includes(s.urgency),
+    }))
+)
+
+// Aggregate stats for Order Plan tab badge + summary strip
+const orderPlanStats = computed(() => {
+  let totalItems = 0, totalTons = 0, mandatoryItems = 0, recommendedItems = 0
+  for (const s of shortages.value) {
+    totalItems++
+    totalTons += s.recommended_order_tons || 0
+    if (['CATASTROPHE', 'CRITICAL'].includes(s.urgency)) mandatoryItems++
+    else recommendedItems++
+  }
+  return { totalItems, totalTons: Math.round(totalTons), mandatoryItems, recommendedItems }
+})
 
 // ── Computed: "next action" header chip ──────────────────────────────────────
 const nextActionChip = computed(() => {
