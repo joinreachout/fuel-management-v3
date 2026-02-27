@@ -40,8 +40,57 @@
           <div
             v-for="tank in currentStationTanks"
             :key="tank.tank_id"
-            class="flex flex-col items-center gap-2"
+            class="flex flex-col items-center gap-2 group relative"
             style="min-width: 80px;">
+
+            <!-- ── Hover Tooltip ─────────────────────────────────────── -->
+            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50
+                        hidden group-hover:block pointer-events-none">
+              <div class="bg-gray-900 text-white rounded-xl px-3 py-2.5 shadow-2xl whitespace-nowrap"
+                style="min-width: 170px;">
+
+                <!-- Fuel name + fill % -->
+                <div class="font-bold text-sm mb-1">{{ tank.product_name }}</div>
+                <div class="text-gray-300 text-xs mb-1">
+                  {{ formatTons(tank.current_stock_tons) }} / {{ formatTons(tank.capacity_tons) }}
+                  <span class="font-bold text-white ml-1">({{ tank.fill_percentage.toFixed(1) }}%)</span>
+                </div>
+
+                <!-- Procurement data if available -->
+                <template v-if="getShortage(tank)">
+                  <div class="border-t border-gray-700 mt-2 pt-2 space-y-1 text-xs">
+                    <div class="flex justify-between gap-4">
+                      <span class="text-gray-400">Days to crit.</span>
+                      <span class="font-bold" :class="getDaysToCritClass(getShortage(tank))">
+                        {{ getShortage(tank).days_until_critical_level != null
+                            ? Math.round(getShortage(tank).days_until_critical_level) + 'd'
+                            : '∞' }}
+                      </span>
+                    </div>
+                    <div v-if="getShortage(tank).last_order_date"
+                      class="flex justify-between gap-4">
+                      <span class="text-gray-400">Order by</span>
+                      <span class="font-bold"
+                        :class="isOrderUrgent(getShortage(tank).last_order_date)
+                          ? 'text-red-400' : 'text-white'">
+                        {{ fmtShortDate(getShortage(tank).last_order_date) }}
+                      </span>
+                    </div>
+                    <div class="flex justify-between gap-4">
+                      <span class="text-gray-400">Urgency</span>
+                      <span class="font-bold text-[11px]"
+                        :class="getDaysToCritClass(getShortage(tank))">
+                        {{ getShortage(tank).urgency }}
+                      </span>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- Arrow pointing down -->
+                <div class="absolute top-full left-1/2 -translate-x-1/2
+                            border-4 border-transparent border-t-gray-900"></div>
+              </div>
+            </div>
 
             <!-- Bar Container -->
             <div class="relative flex flex-col justify-end" style="height: 250px; width: 60px;">
@@ -53,8 +102,7 @@
               <!-- Fill Bar with Gradient -->
               <div
                 class="fill-bar animate relative rounded-t-lg transition-all duration-1000"
-                :style="getBarStyle(tank)"
-                :title="`${tank.product_name}: ${tank.current_stock_liters.toFixed(0)}L / ${tank.tank_capacity_liters.toFixed(0)}L (${tank.fill_percentage.toFixed(1)}%)`">
+                :style="getBarStyle(tank)">
 
                 <!-- Percentage Label on Bar -->
                 <div v-if="tank.fill_percentage > 15"
@@ -65,37 +113,13 @@
 
             </div>
 
-            <!-- Label Below Bar -->
+            <!-- Label Below Bar (no procurement text — it's in the tooltip) -->
             <div class="text-center">
               <div class="text-xs font-semibold text-gray-700">{{ tank.product_name }}</div>
               <div class="text-xs font-bold" :style="{ color: getBarColor(tank.fuel_type_id) }">
                 {{ formatTons(tank.current_stock_tons) }}
               </div>
               <div class="text-xs text-gray-500">{{ formatTons(tank.capacity_tons) }}</div>
-
-              <!-- Days to critical + last order date from procurement data -->
-              <template v-if="getShortage(tank)">
-                <div class="mt-1.5 border-t border-gray-100 pt-1.5 space-y-0.5">
-                  <!-- Days until critical level -->
-                  <div class="text-[11px] font-bold leading-tight"
-                    :class="getDaysToCritClass(getShortage(tank))">
-                    <template v-if="getShortage(tank).days_until_critical_level != null">
-                      {{ Math.round(getShortage(tank).days_until_critical_level) }}d to crit.
-                    </template>
-                    <template v-else>
-                      <span class="text-gray-400 font-normal">∞ no data</span>
-                    </template>
-                  </div>
-                  <!-- Last order date -->
-                  <div v-if="getShortage(tank).last_order_date"
-                    class="text-[10px] leading-tight"
-                    :class="isOrderUrgent(getShortage(tank).last_order_date)
-                      ? 'text-red-600 font-bold'
-                      : 'text-gray-400'">
-                    order by {{ fmtShortDate(getShortage(tank).last_order_date) }}
-                  </div>
-                </div>
-              </template>
             </div>
           </div>
         </div>
