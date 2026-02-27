@@ -130,7 +130,7 @@
 
       <!-- Page Content — ONE BIG WHITE CARD overlapping hero header -->
       <div class="relative -mt-16 z-10">
-        <div class="max-w-7xl mx-auto px-6 pt-0 pb-10">
+        <div class="max-w-[1920px] mx-auto px-6 pt-0 pb-10">
 
           <!-- ══ BIG WHITE CARD ══ -->
           <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
