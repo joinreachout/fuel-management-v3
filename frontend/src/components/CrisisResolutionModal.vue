@@ -230,12 +230,26 @@
             <div class="w-7 h-7 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-bold">1</div>
             <h3 class="font-bold text-gray-800">Emergency PO — {{ rec.depot_name }}</h3>
           </div>
-          <div class="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-sm text-red-800">
-            Even after the {{ selectedOption?.type === 'split_delivery' ? 'split' : 'transfer' }},
-            this depot needs <strong>{{ formatTons(poForCriticalTons) }}</strong> more to reach target level.
-            Place this order now.
+
+          <!-- Split fully covers shortage — no PO needed -->
+          <div v-if="poForCriticalTons === 0" class="bg-green-50 border border-green-300 rounded-xl p-4 text-center">
+            <div class="text-3xl mb-2">✅</div>
+            <div class="font-bold text-green-800 text-sm mb-1">Split fully covers the shortage</div>
+            <div class="text-xs text-green-600">
+              The {{ selectedOption?.type === 'split_delivery' ? 'split delivery' : 'transfer' }}
+              of <strong>{{ formatTons(splitQty) }}</strong> is enough to bring
+              <strong>{{ rec.depot_name }}</strong> to target level.
+              No additional PO needed for this depot.
+            </div>
           </div>
-          <div class="space-y-3 text-sm">
+
+          <!-- PO needed — show pre-fill info -->
+          <div v-else class="space-y-3 text-sm">
+            <div class="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-800">
+              Even after the {{ selectedOption?.type === 'split_delivery' ? 'split' : 'transfer' }},
+              this depot still needs <strong>{{ formatTons(poForCriticalTons) }}</strong> more to reach target level.
+              Place this order now.
+            </div>
             <div class="grid grid-cols-2 gap-3">
               <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
                 <div class="text-xs text-gray-400 mb-1">Quantity</div>
@@ -345,6 +359,12 @@
             class="px-5 py-2 text-sm font-bold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-40">
             <i v-if="acceptLoading" class="fas fa-spinner fa-spin mr-1"></i>
             Accept Proposal
+          </button>
+          <!-- Step 3: if split covers 100% → just advance; otherwise place PO -->
+          <button v-else-if="step === 3 && poForCriticalTons === 0"
+            @click="step++"
+            class="px-5 py-2 text-sm font-bold rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors">
+            Next <i class="fas fa-arrow-right ml-1"></i>
           </button>
           <button v-else-if="step === 3"
             @click="openPOForCritical"
