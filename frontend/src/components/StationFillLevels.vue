@@ -72,6 +72,30 @@
                 {{ formatTons(tank.current_stock_tons) }}
               </div>
               <div class="text-xs text-gray-500">{{ formatTons(tank.capacity_tons) }}</div>
+
+              <!-- Days to critical + last order date from procurement data -->
+              <template v-if="getShortage(tank)">
+                <div class="mt-1.5 border-t border-gray-100 pt-1.5 space-y-0.5">
+                  <!-- Days until critical level -->
+                  <div class="text-[11px] font-bold leading-tight"
+                    :class="getDaysToCritClass(getShortage(tank))">
+                    <template v-if="getShortage(tank).days_until_critical_level != null">
+                      {{ Math.round(getShortage(tank).days_until_critical_level) }}d to crit.
+                    </template>
+                    <template v-else>
+                      <span class="text-gray-400 font-normal">∞ no data</span>
+                    </template>
+                  </div>
+                  <!-- Last order date -->
+                  <div v-if="getShortage(tank).last_order_date"
+                    class="text-[10px] leading-tight"
+                    :class="isOrderUrgent(getShortage(tank).last_order_date)
+                      ? 'text-red-600 font-bold'
+                      : 'text-gray-400'">
+                    order by {{ fmtShortDate(getShortage(tank).last_order_date) }}
+                  </div>
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -94,7 +118,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { stationsApi } from '../services/api';
+import { stationsApi, procurementApi } from '../services/api';
 
 const loading = ref(true);
 const stations = ref([]);
@@ -103,6 +127,45 @@ const activeStationId = ref(null);
 const scrollContainer = ref(null);
 const currentScrollPage = ref(0);
 const scrollPages = ref(1);
+
+// Procurement data for days-to-critical + last_order_date
+const shortages = ref([]);
+// Map keyed by "stationId_fuelTypeId" → shortage item
+const shortageMap = computed(() => {
+  const map = {}
+  for (const s of shortages.value) {
+    map[`${s.station_id}_${s.fuel_type_id}`] = s
+  }
+  return map
+})
+// Look up shortage for a grouped tank
+const getShortage = (tank) =>
+  shortageMap.value[`${tank.station_id}_${tank.fuel_type_id}`] || null
+
+// Color class for "days to critical" text
+const getDaysToCritClass = (shortage) => {
+  const u = shortage?.urgency
+  return {
+    CATASTROPHE: 'text-red-700',
+    CRITICAL:    'text-red-600',
+    MUST_ORDER:  'text-orange-600',
+    WARNING:     'text-yellow-600',
+    PLANNED:     'text-blue-500',
+  }[u] || 'text-gray-500'
+}
+
+// Red if last_order_date is today or past
+const isOrderUrgent = (dateStr) => {
+  if (!dateStr) return false
+  return new Date(dateStr) <= new Date()
+}
+
+// Format "2026-02-08" → "Feb 8"
+const fmtShortDate = (dateStr) => {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
 
 // Get tanks for currently selected station from real data
 // Group by fuel type and sum capacities/stocks
@@ -292,8 +355,16 @@ const loadData = async () => {
   try {
     loading.value = true;
 
-    // Load all stations
-    const stationsRes = await stationsApi.getAll();
+    // Load stations + procurement shortages in parallel
+    const [stationsRes, shortagesRes] = await Promise.all([
+      stationsApi.getAll(),
+      procurementApi.getUpcomingShortages(90).catch(() => null), // non-fatal
+    ]);
+
+    // Store shortages for days-to-critical / last_order_date overlays
+    if (shortagesRes?.data?.success) {
+      shortages.value = shortagesRes.data.data || [];
+    }
 
     if (stationsRes.data.success) {
       const stationsData = stationsRes.data.data || [];
