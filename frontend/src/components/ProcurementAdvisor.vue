@@ -703,8 +703,10 @@
               </thead>
               <tbody class="divide-y divide-gray-50">
                 <tr v-for="item in supplier.items" :key="item.id"
-                  class="hover:bg-gray-50 transition-colors"
-                  :class="item.mandatory ? 'bg-red-50/30' : ''">
+                  class="transition-colors cursor-pointer group"
+                  :class="item.mandatory ? 'bg-red-50/30 hover:bg-red-50/70' : 'hover:bg-blue-50/40'"
+                  @click="createOrderFromPlan(supplier, item)"
+                  :title="item.po_pending ? 'View in Orders' : 'Click to create Purchase Order'">
                   <td class="px-4 py-2 font-medium text-gray-800">{{ shortName(item.station_name) }}</td>
                   <td class="px-3 py-2 text-gray-600">{{ item.fuel_type_code || item.fuel_type }}</td>
                   <td class="px-3 py-2 text-right font-bold text-gray-800">
@@ -722,9 +724,18 @@
                     {{ item.last_order_date || '—' }}
                   </td>
                   <td class="px-3 py-2 text-center">
-                    <span class="px-1.5 py-0.5 rounded font-bold text-[10px]"
-                      :class="item.mandatory ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'">
-                      {{ item.mandatory ? 'MAND.' : 'REC.' }}
+                    <!-- PO exists: show green badge -->
+                    <span v-if="item.po_pending"
+                      class="px-1.5 py-0.5 rounded font-bold text-[10px] bg-green-100 text-green-700">
+                      PO ✓
+                    </span>
+                    <!-- No PO: type badge + hover arrow -->
+                    <span v-else class="flex items-center justify-center gap-1">
+                      <span class="px-1.5 py-0.5 rounded font-bold text-[10px]"
+                        :class="item.mandatory ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'">
+                        {{ item.mandatory ? 'MAND.' : 'REC.' }}
+                      </span>
+                      <i class="fas fa-chevron-right text-gray-300 group-hover:text-blue-500 transition-colors text-[10px]"></i>
                     </span>
                   </td>
                 </tr>
@@ -945,6 +956,8 @@ const consolidatedBySupplier = computed(() => {
     const qty = s.recommended_order_tons || 0
     map[suppId].items.push({
       id:                  s.depot_id + '_' + s.fuel_type_id,
+      station_id:          s.station_id,
+      fuel_type_id:        s.fuel_type_id,
       station_name:        s.station_name,
       fuel_type:           s.fuel_type_name,
       fuel_type_code:      s.fuel_type_code,
@@ -953,6 +966,7 @@ const consolidatedBySupplier = computed(() => {
       mandatory:           isMandatory,
       days_until_critical: s.days_until_critical_level,
       last_order_date:     s.last_order_date,
+      po_pending:          s.po_pending || false,
     })
     map[suppId].total_tons       += qty
     if (isMandatory) map[suppId].mandatory_tons    += qty
@@ -1063,6 +1077,26 @@ function createOrder(rec) {
       delivery_date: rec.last_order_date   || '',
     },
   });
+}
+
+// ── Order Plan row click: navigate to Orders with pre-fill ────────────────────
+function createOrderFromPlan(supplier, item) {
+  if (item.po_pending) {
+    // PO already exists — go view it
+    router.push('/orders')
+    return
+  }
+  router.push({
+    path:  '/orders',
+    query: {
+      action:        'create_po',
+      station_id:    item.station_id,
+      fuel_type_id:  item.fuel_type_id,
+      quantity_tons: item.quantity_tons,
+      supplier_id:   supplier.supplier_id,
+      delivery_date: item.last_order_date || '',
+    },
+  })
 }
 
 // ── Remove PO inline: delete planned PO and reload recommendations ────────────
