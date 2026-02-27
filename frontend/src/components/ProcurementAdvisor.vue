@@ -704,6 +704,7 @@ const urgencyLevels = [
 const recommendations = computed(() =>
   shortages.value.map(s => ({
     id:                       s.depot_id + '_' + s.fuel_type_id,
+    depot_id:                 s.depot_id,
     station_id:               s.station_id,
     station_name:             s.station_name,
     depot_name:               s.depot_name,

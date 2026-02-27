@@ -282,8 +282,7 @@ class CrisisResolutionService
                 AND (sp.effective_to IS NULL OR sp.effective_to >= CURDATE())
             LEFT JOIN stock_policies pol ON pol.depot_id = d.id
                 AND pol.fuel_type_id = o.fuel_type_id
-            WHERE d.station_id = (SELECT station_id FROM depots WHERE id = ?)
-              AND d.id != ?
+            WHERE d.id != ?
               AND o.fuel_type_id = ?
               AND o.order_type = 'erp_order'
               AND o.status = 'in_transit'
@@ -295,10 +294,9 @@ class CrisisResolutionService
         ";
 
         $rows = Database::fetchAll($sql, [
-            $depotId,
-            $depotId,
-            $fuelTypeId,
-            $critical['critical_level_date'],
+            $depotId,       // d.id != ? (exclude self)
+            $fuelTypeId,    // o.fuel_type_id = ?
+            $critical['critical_level_date'], // o.delivery_date <= ?
         ]);
 
         $today   = new \DateTime('today');
@@ -422,14 +420,17 @@ class CrisisResolutionService
                 AND (sp.effective_to IS NULL OR sp.effective_to >= CURDATE())
             LEFT JOIN stock_policies pol ON pol.depot_id = d.id
                 AND pol.fuel_type_id = dt.fuel_type_id
-            WHERE d.station_id = (SELECT station_id FROM depots WHERE id = ?)
-              AND d.id != ?
+            WHERE d.id != ?
               AND dt.fuel_type_id = ?
             GROUP BY d.id, d.name, ft.density, sp.liters_per_day,
                      pol.critical_level_liters, pol.min_level_liters
         ";
 
-        $rows = Database::fetchAll($sql, [$fuelTypeId, $depotId, $depotId, $fuelTypeId]);
+        $rows = Database::fetchAll($sql, [
+            $fuelTypeId,  // subquery: o2.fuel_type_id = ?
+            $depotId,     // d.id != ? (exclude self)
+            $fuelTypeId,  // dt.fuel_type_id = ?
+        ]);
 
         $today   = new \DateTime('today');
         $options = [];
