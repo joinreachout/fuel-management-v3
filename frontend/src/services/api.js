@@ -79,6 +79,8 @@ export const transfersApi = {
   getByStatus:  (status) => api.get(`/transfers/status/${status}`),
   getByStation: (id)     => api.get(`/transfers/station/${id}`),
   create:       (data)   => api.post('/transfers', data),
+  update:       (id, data) => api.patch(`/transfers/${id}`, data),
+  delete:       (id)     => api.delete(`/transfers/${id}`),
 };
 
 // Reports API

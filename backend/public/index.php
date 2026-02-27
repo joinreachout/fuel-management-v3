@@ -243,6 +243,12 @@ try {
     } elseif ($requestMethod === 'GET' && preg_match('#^/api/transfers/(\d+)$#', $path, $matches)) {
         $transferController->show((int) $matches[1]);
 
+    } elseif ($requestMethod === 'PATCH' && preg_match('#^/api/transfers/(\d+)$#', $path, $matches)) {
+        $transferController->update((int) $matches[1]);
+
+    } elseif ($requestMethod === 'DELETE' && preg_match('#^/api/transfers/(\d+)$#', $path, $matches)) {
+        $transferController->delete((int) $matches[1]);
+
     // ==================== DASHBOARD ====================
     } elseif ($requestMethod === 'GET' && $path === '/api/dashboard/summary') {
         $dashboardController->summary();

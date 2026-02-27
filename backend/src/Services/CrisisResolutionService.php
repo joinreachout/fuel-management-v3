@@ -567,7 +567,16 @@ class CrisisResolutionService
         $critLiters  = (float)$row['critical_liters'];
         $dailyCons   = (float)$row['daily_consumption'];
 
-        $qtyNeededLiters = max(0.0, $targetLiters - $stockLiters);
+        // Crisis-aware needed quantity:
+        // Use the LARGER of "fill to target" OR "bridge until delivery can arrive".
+        // This handles CATASTROPHE depots whose stock is above target but consume so
+        // fast that a normal delivery cannot arrive before they hit critical level.
+        $surviveDays     = 14 + self::DELIVERY_BUFFER_DAYS; // 29 days (14 best-delivery + 15 buffer)
+        $toTarget        = max(0.0, $targetLiters - $stockLiters);
+        $toSurviveCrisis = $dailyCons > 0
+            ? max(0.0, $critLiters + $dailyCons * $surviveDays - $stockLiters)
+            : 0.0;
+        $qtyNeededLiters = max($toTarget, $toSurviveCrisis);
 
         // Days until critical (for determining critical_level_date)
         $daysUntilCritical = null;

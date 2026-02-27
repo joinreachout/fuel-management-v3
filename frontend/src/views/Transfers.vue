@@ -42,7 +42,7 @@
           </div>
           <div class="flex items-center gap-10 pt-1">
             <div class="flex items-center gap-3">
-              <div class="text-2xl font-bold text-white">{{ stats.total_transfers || 0 }}</div>
+              <div class="text-2xl font-bold text-white">{{ Number(stats.total_transfers) || 0 }}</div>
               <div class="h-8 w-0.5 bg-white/40"></div>
               <div class="flex flex-col leading-tight">
                 <div class="text-white text-xs font-semibold">Total</div>
@@ -50,8 +50,8 @@
               </div>
             </div>
             <div class="flex items-center gap-3">
-              <div class="text-2xl font-bold" :class="(stats.pending_transfers || 0) > 0 ? 'text-orange-400' : 'text-white'">
-                {{ stats.pending_transfers || 0 }}
+              <div class="text-2xl font-bold" :class="pendingCount > 0 ? 'text-orange-400' : 'text-white'">
+                {{ pendingCount }}
               </div>
               <div class="h-8 w-0.5 bg-white/40"></div>
               <div class="flex flex-col leading-tight">
@@ -60,8 +60,8 @@
               </div>
             </div>
             <div class="flex items-center gap-3">
-              <div class="text-2xl font-bold" :class="(stats.in_progress_transfers || 0) > 0 ? 'text-blue-400' : 'text-white'">
-                {{ stats.in_progress_transfers || 0 }}
+              <div class="text-2xl font-bold" :class="inProgressCount > 0 ? 'text-blue-400' : 'text-white'">
+                {{ inProgressCount }}
               </div>
               <div class="h-8 w-0.5 bg-white/40"></div>
               <div class="flex flex-col leading-tight">
@@ -70,7 +70,7 @@
               </div>
             </div>
             <div class="flex items-center gap-3">
-              <div class="text-2xl font-bold text-green-400">{{ stats.completed_transfers || 0 }}</div>
+              <div class="text-2xl font-bold text-green-400">{{ Number(stats.completed_transfers) || 0 }}</div>
               <div class="h-8 w-0.5 bg-white/40"></div>
               <div class="flex flex-col leading-tight">
                 <div class="text-white text-xs font-semibold">Completed</div>
@@ -86,11 +86,11 @@
             <i class="far fa-clock text-gray-400"></i>
             <span class="font-medium text-gray-300">{{ currentDateTime }}</span>
           </div>
-          <div v-if="(stats.pending_transfers || 0) + (stats.in_progress_transfers || 0) > 0"
+          <div v-if="activeCount > 0"
             class="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-lg border border-white/10 text-xs">
             <i class="fas fa-circle text-orange-400" style="font-size:8px"></i>
             <span class="font-medium text-gray-300">
-              {{ (stats.pending_transfers || 0) + (stats.in_progress_transfers || 0) }} active transfers
+              {{ activeCount }} active transfers
             </span>
           </div>
         </div>
@@ -111,19 +111,19 @@
             </span>
             <span class="mr-4 flex items-center gap-1.5">
               <span class="w-2 h-2 rounded-full bg-orange-400 inline-block"></span>
-              <span class="text-gray-600">{{ stats.pending_transfers || 0 }} Pending</span>
+              <span class="text-gray-600">{{ pendingCount }} Pending</span>
             </span>
             <span class="mr-4 flex items-center gap-1.5">
               <span class="w-2 h-2 rounded-full bg-blue-400 inline-block"></span>
-              <span class="text-gray-600">{{ stats.in_progress_transfers || 0 }} In Progress</span>
+              <span class="text-gray-600">{{ inProgressCount }} In Progress</span>
             </span>
             <span class="mr-4 flex items-center gap-1.5">
               <span class="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
-              <span class="text-gray-600">{{ stats.completed_transfers || 0 }} Completed</span>
+              <span class="text-gray-600">{{ Number(stats.completed_transfers) || 0 }} Completed</span>
             </span>
             <span class="flex items-center gap-1.5">
               <span class="w-2 h-2 rounded-full bg-gray-400 inline-block"></span>
-              <span class="text-gray-600">{{ stats.cancelled_transfers || 0 }} Cancelled</span>
+              <span class="text-gray-600">{{ Number(stats.cancelled_transfers) || 0 }} Cancelled</span>
             </span>
             <span class="ml-auto text-gray-400 text-xs mr-3">{{ filteredTransfers.length }} records</span>
             <button type="button" @click="openCreateModal"
@@ -134,7 +134,6 @@
 
           <!-- Filter bar -->
           <div class="px-5 py-3 border-b border-gray-100 flex flex-wrap items-center gap-3">
-            <!-- Status filter -->
             <select v-model="filterStatus"
               class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
               <option value="">All Statuses</option>
@@ -144,7 +143,6 @@
               <option value="cancelled">Cancelled</option>
             </select>
 
-            <!-- Urgency filter -->
             <select v-model="filterUrgency"
               class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400">
               <option value="">All Urgency</option>
@@ -152,20 +150,17 @@
               <option value="CRITICAL">CRITICAL</option>
               <option value="MUST_ORDER">MUST ORDER</option>
               <option value="WARNING">WARNING</option>
-              <option value="PLANNED">PLANNED</option>
+              <option value="NORMAL">NORMAL</option>
             </select>
 
-            <!-- Station search -->
             <input v-model="filterStation"
               type="text" placeholder="Search station…"
               class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 w-44">
 
-            <!-- Fuel type search -->
             <input v-model="filterFuel"
               type="text" placeholder="Search fuel…"
               class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 w-36">
 
-            <!-- Clear -->
             <button v-if="filterStatus || filterUrgency || filterStation || filterFuel"
               type="button" @click="clearFilters"
               class="text-sm text-gray-500 hover:text-gray-700 px-2 py-1.5 flex items-center gap-1">
@@ -225,6 +220,9 @@
                   <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide cursor-pointer hover:text-gray-700 select-none"
                     @click="toggleSort('created_at')">
                     Created <i class="fas" :class="sortIcon('created_at')"></i>
+                  </th>
+                  <th class="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -295,6 +293,52 @@
                     </div>
                   </td>
 
+                  <!-- Actions -->
+                  <td class="px-4 py-3 text-center">
+                    <div class="flex items-center justify-center gap-1.5">
+                      <!-- Edit / View -->
+                      <button @click="openEditModal(t)"
+                        class="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                        :title="t.status === 'pending' ? 'Edit transfer' : 'View details'">
+                        <i :class="t.status === 'pending' ? 'fas fa-edit' : 'fas fa-eye'" class="text-xs"></i>
+                      </button>
+
+                      <!-- Advance status (pending → in_progress, in_progress → completed) -->
+                      <button v-if="t.status === 'pending'"
+                        @click="advanceStatus(t, 'in_progress')"
+                        class="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                        title="Mark as In Transit">
+                        <i class="fas fa-play text-xs"></i>
+                      </button>
+                      <button v-else-if="t.status === 'in_progress'"
+                        @click="advanceStatus(t, 'completed')"
+                        class="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"
+                        title="Mark as Completed">
+                        <i class="fas fa-check text-xs"></i>
+                      </button>
+
+                      <!-- Delete (pending only) — 2-step confirm -->
+                      <template v-if="t.status === 'pending'">
+                        <button v-if="deleteConfirmId !== t.id"
+                          @click="deleteConfirmId = t.id"
+                          class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title="Delete transfer">
+                          <i class="fas fa-trash text-xs"></i>
+                        </button>
+                        <template v-else>
+                          <button @click="confirmDelete(t.id)"
+                            class="px-2 py-1 rounded text-xs font-bold bg-red-500 text-white hover:bg-red-600 transition-colors">
+                            Sure?
+                          </button>
+                          <button @click="deleteConfirmId = null"
+                            class="px-2 py-1 rounded text-xs text-gray-500 hover:text-gray-700 transition-colors">
+                            No
+                          </button>
+                        </template>
+                      </template>
+                    </div>
+                  </td>
+
                 </tr>
               </tbody>
             </table>
@@ -306,14 +350,13 @@
 
   </div>
 
-  <!-- ── Create Transfer Modal ──────────────────────────────────────────── -->
+  <!-- ── Create Transfer Modal ────────────────────────────────────────────── -->
   <Teleport to="body">
     <div v-if="showCreateModal"
       class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       @click.self="showCreateModal = false">
       <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
 
-        <!-- Header -->
         <div class="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-4 rounded-t-2xl text-white flex items-center justify-between">
           <div>
             <h2 class="text-lg font-bold"><i class="fas fa-truck mr-2"></i>New Transfer</h2>
@@ -324,10 +367,7 @@
           </button>
         </div>
 
-        <!-- Body -->
         <div class="p-6 space-y-4">
-
-          <!-- From Station -->
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">From Station *</label>
             <select v-model="createForm.from_station_id"
@@ -337,7 +377,6 @@
             </select>
           </div>
 
-          <!-- To Station -->
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">To Station *</label>
             <select v-model="createForm.to_station_id"
@@ -348,7 +387,6 @@
             </select>
           </div>
 
-          <!-- Fuel Type -->
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Fuel Type *</label>
             <select v-model="createForm.fuel_type_id"
@@ -358,7 +396,6 @@
             </select>
           </div>
 
-          <!-- Qty + Urgency row -->
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1">Quantity (tons) *</label>
@@ -374,7 +411,6 @@
             </div>
           </div>
 
-          <!-- Urgency -->
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Urgency *</label>
             <select v-model="createForm.urgency"
@@ -386,21 +422,17 @@
             </select>
           </div>
 
-          <!-- Notes -->
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1">Notes</label>
             <textarea v-model="createForm.notes" rows="2" placeholder="Optional notes…"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none resize-none"></textarea>
           </div>
 
-          <!-- Error -->
           <div v-if="createError" class="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">
             <i class="fas fa-exclamation-circle mr-1"></i>{{ createError }}
           </div>
-
         </div>
 
-        <!-- Footer -->
         <div class="px-6 pb-6 flex gap-3">
           <button type="button" @click="showCreateModal = false"
             class="flex-1 py-2.5 rounded-lg border border-gray-300 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
@@ -409,7 +441,159 @@
           <button type="button" @click="submitCreate" :disabled="createLoading"
             class="flex-1 py-2.5 rounded-lg bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 transition-colors disabled:opacity-50">
             <i v-if="createLoading" class="fas fa-spinner fa-spin mr-1"></i>
-            <span>Create Transfer</span>
+            Create Transfer
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- ── Edit / View Detail Modal ─────────────────────────────────────────── -->
+  <Teleport to="body">
+    <div v-if="showEditModal && editTransfer"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      @click.self="closeEditModal">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+
+        <!-- Header -->
+        <div class="px-6 py-4 rounded-t-2xl text-white flex items-center justify-between"
+          :class="editTransfer.status === 'pending'
+            ? 'bg-gradient-to-r from-blue-600 to-indigo-600'
+            : editTransfer.status === 'in_progress'
+              ? 'bg-gradient-to-r from-blue-500 to-sky-500'
+              : 'bg-gradient-to-r from-gray-600 to-gray-700'">
+          <div>
+            <h2 class="text-lg font-bold">
+              <i class="fas fa-truck mr-2"></i>
+              Transfer #{{ editTransfer.id }}
+            </h2>
+            <p class="text-blue-100 text-xs mt-0.5">
+              {{ shortName(editTransfer.from_station_name) }} → {{ shortName(editTransfer.to_station_name) }}
+              · {{ editTransfer.fuel_type_name }}
+            </p>
+          </div>
+          <button @click="closeEditModal" class="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
+            <i class="fas fa-times text-lg"></i>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-4">
+
+          <!-- Read-only info row -->
+          <div class="grid grid-cols-3 gap-3 text-center text-xs">
+            <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+              <div class="font-bold text-lg text-gray-900">{{ formatNumber(editTransfer.transfer_amount_liters) }}</div>
+              <div class="text-gray-400 mt-0.5">liters</div>
+            </div>
+            <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+              <div class="font-bold text-lg text-gray-900">{{ formatTons(editTransfer.transfer_amount_liters, editTransfer.density) }}</div>
+              <div class="text-gray-400 mt-0.5">tons</div>
+            </div>
+            <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+              <div class="font-bold text-sm" :class="statusTextClass(editTransfer.status)">
+                {{ statusLabel(editTransfer.status) }}
+              </div>
+              <div class="text-gray-400 mt-0.5">status</div>
+            </div>
+          </div>
+
+          <!-- Editable fields -->
+          <!-- Urgency (editable for pending + in_progress) -->
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Urgency</label>
+            <select v-if="canEdit"
+              v-model="editForm.urgency"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 focus:outline-none">
+              <option value="NORMAL">NORMAL</option>
+              <option value="MUST_ORDER">MUST ORDER</option>
+              <option value="CRITICAL">CRITICAL</option>
+              <option value="CATASTROPHE">CATASTROPHE</option>
+            </select>
+            <div v-else class="px-3 py-2 bg-gray-50 rounded-lg text-sm text-gray-700 border border-gray-100">
+              {{ editForm.urgency || '—' }}
+            </div>
+          </div>
+
+          <!-- Est. Days (editable for pending only) -->
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Est. Days</label>
+            <input v-if="editTransfer.status === 'pending'"
+              v-model.number="editForm.estimated_days" type="number" min="0.5" step="0.5"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 focus:outline-none">
+            <div v-else class="px-3 py-2 bg-gray-50 rounded-lg text-sm text-gray-700 border border-gray-100">
+              {{ editTransfer.estimated_days ?? '—' }}
+            </div>
+          </div>
+
+          <!-- Notes (always editable) -->
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Notes</label>
+            <textarea v-model="editForm.notes" rows="3" placeholder="Notes…"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 focus:outline-none resize-none"></textarea>
+          </div>
+
+          <!-- Status transition (for pending / in_progress) -->
+          <div v-if="editTransfer.status === 'pending' || editTransfer.status === 'in_progress'">
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Change Status</label>
+            <div class="flex gap-2">
+              <template v-if="editTransfer.status === 'pending'">
+                <button @click="applyStatusChange('in_progress')"
+                  class="flex-1 py-2 rounded-lg bg-blue-500 text-white text-xs font-bold hover:bg-blue-600 transition-colors">
+                  <i class="fas fa-play mr-1"></i>Start (In Transit)
+                </button>
+                <button @click="applyStatusChange('cancelled')"
+                  class="px-4 py-2 rounded-lg border border-red-300 text-red-600 text-xs font-semibold hover:bg-red-50 transition-colors">
+                  <i class="fas fa-ban mr-1"></i>Cancel
+                </button>
+              </template>
+              <template v-else-if="editTransfer.status === 'in_progress'">
+                <button @click="applyStatusChange('completed')"
+                  class="flex-1 py-2 rounded-lg bg-green-500 text-white text-xs font-bold hover:bg-green-600 transition-colors">
+                  <i class="fas fa-check mr-1"></i>Mark Completed
+                </button>
+                <button @click="applyStatusChange('cancelled')"
+                  class="px-4 py-2 rounded-lg border border-red-300 text-red-600 text-xs font-semibold hover:bg-red-50 transition-colors">
+                  <i class="fas fa-ban mr-1"></i>Cancel
+                </button>
+              </template>
+            </div>
+          </div>
+
+          <!-- Timestamps -->
+          <div class="grid grid-cols-2 gap-2 text-xs text-gray-500">
+            <div v-if="editTransfer.created_at">
+              <span class="font-semibold">Created:</span> {{ editTransfer.created_at.substring(0,10) }}
+            </div>
+            <div v-if="editTransfer.started_at">
+              <span class="font-semibold text-blue-600">Started:</span> {{ editTransfer.started_at.substring(0,10) }}
+            </div>
+            <div v-if="editTransfer.completed_at">
+              <span class="font-semibold text-green-600">Completed:</span> {{ editTransfer.completed_at.substring(0,10) }}
+            </div>
+            <div v-if="editTransfer.cancelled_at">
+              <span class="font-semibold text-red-500">Cancelled:</span> {{ editTransfer.cancelled_at.substring(0,10) }}
+            </div>
+          </div>
+
+          <!-- Error -->
+          <div v-if="editError" class="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">
+            <i class="fas fa-exclamation-circle mr-1"></i>{{ editError }}
+          </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 pb-6 flex gap-3">
+          <button type="button" @click="closeEditModal"
+            class="flex-1 py-2.5 rounded-lg border border-gray-300 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+            Close
+          </button>
+          <button v-if="canEdit || isNotesEditable"
+            type="button" @click="submitEdit" :disabled="editLoading"
+            class="flex-1 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition-colors disabled:opacity-50">
+            <i v-if="editLoading" class="fas fa-spinner fa-spin mr-1"></i>
+            Save Changes
           </button>
         </div>
 
@@ -428,9 +612,13 @@ const loading   = ref(true);
 const transfers = ref([]);
 const stats     = ref({});
 
-// Lookup data for modal selects
 const stations  = ref([]);
 const fuelTypes = ref([]);
+
+// ── Computed stats (cast to Number to avoid string concatenation bugs) ─────────
+const pendingCount    = computed(() => Number(stats.value.pending_transfers)     || 0);
+const inProgressCount = computed(() => Number(stats.value.in_progress_transfers) || 0);
+const activeCount     = computed(() => pendingCount.value + inProgressCount.value);
 
 // ── Create Modal ───────────────────────────────────────────────────────────────
 const showCreateModal = ref(false);
@@ -447,15 +635,12 @@ const createForm = reactive({
 });
 
 function openCreateModal() {
-  createForm.from_station_id = '';
-  createForm.to_station_id   = '';
-  createForm.fuel_type_id    = '';
-  createForm.quantity_tons   = '';
-  createForm.estimated_days  = 1.0;
-  createForm.urgency         = 'NORMAL';
-  createForm.notes           = '';
-  createError.value          = '';
-  showCreateModal.value      = true;
+  Object.assign(createForm, {
+    from_station_id: '', to_station_id: '', fuel_type_id: '',
+    quantity_tons: '', estimated_days: 1.0, urgency: 'NORMAL', notes: '',
+  });
+  createError.value = '';
+  showCreateModal.value = true;
 }
 
 async function submitCreate() {
@@ -482,6 +667,100 @@ async function submitCreate() {
     createError.value = e.response?.data?.error || 'Server error. Please try again.';
   } finally {
     createLoading.value = false;
+  }
+}
+
+// ── Edit / View Modal ──────────────────────────────────────────────────────────
+const showEditModal  = ref(false);
+const editTransfer   = ref(null);   // original transfer data
+const editLoading    = ref(false);
+const editError      = ref('');
+const editForm = reactive({ urgency: '', estimated_days: 1.0, notes: '' });
+
+const canEdit = computed(() =>
+  editTransfer.value && ['pending', 'in_progress'].includes(editTransfer.value.status)
+);
+const isNotesEditable = computed(() => !!editTransfer.value);
+
+function openEditModal(t) {
+  editTransfer.value = { ...t };
+  editForm.urgency       = t.urgency       || 'NORMAL';
+  editForm.estimated_days = t.estimated_days ?? 1.0;
+  editForm.notes         = t.notes         || '';
+  editError.value        = '';
+  showEditModal.value    = true;
+}
+
+function closeEditModal() {
+  showEditModal.value = false;
+  editTransfer.value  = null;
+}
+
+async function submitEdit() {
+  editError.value = '';
+  editLoading.value = true;
+  try {
+    const payload = { notes: editForm.notes };
+    if (canEdit.value) {
+      payload.urgency = editForm.urgency;
+      if (editTransfer.value.status === 'pending') {
+        payload.estimated_days = editForm.estimated_days;
+      }
+    }
+    const res = await transfersApi.update(editTransfer.value.id, payload);
+    if (res.data.success) {
+      closeEditModal();
+      await loadData();
+    } else {
+      editError.value = res.data.error || 'Update failed.';
+    }
+  } catch (e) {
+    editError.value = e.response?.data?.error || 'Server error.';
+  } finally {
+    editLoading.value = false;
+  }
+}
+
+// Apply status change directly from the modal
+async function applyStatusChange(newStatus) {
+  editError.value  = '';
+  editLoading.value = true;
+  try {
+    const res = await transfersApi.update(editTransfer.value.id, { status: newStatus });
+    if (res.data.success) {
+      closeEditModal();
+      await loadData();
+    } else {
+      editError.value = res.data.error || 'Status change failed.';
+    }
+  } catch (e) {
+    editError.value = e.response?.data?.error || 'Server error.';
+  } finally {
+    editLoading.value = false;
+  }
+}
+
+// Quick status advance from row buttons (no modal)
+async function advanceStatus(t, newStatus) {
+  try {
+    await transfersApi.update(t.id, { status: newStatus });
+    await loadData();
+  } catch (e) {
+    alert(e.response?.data?.error || 'Status change failed.');
+  }
+}
+
+// ── Delete ─────────────────────────────────────────────────────────────────────
+const deleteConfirmId = ref(null);
+
+async function confirmDelete(id) {
+  try {
+    await transfersApi.delete(id);
+    deleteConfirmId.value = null;
+    await loadData();
+  } catch (e) {
+    alert(e.response?.data?.error || 'Delete failed.');
+    deleteConfirmId.value = null;
   }
 }
 
@@ -547,7 +826,9 @@ const sortedTransfers = computed(() => {
     let av = a[sort.key], bv = b[sort.key];
     if (av == null) av = '';
     if (bv == null) bv = '';
-    const n = typeof av === 'number' || !isNaN(Number(av)) ? Number(av) - Number(bv) : String(av).localeCompare(String(bv));
+    const n = typeof av === 'number' || !isNaN(Number(av))
+      ? Number(av) - Number(bv)
+      : String(av).localeCompare(String(bv));
     return sort.dir === 'asc' ? n : -n;
   });
 });
@@ -572,12 +853,12 @@ function urgencyClass(u) {
     CRITICAL:    'bg-red-500 text-white',
     MUST_ORDER:  'bg-orange-500 text-white',
     WARNING:     'bg-yellow-500 text-white',
-    PLANNED:     'bg-blue-500 text-white',
+    NORMAL:      'bg-gray-200 text-gray-600',
   }[u] || 'bg-gray-200 text-gray-600';
 }
 
 function urgencyShort(u) {
-  return { CATASTROPHE:'CATASTR', CRITICAL:'CRITICAL', MUST_ORDER:'MUST', WARNING:'WARN', PLANNED:'PLANNED' }[u] || u;
+  return { CATASTROPHE:'CATASTR', CRITICAL:'CRITICAL', MUST_ORDER:'MUST', WARNING:'WARN', NORMAL:'NORMAL' }[u] || u;
 }
 
 function statusClass(s) {
@@ -587,6 +868,15 @@ function statusClass(s) {
     completed:   'bg-green-100 text-green-700',
     cancelled:   'bg-gray-100 text-gray-500',
   }[s] || 'bg-gray-100 text-gray-600';
+}
+
+function statusTextClass(s) {
+  return {
+    pending:     'text-orange-600',
+    in_progress: 'text-blue-600',
+    completed:   'text-green-600',
+    cancelled:   'text-gray-500',
+  }[s] || 'text-gray-600';
 }
 
 function statusLabel(s) {
@@ -599,8 +889,8 @@ async function loadData() {
   try {
     const res = await transfersApi.getAll();
     if (res.data.success) {
-      transfers.value = res.data.data   || [];
-      stats.value     = res.data.stats  || {};
+      transfers.value = res.data.data  || [];
+      stats.value     = res.data.stats || {};
     }
   } catch (e) {
     console.error('Transfers load error:', e);

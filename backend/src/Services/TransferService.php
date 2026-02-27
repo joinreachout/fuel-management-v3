@@ -87,6 +87,119 @@ class TransferService
     }
 
     /**
+     * Find a single transfer by ID.
+     */
+    public static function find(int $id): ?array
+    {
+        $query = "
+            SELECT
+                t.*,
+                s1.name as from_station_name,
+                s2.name as to_station_name,
+                ft.name as fuel_type_name,
+                ft.density
+            FROM transfers t
+            JOIN stations s1 ON t.from_station_id = s1.id
+            JOIN stations s2 ON t.to_station_id = s2.id
+            JOIN fuel_types ft ON t.fuel_type_id = ft.id
+            WHERE t.id = ?
+        ";
+        $row = Database::fetchOne($query, [$id]);
+        return $row ?: null;
+    }
+
+    /**
+     * Update a transfer.
+     * Allowed fields depend on current status.
+     *
+     * pending     → urgency, estimated_days, notes, status (→ in_progress | cancelled)
+     * in_progress → urgency, notes, status (→ completed | cancelled)
+     * completed / cancelled → notes only
+     */
+    public static function update(int $id, array $data): array
+    {
+        $transfer = self::find($id);
+        if (!$transfer) {
+            throw new \InvalidArgumentException("Transfer #{$id} not found.");
+        }
+
+        $status = $transfer['status'];
+        $allowed = ['notes']; // always editable
+
+        if ($status === 'pending') {
+            $allowed = array_merge($allowed, ['urgency', 'estimated_days', 'status']);
+        } elseif ($status === 'in_progress') {
+            $allowed = array_merge($allowed, ['urgency', 'status']);
+        }
+
+        // Validate status transition
+        $validNext = [
+            'pending'     => ['in_progress', 'cancelled'],
+            'in_progress' => ['completed', 'cancelled'],
+        ];
+
+        $updates = [];
+        foreach ($allowed as $field) {
+            if (array_key_exists($field, $data)) {
+                if ($field === 'status') {
+                    $newStatus = $data['status'];
+                    $allowed_next = $validNext[$status] ?? [];
+                    if (!in_array($newStatus, $allowed_next)) {
+                        throw new \InvalidArgumentException(
+                            "Cannot transition from '{$status}' to '{$newStatus}'."
+                        );
+                    }
+                    $updates['status'] = $newStatus;
+                    // Set timestamp fields
+                    if ($newStatus === 'in_progress') {
+                        $updates['started_at'] = date('Y-m-d H:i:s');
+                    } elseif ($newStatus === 'completed') {
+                        $updates['completed_at'] = date('Y-m-d H:i:s');
+                    } elseif ($newStatus === 'cancelled') {
+                        $updates['cancelled_at'] = date('Y-m-d H:i:s');
+                    }
+                } elseif ($field === 'estimated_days') {
+                    $updates['estimated_days'] = (float)$data['estimated_days'];
+                } elseif ($field === 'urgency') {
+                    $validUrgencies = ['NORMAL', 'MUST_ORDER', 'CRITICAL', 'CATASTROPHE'];
+                    if (!in_array($data['urgency'], $validUrgencies)) {
+                        throw new \InvalidArgumentException("Invalid urgency value.");
+                    }
+                    $updates['urgency'] = $data['urgency'];
+                } else {
+                    $updates[$field] = $data[$field];
+                }
+            }
+        }
+
+        if (empty($updates)) {
+            return ['success' => true, 'message' => 'No changes made'];
+        }
+
+        Database::update('transfers', $updates, 'id = ?', [$id]);
+        return ['success' => true, 'data' => self::find($id)];
+    }
+
+    /**
+     * Delete a transfer.
+     * Only pending transfers can be deleted.
+     */
+    public static function delete(int $id): array
+    {
+        $transfer = self::find($id);
+        if (!$transfer) {
+            throw new \InvalidArgumentException("Transfer #{$id} not found.");
+        }
+        if ($transfer['status'] !== 'pending') {
+            throw new \InvalidArgumentException(
+                "Only pending transfers can be deleted. Current status: {$transfer['status']}."
+            );
+        }
+        Database::delete('transfers', 'id = ?', [$id]);
+        return ['success' => true, 'message' => "Transfer #{$id} deleted."];
+    }
+
+    /**
      * Create a new transfer manually.
      * Accepts quantity in tons, converts to liters using fuel density.
      *

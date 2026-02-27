@@ -26,6 +26,68 @@ class TransferController
     }
 
     /**
+     * GET /api/transfers/{id}
+     * Return one transfer by ID.
+     */
+    public function show(int $id): void
+    {
+        try {
+            $data = TransferService::find($id);
+            if (!$data) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'error' => 'Transfer not found']);
+                return;
+            }
+            Response::json(['success' => true, 'data' => $data]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * PATCH /api/transfers/{id}
+     * Update editable fields of a transfer.
+     */
+    public function update(int $id): void
+    {
+        try {
+            $body = json_decode(file_get_contents('php://input'), true);
+            if (!$body) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => 'Invalid JSON body']);
+                return;
+            }
+            $result = TransferService::update($id, $body);
+            Response::json($result);
+        } catch (\InvalidArgumentException $e) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * DELETE /api/transfers/{id}
+     * Delete a pending transfer.
+     */
+    public function delete(int $id): void
+    {
+        try {
+            $result = TransferService::delete($id);
+            Response::json($result);
+        } catch (\InvalidArgumentException $e) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /**
      * POST /api/transfers
      * Create a new transfer manually.
      */
