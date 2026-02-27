@@ -225,7 +225,7 @@
                 v-for="rec in crisisItems"
                 :key="rec.id"
                 class="border-2 rounded-xl p-3 flex flex-col gap-2 bg-white"
-                :class="rec.po_pending ? 'border-green-400 bg-green-50/40' : getBorderClass(rec.urgency)">
+                :class="getBorderClass(rec.urgency)">
                 <!-- Row 1-5: same card internals — reuse slot below via include pattern -->
                 <div class="flex items-start justify-between gap-1">
                   <div class="min-w-0">
@@ -274,11 +274,12 @@
                   <span class="font-medium text-gray-700 truncate">{{ rec.best_supplier.name }}</span>
                   <span class="text-gray-500 shrink-0 ml-1"><i class="fas fa-truck text-blue-400 mr-0.5"></i>{{ rec.best_supplier.avg_delivery_days }}d</span>
                 </div>
-                <div v-if="rec.po_pending && rec.active_po" class="bg-blue-50 border border-blue-200 rounded-lg px-2 py-1.5 text-xs">
+                <div v-if="rec.po_pending && rec.active_po" class="bg-amber-50 border border-amber-300 rounded-lg px-2 py-1.5 text-xs">
+                  <div class="text-amber-700 font-bold mb-0.5" style="font-size:10px">⚠️ PO EXISTS — arrives too late</div>
                   <div class="flex items-center gap-1.5">
-                    <i class="fas fa-clipboard-check text-blue-500 shrink-0"></i>
-                    <span class="font-semibold text-blue-800">{{ rec.active_po.order_number }}</span>
-                    <span class="text-blue-600 flex-1 truncate">· {{ rec.active_po.quantity_tons }}t · {{ rec.active_po.delivery_date }}</span>
+                    <i class="fas fa-clipboard text-amber-500 shrink-0"></i>
+                    <span class="font-semibold text-amber-900">{{ rec.active_po.order_number }}</span>
+                    <span class="text-amber-700 flex-1 truncate">· {{ rec.active_po.quantity_tons }}t · {{ rec.active_po.delivery_date }}</span>
                     <template v-if="cancelingId === rec.active_po.id">
                       <button type="button" @click="confirmRemovePO(rec.active_po.id)" :disabled="cancelLoading" class="shrink-0 px-1.5 py-0.5 bg-red-500 text-white rounded font-bold hover:bg-red-600 transition-colors disabled:opacity-50">
                         <i v-if="cancelLoading" class="fas fa-spinner fa-spin"></i><span v-else>Delete?</span>

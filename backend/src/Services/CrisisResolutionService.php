@@ -286,6 +286,7 @@ class CrisisResolutionService
               AND o.fuel_type_id = ?
               AND o.order_type = 'erp_order'
               AND o.status = 'in_transit'
+              AND o.delivery_date >= CURDATE()
               AND o.delivery_date <= ?
             GROUP BY o.id, o.order_number, o.quantity_liters, o.delivery_date,
                      o.depot_id, d.name, d.station_id, ft.density,
