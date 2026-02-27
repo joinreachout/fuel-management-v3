@@ -149,22 +149,24 @@ cancelled & delivered: terminal — blocked from further updates
 ## Roadmap
 
 ### 🔴 HIGH (next up)
-1. **Crisis Resolution System** — Split Delivery + Transfer workflows for CATASTROPHE cases; full spec below and in MEMORY.md
+1. ~~**Crisis Resolution System**~~ ✅ DONE — see Session Log 2026-02-27
 2. **Stock Policies data** — migration 004 ready, needs to run on server; then UI shows real thresholds
+3. **How It Works page** — `/how-it-works` route; per-widget explanation cards with screenshots; content drafted in PROJECT.md § "How It Works — Content Draft" below
 
 ### 🟠 MEDIUM
-3. **ERP Status Transitions** — quick-action buttons in ERP table (confirmed→in_transit→delivered) without opening full Edit modal
-4. **Transfers Module full UI** — table + create modal + status transitions
-5. **Import Auto-sync from ERP** — "Sync from ERP" button → `POST /api/import/sync-erp`
+4. **ERP Status Transitions** — quick-action buttons in ERP table (confirmed→in_transit→delivered) without opening full Edit modal
+5. **Crisis case badge on Immediate Action cards** — if active crisis case exists for this depot+fuel, show "🔄 Crisis Case #N — in progress" banner (link to Cases tab)
+6. **Transfers Module full UI** — table + create modal + status transitions
+7. **Import Auto-sync from ERP** — "Sync from ERP" button → `POST /api/import/sync-erp`
 
 ### 🟡 LOW / BACKLOG
-6. **+ Add fuel type to supplier offer** — button on supplier card in Parameters > Supply Offers
-7. **PO Expiry warnings on Dashboard** — alert chip for expired POs
-8. **Alamedyn delivery days** — correct values needed from client (currently copied from Bishkek)
-9. **Market fuel price feed** — auto-fetch from СПбМТСБ / Platts; used in Procurement Advisor + Working Capital
-10. **User authentication** (login/roles)
-11. **Full test suite** (PHPUnit + integration)
-12. **Python optimizer** (advanced procurement math)
+8. **+ Add fuel type to supplier offer** — button on supplier card in Parameters > Supply Offers
+9. **PO Expiry warnings on Dashboard** — alert chip for expired POs
+10. **Alamedyn delivery days** — correct values needed from client (currently copied from Bishkek)
+11. **Market fuel price feed** — auto-fetch from СПбМТСБ / Platts; used in Procurement Advisor + Working Capital
+12. **User authentication** (login/roles)
+13. **Full test suite** (PHPUnit + integration)
+14. **Python optimizer** (advanced procurement math)
 
 ---
 
@@ -399,6 +401,36 @@ Return only candidates where `max_split_tons > 0`.
 
 ## Session Log
 
+### 2026-02-27 — Crisis Resolution System (full implementation)
+
+**Commits:** `7422145`, `27ae35b`, `5c733c2`, `3691ddc`
+
+#### What was built
+- **DB migration** `009_crisis_cases.sql` — table `crisis_cases` (split_delivery|transfer, proposed→accepted→monitoring→resolved)
+- **Backend:** `CrisisResolutionService.php` (findOptions, acceptSplitDelivery, acceptTransfer, linkCompensatingPO, getCases, resolveCase, roundUpTons)
+- **Backend:** `CrisisController.php` — 5 endpoints: `/api/crisis/options`, `/api/crisis/accept`, `/api/crisis/link-po`, `/api/crisis/cases`, `/api/crisis/cases/{id}/resolve`
+- **Backend:** `CrisisCase.php` model (findAll, findById, create, update, resolve, countActive)
+- **Frontend:** `CrisisResolutionModal.vue` — 5-step wizard (Options → Confirm → PO #1 → PO #2 → Done)
+- **Frontend:** `ProcurementAdvisor.vue` — "Resolve Crisis" button on CATASTROPHE cards, Cases tab (list + resolve)
+- **Frontend:** `Orders.vue` — reads `crisis_case_id` + `crisis_po_role` query params, auto-links created PO to case
+- **Frontend:** `api.js` — `crisisApi` export
+
+#### Bugs fixed during session
+1. **`depot_id` missing from `recommendations` computed** — was undefined → API got null depot_id → always returned empty options
+2. **Station constraint too narrow** — SQL searched only same-station donors; removed; now all depots eligible
+3. **Stale split-delivery dates** — no `>= CURDATE()` filter; past in_transit orders showed as options
+4. **Misleading green border** — CATASTROPHE cards with `po_pending` showed green (implies safe); changed to amber "⚠️ PO EXISTS — arrives too late"
+5. **Step 3 shows 0.0 t** — when split fully covers shortage, PO qty = 0; now shows ✅ green confirmation "Split fully covers the shortage" + Next button
+
+#### Key design decisions
+- System **proposes; humans decide** — no automatic stock changes, just tracking
+- Donor search: cross-station (region-wide), all depots eligible
+- `delivery_date >= CURDATE()` filter ensures only future deliveries shown as split candidates
+- Cases remain in Immediate Action until stock actually improves (delivery marked `delivered`)
+- PO creation reuses existing Orders.vue form via router.push query params
+
+---
+
 ### 2026-02-25 — InfrastructureService critical bug fix
 - **Root cause:** `InfrastructureService` called `Database::execute()` and `Database::lastInsertId()` — neither method exists in `Database.php`
 - **All 4 write operations were broken** (500 on any save in Infrastructure tab):
@@ -465,3 +497,131 @@ Return only candidates where `max_split_tons > 0`.
 - Removed `cost_per_ton` from Fuel Types (pricing in supplier_station_offers)
 - Fixed procurement calculation (accounts for consumption during transit)
 - Supplier migration: 11 suppliers × 9 stations × fuel types → `supplier_station_offers`
+
+---
+
+## How It Works — Content Draft
+
+> **Status:** Draft. To be turned into a proper `/how-it-works` page (Vue view + route).
+> Each section = one widget/module. Use as copy for the page.
+
+---
+
+### 📊 Dashboard
+
+The main overview page. Shows the current state of all 9 stations at a glance.
+
+**KPI Cards (top row)**
+- Total stations, active tanks, total stock in tons, combined capacity utilisation %
+
+**Forecast Chart**
+- Plots projected stock level over the next N days for a selected station + fuel type
+- Takes into account: current stock, daily consumption rate (`sales_params.liters_per_day`), and confirmed/in-transit ERP orders (which add stock on their delivery date)
+- Purchase Orders (PO) are NOT included in the forecast — they are plans, not confirmed deliveries
+
+**Analytics Widgets**
+- Utilisation heatmap, top consumers, stock distribution across stations
+
+---
+
+### 🧠 Procurement Advisor (Dashboard widget)
+
+AI-powered procurement planning. Analyses all 9 stations and surfaces items needing attention.
+
+**How urgency is calculated**
+The system doesn't look at fill % alone. It calculates how many days remain before stock falls below the critical threshold, then subtracts delivery time + a 15-day safety buffer:
+```
+daysToAct = days_until_critical_level − (supplier_delivery_days + 15)
+```
+| daysToAct | Urgency |
+|-----------|---------|
+| < 0 | CATASTROPHE — delivery cannot arrive in time |
+| < 3 | CRITICAL — order today |
+| < 7 | MUST ORDER — order this week |
+| < 21 | WARNING — order within 3 weeks |
+| ≥ 21 | PLANNED — comfortable buffer |
+
+**Tab: Briefing**
+Summary of the situation: how many items are Mandatory (CATASTROPHE+CRITICAL), Act Soon (MUST+WARNING), and Planned. 14-day timeline shows when each depot hits critical level.
+
+**Tab: Immediate Action**
+CATASTROPHE items only — situations where no regular delivery can arrive in time. Each card shows:
+- Days until critical level, stock needed to reach target
+- Best supplier + estimated delivery time
+- Existing PO if any (shown in amber: "PO EXISTS — arrives too late")
+- **Resolve Crisis** button → opens the Crisis Resolution wizard
+
+**Tab: Proactive Planning**
+Items where there's still time to place a regular order. Each card shows urgency, stock bar with threshold zones, recommended order quantity, best supplier. **Create Purchase Order** button opens the Orders form pre-filled.
+
+**Tab: Cases**
+Active crisis cases — situations that have been acknowledged and are being tracked. Shows: case type (Split Delivery / Transfer), status (accepted → monitoring → resolved), linked POs, depots involved. Cases stay open until manually marked resolved. Cards remain in Immediate Action until actual stock improves (delivery marked `delivered`).
+
+**Tab: Price Check** *(placeholder — market price feed not yet implemented)*
+
+---
+
+### 🚨 Crisis Resolution (modal, opened from Immediate Action)
+
+A 5-step wizard for handling CATASTROPHE situations where regular ordering is too slow.
+
+**Why it exists:** When `daysToAct < 0`, a new order from a supplier won't arrive before the critical date. Two alternatives exist:
+1. **Split Delivery (preferred):** A neighbouring depot has an in-transit ERP order arriving soon. Part of that delivery is redirected to the critical depot. Two compensating POs are created to "repay" the donor.
+2. **Transfer from Sibling Depot (fallback):** A neighbouring depot has surplus stock above its safe minimum. Stock is physically moved (tanker truck). Compensating PO created for donor.
+
+**Step 1 — Options:** System queries all other depots for eligible split/transfer candidates. For split delivery, only orders with `delivery_date >= today AND delivery_date <= critical_level_date` are shown. Donor safety is validated: donor must remain above critical threshold after giving, and above min threshold after its own compensating delivery arrives.
+
+**Step 2 — Confirm:** Shows impact table (before/after stocks for both depots). Quantity is adjustable up to the safe maximum. ⚠️ This is a proposal — user must contact the supplier separately to actually redirect the delivery.
+
+**Step 3 — PO for Critical Depot:** If split doesn't fully cover the shortage, a top-up PO is needed. If split covers 100%, this step shows a green "fully covered" confirmation and skips to Step 4.
+
+**Step 4 — Compensating PO for Donor:** Donor gave X tons → a PO for X tons is created for the donor depot to replace what was redirected.
+
+**Step 5 — Done:** Summary of all actions taken. Case is now visible in the Cases tab.
+
+---
+
+### 📋 Orders
+
+Two tabs: **Purchase Orders (PO)** and **ERP Orders**.
+
+**Purchase Orders** are internal plans — "we intend to buy X tons". Status flow: `planned → matched | expired | cancelled`. They appear in Procurement Advisor recommendations and are shown on crisis cards. They do NOT affect the Forecast chart.
+
+**ERP Orders** are confirmed external deliveries from the supplier's ERP system. Status flow: `confirmed → in_transit → delivered | cancelled`. Only ERP orders affect the Forecast chart (because they represent real incoming stock).
+
+**PDF Export:** Each PO can be exported as a formatted PDF (Cyrillic supported via embedded Roboto font).
+
+---
+
+### ⚙️ Parameters
+
+Configuration for the planning system.
+
+- **Infrastructure:** Edit station names, depot names, tank capacities (in liters)
+- **Fuel Types:** Density (kg/L) — critical for tons↔liters conversions throughout the system
+- **Sales Params:** Daily consumption per depot per fuel type (`liters_per_day`) — drives all forecasts and urgency calculations
+- **Stock Policies:** Critical / Min / Target / Max thresholds per depot per fuel type (as % of capacity). Defaults: 20% / 40% / 80% / 95%.
+- **Supply Offers:** Price per ton + delivery days per supplier per station per fuel type. Used by Procurement Advisor to rank suppliers and calculate recommended order dates.
+
+---
+
+### 🔄 Transfers *(in development)*
+
+Manual stock transfers between depots within the system. Backend ready, frontend in progress.
+
+---
+
+### 📥 Import *(in development)*
+
+Sync ERP orders from the external ERP system. Will auto-create/update ERP orders based on supplier data feed.
+
+---
+
+### Units & Conversions
+
+All stock is stored internally in **liters** (`depot_tanks.current_stock_liters`). Orders and prices use **tons** (industry standard). Conversion always uses the fuel type's density:
+```
+tons = liters × density / 1000
+liters = tons × 1000 / density
+```
+Density values are in `fuel_types.density` (kg/L). Never hardcoded — always fetched from DB.
