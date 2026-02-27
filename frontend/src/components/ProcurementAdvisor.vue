@@ -290,6 +290,19 @@
                   </div>
                   <div v-if="cancelingId === rec.active_po.id" class="mt-1 text-red-600 font-medium" style="font-size: 10px">Remove PO? System will recalculate.</div>
                 </div>
+                <!-- Crisis Case badge — shown when an active case exists for this depot+fuel -->
+                <div
+                  v-if="activeCaseByKey[rec.depot_id + '_' + rec.fuel_type_id]"
+                  class="bg-purple-50 border border-purple-300 rounded-lg px-2 py-1.5 text-xs
+                         flex items-center gap-1.5 cursor-pointer hover:bg-purple-100 transition-colors"
+                  @click="activeTab = 'cases'">
+                  <i class="fas fa-spinner fa-spin text-purple-500 shrink-0"></i>
+                  <span class="font-semibold text-purple-800">
+                    Crisis Case #{{ activeCaseByKey[rec.depot_id + '_' + rec.fuel_type_id].id }} — in progress
+                  </span>
+                  <span class="text-purple-400 ml-auto">→ Cases</span>
+                </div>
+
                 <!-- Crisis actions: Resolve (primary) + Escalate (fallback) -->
                 <div class="mt-auto flex flex-col gap-1.5">
                   <button type="button"
@@ -743,6 +756,18 @@ const urgencyCounts = computed(() => {
 // ── Computed: crisis vs proactive split ───────────────────────────────────────
 const crisisItems    = computed(() => recommendations.value.filter(r => r.urgency === 'CATASTROPHE'))
 const proactiveItems = computed(() => recommendations.value.filter(r => r.urgency !== 'CATASTROPHE'))
+
+// ── Computed: active crisis cases keyed by "depotId_fuelTypeId" ───────────────
+// Used to show "🔄 Crisis Case #N — in progress" banner on Immediate Action cards
+const activeCaseByKey = computed(() => {
+  const map = {}
+  for (const c of cases.value) {
+    if (c.status === 'resolved') continue
+    const key = `${c.receiving_depot_id}_${c.fuel_type_id}`
+    if (!map[key]) map[key] = c // keep first (most recent if API returns desc)
+  }
+  return map
+})
 
 // Aggregated urgency buckets for Briefing KPI grid
 const mandatoryCount = computed(() =>
