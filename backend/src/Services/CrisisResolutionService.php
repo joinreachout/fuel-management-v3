@@ -194,6 +194,7 @@ class CrisisResolutionService
                 'receiving_depot_id'       => (int)$row['receiving_depot_id'],
                 'receiving_depot_name'     => $row['receiving_depot_name'],
                 'receiving_station_name'   => $row['receiving_station_name'],
+                'fuel_type_id'             => (int)$row['fuel_type_id'],
                 'fuel_type_name'           => $row['fuel_type_name'],
                 'fuel_type_code'           => $row['fuel_type_code'],
                 'qty_needed_tons'          => (float)$row['qty_needed_tons'],
