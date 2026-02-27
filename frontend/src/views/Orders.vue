@@ -617,6 +617,9 @@
 
                     <!-- Ranked supplier cards -->
                     <div v-else class="space-y-2 mb-2">
+                      <div class="text-[10px] text-gray-400 px-1 mb-1">
+                        Ranked by price + lead time · lower = better
+                      </div>
                       <label
                         v-for="(offer, idx) in availableSupplierOffers"
                         :key="offer.id || offer.supplier_id"
@@ -649,8 +652,8 @@
                             </div>
                           </div>
                         </div>
-                        <div class="text-xs text-gray-500 text-right">
-                          <div>Score: {{ offer.compositeScore }}</div>
+                        <div class="text-xs text-right shrink-0">
+                          <div class="font-bold" :class="idx === 0 ? 'text-emerald-600' : 'text-gray-400'">#{{ idx + 1 }}</div>
                         </div>
                       </label>
                     </div>
@@ -1391,6 +1394,8 @@ const availableSupplierOffers = computed(() => {
   if (!stationId || !fuelTypeId) return []
 
   const dayCost = 5
+  const seen = new Set()   // deduplicate by supplier_id — keep best score per supplier
+
   return supplierOffers.value
     .filter(o => o.station_id == stationId && o.fuel_type_id == fuelTypeId)
     .map(o => {
@@ -1398,10 +1403,17 @@ const availableSupplierOffers = computed(() => {
       const days  = o.delivery_days ? parseInt(o.delivery_days) : 0
       return {
         ...o,
-        compositeScore: price + days * dayCost,
+        compositeScore: Math.round(price + days * dayCost),
       }
     })
     .sort((a, b) => a.compositeScore - b.compositeScore)
+    .filter(o => {
+      // If supplier appears more than once (duplicate DB entries), keep only the
+      // best-scoring (lowest-cost) offer per supplier_id
+      if (seen.has(o.supplier_id)) return false
+      seen.add(o.supplier_id)
+      return true
+    })
 })
 
 // Stats bar — helper + per-status computed
