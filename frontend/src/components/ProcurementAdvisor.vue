@@ -835,12 +835,10 @@ const getFillBarClass   = (u) => ({ CATASTROPHE:'bg-red-500',   CRITICAL:'bg-red
 const getDaysBoxClass   = (u) => ({ CATASTROPHE:'bg-red-100 border-red-300', CRITICAL:'bg-red-50 border-red-200', MUST_ORDER:'bg-orange-50 border-orange-300', WARNING:'bg-yellow-50 border-yellow-300', PLANNED:'bg-blue-50 border-blue-200' }[u] || 'bg-gray-50 border-gray-200');
 const getDaysTextClass  = (u) => ({ CATASTROPHE:'text-red-700', CRITICAL:'text-red-600', MUST_ORDER:'text-orange-600', WARNING:'text-yellow-700', PLANNED:'text-blue-600' }[u] || 'text-gray-700');
 
-// ── Round tonnage up to a "nice" order quantity ───────────────────────────────
-// 1357 → 1500 (nearest 500), 850 → 900 (nearest 100), 70 → 100 (nearest 50), 12 → 20 (nearest 10)
+// ── Round tonnage up to nearest wagon (60 t = 1 wagon, industry standard) ─────
 function roundUpTons(tons) {
   if (!tons || tons <= 0) return 0
-  const step = tons >= 1000 ? 500 : tons >= 200 ? 100 : tons >= 50 ? 50 : 10
-  return Math.ceil(tons / step) * step
+  return Math.ceil(tons / 60) * 60
 }
 
 // ── Create Order: navigate to Orders with pre-fill ────────────────────────────

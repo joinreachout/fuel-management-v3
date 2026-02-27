@@ -540,7 +540,6 @@ function formatTons(val) {
 
 function roundUpTons(tons) {
   if (!tons || tons <= 0) return 0
-  let step = tons < 50 ? 5 : tons < 200 ? 10 : tons < 500 ? 25 : 50
-  return Math.ceil(tons / step) * step
+  return Math.ceil(tons / 60) * 60  // 1 wagon = 60 tons
 }
 </script>

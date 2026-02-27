@@ -350,6 +350,9 @@
           </div>
         </div>
 
+        <!-- Stockout Forecast — full width, above fill levels -->
+        <StockoutForecast />
+
         <!-- Station Fill Levels — full width -->
         <div>
           <StationFillLevels />
@@ -422,6 +425,7 @@
 import { ref, onMounted, computed, watch } from 'vue';
 import { dashboardApi, stationsApi, fuelTypesApi, procurementApi, transfersApi } from '../services/api';
 import Chart from 'chart.js/auto';
+import StockoutForecast from '../components/StockoutForecast.vue';
 import StationFillLevels from '../components/StationFillLevels.vue';
 import StockByFuelType from '../components/StockByFuelType.vue';
 import ProcurementAdvisor from '../components/ProcurementAdvisor.vue';

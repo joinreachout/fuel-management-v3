@@ -146,7 +146,9 @@ class ProcurementAdvisorService
             $maxOrderLiters = max(0, $maxUsefulCapacity - $stockAfterConsumption);
             $recommendedOrderLiters = min($recommendedOrderLiters, $maxOrderLiters);
 
-            $recommendedOrderTons = $recommendedOrderLiters * $density / 1000;
+            // Round up to nearest wagon (60 t = 1 wagon, industry standard)
+            $rawTons = $recommendedOrderLiters * $density / 1000;
+            $recommendedOrderTons = $rawTons > 0 ? ceil($rawTons / 60) * 60 : 0;
 
             // Check if single order is insufficient (will still run out even with max order)
             $stockAfterDelivery = $currentStockLiters + $recommendedOrderLiters - $consumptionDuringDelivery;

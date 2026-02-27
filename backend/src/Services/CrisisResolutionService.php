@@ -604,26 +604,15 @@ class CrisisResolutionService
     }
 
     /**
-     * Round up tons to nearest sensible order unit (same as frontend roundUpTons)
-     *   < 50t  → nearest 5t
-     *   50–200 → nearest 10t
-     *   200–500→ nearest 25t
-     *   > 500  → nearest 50t
+     * Round up tons to nearest wagon unit (60 t = 1 wagon, industry standard).
+     * All purchase orders must be multiples of 60 t.
      */
     public static function roundUpTons(float $tons): float
     {
         if ($tons <= 0) {
             return 0.0;
         }
-        if ($tons < 50) {
-            $step = 5;
-        } elseif ($tons < 200) {
-            $step = 10;
-        } elseif ($tons < 500) {
-            $step = 25;
-        } else {
-            $step = 50;
-        }
+        $step = 60; // 1 wagon = 60 tons
         return (float)(ceil($tons / $step) * $step);
     }
 

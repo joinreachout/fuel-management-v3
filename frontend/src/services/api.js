@@ -16,6 +16,7 @@ export const dashboardApi = {
   getAlertsSummary: () => api.get('/dashboard/alerts/summary'),
   getCriticalTanks: () => api.get('/dashboard/critical-tanks'),
   getForecast: (params) => api.get('/dashboard/forecast', { params }),
+  getStockoutForecast: () => api.get('/dashboard/stockout-forecast'),
 };
 
 // Stations API

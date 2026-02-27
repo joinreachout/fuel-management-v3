@@ -265,6 +265,9 @@ try {
     } elseif ($requestMethod === 'GET' && $path === '/api/dashboard/forecast') {
         $dashboardController->forecast();
 
+    } elseif ($requestMethod === 'GET' && $path === '/api/dashboard/stockout-forecast') {
+        $dashboardController->stockoutForecast();
+
     // ==================== REPORTS ====================
     } elseif ($requestMethod === 'GET' && $path === '/api/reports/daily-stock') {
         $reportController->dailyStock();
