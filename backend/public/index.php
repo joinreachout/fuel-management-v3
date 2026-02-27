@@ -231,6 +231,9 @@ try {
     } elseif ($requestMethod === 'GET' && $path === '/api/transfers') {
         $transferController->getTransfers();
 
+    } elseif ($requestMethod === 'POST' && $path === '/api/transfers') {
+        $transferController->create();
+
     } elseif ($requestMethod === 'GET' && $path === '/api/transfers/pending') {
         $transferController->pending();
 

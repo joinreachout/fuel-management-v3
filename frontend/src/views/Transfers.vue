@@ -125,7 +125,11 @@
               <span class="w-2 h-2 rounded-full bg-gray-400 inline-block"></span>
               <span class="text-gray-600">{{ stats.cancelled_transfers || 0 }} Cancelled</span>
             </span>
-            <span class="ml-auto text-gray-400 text-xs">{{ filteredTransfers.length }} records</span>
+            <span class="ml-auto text-gray-400 text-xs mr-3">{{ filteredTransfers.length }} records</span>
+            <button type="button" @click="openCreateModal"
+              class="flex items-center gap-1.5 px-4 py-1.5 bg-orange-500 text-white rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors">
+              <i class="fas fa-plus text-xs"></i> New Transfer
+            </button>
           </div>
 
           <!-- Filter bar -->
@@ -301,16 +305,185 @@
     </div>
 
   </div>
+
+  <!-- ── Create Transfer Modal ──────────────────────────────────────────── -->
+  <Teleport to="body">
+    <div v-if="showCreateModal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      @click.self="showCreateModal = false">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-4 rounded-t-2xl text-white flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-bold"><i class="fas fa-truck mr-2"></i>New Transfer</h2>
+            <p class="text-orange-100 text-xs mt-0.5">Manual fuel transfer between stations</p>
+          </div>
+          <button @click="showCreateModal = false" class="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
+            <i class="fas fa-times text-lg"></i>
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 space-y-4">
+
+          <!-- From Station -->
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">From Station *</label>
+            <select v-model="createForm.from_station_id"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
+              <option value="">Select station…</option>
+              <option v-for="s in stations" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+          </div>
+
+          <!-- To Station -->
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">To Station *</label>
+            <select v-model="createForm.to_station_id"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
+              <option value="">Select station…</option>
+              <option v-for="s in stations" :key="s.id" :value="s.id"
+                :disabled="s.id == createForm.from_station_id">{{ s.name }}</option>
+            </select>
+          </div>
+
+          <!-- Fuel Type -->
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Fuel Type *</label>
+            <select v-model="createForm.fuel_type_id"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
+              <option value="">Select fuel type…</option>
+              <option v-for="f in fuelTypes" :key="f.id" :value="f.id">{{ f.name }}</option>
+            </select>
+          </div>
+
+          <!-- Qty + Urgency row -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Quantity (tons) *</label>
+              <input v-model.number="createForm.quantity_tons" type="number" min="0.1" step="0.1"
+                placeholder="0.0"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1">Est. Days *</label>
+              <input v-model.number="createForm.estimated_days" type="number" min="0.5" step="0.5"
+                placeholder="1.0"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
+            </div>
+          </div>
+
+          <!-- Urgency -->
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Urgency *</label>
+            <select v-model="createForm.urgency"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
+              <option value="NORMAL">NORMAL</option>
+              <option value="MUST_ORDER">MUST ORDER</option>
+              <option value="CRITICAL">CRITICAL</option>
+              <option value="CATASTROPHE">CATASTROPHE</option>
+            </select>
+          </div>
+
+          <!-- Notes -->
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1">Notes</label>
+            <textarea v-model="createForm.notes" rows="2" placeholder="Optional notes…"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none resize-none"></textarea>
+          </div>
+
+          <!-- Error -->
+          <div v-if="createError" class="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700">
+            <i class="fas fa-exclamation-circle mr-1"></i>{{ createError }}
+          </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 pb-6 flex gap-3">
+          <button type="button" @click="showCreateModal = false"
+            class="flex-1 py-2.5 rounded-lg border border-gray-300 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
+            Cancel
+          </button>
+          <button type="button" @click="submitCreate" :disabled="createLoading"
+            class="flex-1 py-2.5 rounded-lg bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 transition-colors disabled:opacity-50">
+            <i v-if="createLoading" class="fas fa-spinner fa-spin mr-1"></i>
+            <span>Create Transfer</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </Teleport>
+
 </template>
 
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue';
-import { transfersApi } from '../services/api';
+import { transfersApi, stationsApi, fuelTypesApi } from '../services/api';
 
 // ── State ──────────────────────────────────────────────────────────────────────
 const loading   = ref(true);
 const transfers = ref([]);
 const stats     = ref({});
+
+// Lookup data for modal selects
+const stations  = ref([]);
+const fuelTypes = ref([]);
+
+// ── Create Modal ───────────────────────────────────────────────────────────────
+const showCreateModal = ref(false);
+const createLoading   = ref(false);
+const createError     = ref('');
+const createForm = reactive({
+  from_station_id: '',
+  to_station_id:   '',
+  fuel_type_id:    '',
+  quantity_tons:   '',
+  estimated_days:  1.0,
+  urgency:         'NORMAL',
+  notes:           '',
+});
+
+function openCreateModal() {
+  createForm.from_station_id = '';
+  createForm.to_station_id   = '';
+  createForm.fuel_type_id    = '';
+  createForm.quantity_tons   = '';
+  createForm.estimated_days  = 1.0;
+  createForm.urgency         = 'NORMAL';
+  createForm.notes           = '';
+  createError.value          = '';
+  showCreateModal.value      = true;
+}
+
+async function submitCreate() {
+  createError.value = '';
+  if (!createForm.from_station_id || !createForm.to_station_id || !createForm.fuel_type_id
+      || !createForm.quantity_tons || !createForm.estimated_days) {
+    createError.value = 'Please fill in all required fields.';
+    return;
+  }
+  if (createForm.from_station_id == createForm.to_station_id) {
+    createError.value = 'From and To stations must be different.';
+    return;
+  }
+  createLoading.value = true;
+  try {
+    const res = await transfersApi.create({ ...createForm });
+    if (res.data.success) {
+      showCreateModal.value = false;
+      await loadData();
+    } else {
+      createError.value = res.data.error || 'Failed to create transfer.';
+    }
+  } catch (e) {
+    createError.value = e.response?.data?.error || 'Server error. Please try again.';
+  } finally {
+    createLoading.value = false;
+  }
+}
 
 // ── Filters ────────────────────────────────────────────────────────────────────
 const filterStatus  = ref('');
@@ -436,9 +609,25 @@ async function loadData() {
   }
 }
 
+async function loadLookups() {
+  try {
+    const [stRes, ftRes] = await Promise.all([
+      stationsApi.getAll(),
+      fuelTypesApi.getAll(),
+    ]);
+    if (stRes.data?.success)  stations.value  = stRes.data.data  || [];
+    else if (Array.isArray(stRes.data)) stations.value = stRes.data;
+    if (ftRes.data?.success)  fuelTypes.value = ftRes.data.data  || [];
+    else if (Array.isArray(ftRes.data)) fuelTypes.value = ftRes.data;
+  } catch (e) {
+    console.error('Lookups load error:', e);
+  }
+}
+
 onMounted(() => {
   updateTime();
   setInterval(updateTime, 60000);
   loadData();
+  loadLookups();
 });
 </script>

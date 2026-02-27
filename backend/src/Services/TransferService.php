@@ -85,4 +85,46 @@ class TransferService
             ];
         }
     }
+
+    /**
+     * Create a new transfer manually.
+     * Accepts quantity in tons, converts to liters using fuel density.
+     *
+     * @param array $data  from_station_id, to_station_id, fuel_type_id,
+     *                     quantity_tons, urgency, estimated_days, notes (opt)
+     * @return array
+     */
+    public static function create(array $data): array
+    {
+        $required = ['from_station_id', 'to_station_id', 'fuel_type_id', 'quantity_tons', 'urgency', 'estimated_days'];
+        foreach ($required as $field) {
+            if (empty($data[$field]) && $data[$field] !== 0) {
+                throw new \InvalidArgumentException("Missing required field: {$field}");
+            }
+        }
+
+        if ((int)$data['from_station_id'] === (int)$data['to_station_id']) {
+            throw new \InvalidArgumentException("From and To stations must be different");
+        }
+
+        $density = (float)(Database::fetchColumn(
+            "SELECT density FROM fuel_types WHERE id = ?", [(int)$data['fuel_type_id']]
+        ) ?: 0.85);
+
+        $liters = round((float)$data['quantity_tons'] * 1000 / $density, 2);
+
+        $id = Database::insert('transfers', [
+            'from_station_id'        => (int)$data['from_station_id'],
+            'to_station_id'          => (int)$data['to_station_id'],
+            'fuel_type_id'           => (int)$data['fuel_type_id'],
+            'transfer_amount_liters' => $liters,
+            'status'                 => 'pending',
+            'urgency'                => $data['urgency'],
+            'estimated_days'         => (float)$data['estimated_days'],
+            'notes'                  => $data['notes'] ?? null,
+            'created_by'             => 'manual',
+        ]);
+
+        return ['success' => true, 'id' => $id, 'transfer_amount_liters' => $liters];
+    }
 }

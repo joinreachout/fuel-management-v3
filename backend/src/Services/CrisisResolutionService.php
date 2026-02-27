@@ -147,7 +147,7 @@ class CrisisResolutionService
         float $transferQtyTons,
         float $qtyNeededTons
     ): int {
-        return CrisisCase::create([
+        $caseId = CrisisCase::create([
             'case_type'          => 'transfer',
             'status'             => 'accepted',
             'receiving_depot_id' => $receivingDepotId,
@@ -158,6 +158,36 @@ class CrisisResolutionService
             'notes'              => "Transfer {$transferQtyTons}t from depot #{$donorDepotId}. "
                                   . "Compensating POs pending.",
         ]);
+
+        // ── Way 2: also create a record in transfers table ────────────────────
+        $donorStation     = Database::fetchOne(
+            "SELECT station_id FROM depots WHERE id = ?", [$donorDepotId]
+        );
+        $receivingStation = Database::fetchOne(
+            "SELECT station_id FROM depots WHERE id = ?", [$receivingDepotId]
+        );
+        $density = (float)(Database::fetchColumn(
+            "SELECT density FROM fuel_types WHERE id = ?", [$fuelTypeId]
+        ) ?: 0.85);
+
+        if ($donorStation && $receivingStation && $density > 0) {
+            $liters = round($transferQtyTons * 1000 / $density, 2);
+            Database::insert('transfers', [
+                'from_station_id'        => (int)$donorStation['station_id'],
+                'to_station_id'          => (int)$receivingStation['station_id'],
+                'fuel_type_id'           => $fuelTypeId,
+                'transfer_amount_liters' => $liters,
+                'status'                 => 'pending',
+                'urgency'                => 'CATASTROPHE',
+                'estimated_days'         => 3.0,
+                'notes'                  => "Auto-created from Crisis Case #{$caseId}. "
+                                          . "{$transferQtyTons}t from depot #{$donorDepotId} "
+                                          . "to depot #{$receivingDepotId}.",
+                'created_by'             => 'system',
+            ]);
+        }
+
+        return $caseId;
     }
 
     /**

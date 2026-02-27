@@ -74,10 +74,11 @@ export const ordersApi = {
 
 // Transfers API
 export const transfersApi = {
-  getAll: (params) => api.get('/transfers', { params }),
-  getById: (id) => api.get(`/transfers/${id}`),
-  getByStatus: (status) => api.get(`/transfers/status/${status}`),
-  getByStation: (id) => api.get(`/transfers/station/${id}`),
+  getAll:       (params) => api.get('/transfers', { params }),
+  getById:      (id)     => api.get(`/transfers/${id}`),
+  getByStatus:  (status) => api.get(`/transfers/status/${status}`),
+  getByStation: (id)     => api.get(`/transfers/station/${id}`),
+  create:       (data)   => api.post('/transfers', data),
 };
 
 // Reports API

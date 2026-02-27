@@ -24,4 +24,30 @@ class TransferController
             ], 500);
         }
     }
+
+    /**
+     * POST /api/transfers
+     * Create a new transfer manually.
+     */
+    public function create(): void
+    {
+        try {
+            $body = json_decode(file_get_contents('php://input'), true);
+            if (!$body) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => 'Invalid JSON body']);
+                return;
+            }
+
+            $result = TransferService::create($body);
+            http_response_code(201);
+            echo json_encode($result);
+        } catch (\InvalidArgumentException $e) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
 }
