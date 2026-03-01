@@ -109,8 +109,8 @@
         </div>
 
         <!-- Procurement data -->
-        <template v-if="getShortage(hoverTank)">
-          <div class="border-t border-gray-100 mt-2 pt-2 space-y-1 text-xs">
+        <div class="border-t border-gray-100 mt-2 pt-2 space-y-1 text-xs">
+          <template v-if="getShortage(hoverTank)">
             <div class="flex justify-between gap-6">
               <span class="text-gray-400">Days to crit.</span>
               <span class="font-bold" :class="getDaysToCritClass(getShortage(hoverTank))">
@@ -132,8 +132,15 @@
                 {{ getShortage(hoverTank).urgency }}
               </span>
             </div>
-          </div>
-        </template>
+          </template>
+          <!-- No shortage entry → stock is healthy beyond 365-day horizon -->
+          <template v-else>
+            <div class="flex items-center gap-1.5 text-green-600 font-semibold">
+              <i class="fas fa-check-circle text-green-500"></i>
+              Stock level OK — no action needed
+            </div>
+          </template>
+        </div>
       </div>
     </div>
   </Teleport>
@@ -403,9 +410,10 @@ const loadData = async () => {
     loading.value = true;
 
     // Load stations + procurement shortages in parallel
+    // Use 365-day horizon to capture all tanks, not just those needing action soon
     const [stationsRes, shortagesRes] = await Promise.all([
       stationsApi.getAll(),
-      procurementApi.getUpcomingShortages(90).catch(() => null), // non-fatal
+      procurementApi.getUpcomingShortages(365).catch(() => null), // non-fatal
     ]);
 
     // Store shortages for days-to-critical / last_order_date overlays
