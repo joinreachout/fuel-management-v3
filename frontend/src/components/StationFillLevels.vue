@@ -40,57 +40,11 @@
           <div
             v-for="tank in currentStationTanks"
             :key="tank.tank_id"
-            class="flex flex-col items-center gap-2 group relative"
-            style="min-width: 80px;">
-
-            <!-- ── Hover Tooltip ─────────────────────────────────────── -->
-            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50
-                        hidden group-hover:block pointer-events-none">
-              <div class="bg-gray-900 text-white rounded-xl px-3 py-2.5 shadow-2xl whitespace-nowrap"
-                style="min-width: 170px;">
-
-                <!-- Fuel name + fill % -->
-                <div class="font-bold text-sm mb-1">{{ tank.product_name }}</div>
-                <div class="text-gray-300 text-xs mb-1">
-                  {{ formatTons(tank.current_stock_tons) }} / {{ formatTons(tank.capacity_tons) }}
-                  <span class="font-bold text-white ml-1">({{ tank.fill_percentage.toFixed(1) }}%)</span>
-                </div>
-
-                <!-- Procurement data if available -->
-                <template v-if="getShortage(tank)">
-                  <div class="border-t border-gray-700 mt-2 pt-2 space-y-1 text-xs">
-                    <div class="flex justify-between gap-4">
-                      <span class="text-gray-400">Days to crit.</span>
-                      <span class="font-bold" :class="getDaysToCritClass(getShortage(tank))">
-                        {{ getShortage(tank).days_until_critical_level != null
-                            ? Math.round(getShortage(tank).days_until_critical_level) + 'd'
-                            : '∞' }}
-                      </span>
-                    </div>
-                    <div v-if="getShortage(tank).last_order_date"
-                      class="flex justify-between gap-4">
-                      <span class="text-gray-400">Order by</span>
-                      <span class="font-bold"
-                        :class="isOrderUrgent(getShortage(tank).last_order_date)
-                          ? 'text-red-400' : 'text-white'">
-                        {{ fmtShortDate(getShortage(tank).last_order_date) }}
-                      </span>
-                    </div>
-                    <div class="flex justify-between gap-4">
-                      <span class="text-gray-400">Urgency</span>
-                      <span class="font-bold text-[11px]"
-                        :class="getDaysToCritClass(getShortage(tank))">
-                        {{ getShortage(tank).urgency }}
-                      </span>
-                    </div>
-                  </div>
-                </template>
-
-                <!-- Arrow pointing down -->
-                <div class="absolute top-full left-1/2 -translate-x-1/2
-                            border-4 border-transparent border-t-gray-900"></div>
-              </div>
-            </div>
+            class="flex flex-col items-center gap-2"
+            style="min-width: 80px;"
+            @mouseenter="showTooltip($event, tank)"
+            @mousemove="moveTooltip($event)"
+            @mouseleave="hideTooltip()">
 
             <!-- Bar Container -->
             <div class="relative flex flex-col justify-end" style="height: 250px; width: 60px;">
@@ -138,6 +92,55 @@
       </div>
     </div>
   </div>
+
+  <!-- ── Teleport Tooltip — rendered in <body> to bypass overflow clipping ── -->
+  <Teleport to="body">
+    <div v-if="hoverTank"
+      class="fixed z-[9999] pointer-events-none transition-opacity duration-100"
+      :style="tooltipStyle">
+      <div class="bg-gray-900 text-white rounded-xl px-3 py-2.5 shadow-2xl whitespace-nowrap"
+        style="min-width: 170px;">
+
+        <!-- Fuel + fill -->
+        <div class="font-bold text-sm mb-1">{{ hoverTank.product_name }}</div>
+        <div class="text-gray-300 text-xs mb-1">
+          {{ formatTons(hoverTank.current_stock_tons) }} / {{ formatTons(hoverTank.capacity_tons) }}
+          <span class="font-bold text-white ml-1">({{ hoverTank.fill_percentage.toFixed(1) }}%)</span>
+        </div>
+
+        <!-- Procurement data -->
+        <template v-if="getShortage(hoverTank)">
+          <div class="border-t border-gray-700 mt-2 pt-2 space-y-1 text-xs">
+            <div class="flex justify-between gap-6">
+              <span class="text-gray-400">Days to crit.</span>
+              <span class="font-bold" :class="getDaysToCritClass(getShortage(hoverTank))">
+                {{ getShortage(hoverTank).days_until_critical_level != null
+                    ? Math.round(getShortage(hoverTank).days_until_critical_level) + 'd'
+                    : '∞' }}
+              </span>
+            </div>
+            <div v-if="getShortage(hoverTank).last_order_date" class="flex justify-between gap-6">
+              <span class="text-gray-400">Order by</span>
+              <span class="font-bold"
+                :class="isOrderUrgent(getShortage(hoverTank).last_order_date) ? 'text-red-400' : 'text-white'">
+                {{ fmtShortDate(getShortage(hoverTank).last_order_date) }}
+              </span>
+            </div>
+            <div class="flex justify-between gap-6">
+              <span class="text-gray-400">Urgency</span>
+              <span class="font-bold" :class="getDaysToCritClass(getShortage(hoverTank))">
+                {{ getShortage(hoverTank).urgency }}
+              </span>
+            </div>
+          </div>
+        </template>
+
+        <!-- Arrow -->
+        <div class="absolute top-full left-1/2 -translate-x-1/2
+                    border-4 border-transparent border-t-gray-900"></div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
@@ -189,6 +192,30 @@ const fmtShortDate = (dateStr) => {
   if (!dateStr) return ''
   const d = new Date(dateStr)
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+// ── Teleport Tooltip — mouse-tracked, bypasses overflow clipping ──────────────
+const hoverTank   = ref(null)
+const tooltipX    = ref(0)
+const tooltipY    = ref(0)
+
+const tooltipStyle = computed(() => ({
+  left:      (tooltipX.value + 14) + 'px',
+  top:       (tooltipY.value - 12) + 'px',
+  transform: 'translateY(-100%)',
+}))
+
+function showTooltip(event, tank) {
+  hoverTank.value = tank
+  tooltipX.value  = event.clientX
+  tooltipY.value  = event.clientY
+}
+function moveTooltip(event) {
+  tooltipX.value = event.clientX
+  tooltipY.value = event.clientY
+}
+function hideTooltip() {
+  hoverTank.value = null
 }
 
 // Get tanks for currently selected station from real data
