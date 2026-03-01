@@ -98,19 +98,19 @@
     <div v-if="hoverTank"
       class="fixed z-[9999] pointer-events-none transition-opacity duration-100"
       :style="tooltipStyle">
-      <div class="bg-gray-900 text-white rounded-xl px-3 py-2.5 shadow-2xl whitespace-nowrap"
+      <div class="bg-white text-gray-800 rounded-xl px-3 py-2.5 shadow-xl border border-gray-200 whitespace-nowrap"
         style="min-width: 170px;">
 
         <!-- Fuel + fill -->
-        <div class="font-bold text-sm mb-1">{{ hoverTank.product_name }}</div>
-        <div class="text-gray-300 text-xs mb-1">
+        <div class="font-bold text-sm text-gray-900 mb-1">{{ hoverTank.product_name }}</div>
+        <div class="text-gray-500 text-xs mb-1">
           {{ formatTons(hoverTank.current_stock_tons) }} / {{ formatTons(hoverTank.capacity_tons) }}
-          <span class="font-bold text-white ml-1">({{ hoverTank.fill_percentage.toFixed(1) }}%)</span>
+          <span class="font-bold text-gray-800 ml-1">({{ hoverTank.fill_percentage.toFixed(1) }}%)</span>
         </div>
 
         <!-- Procurement data -->
         <template v-if="getShortage(hoverTank)">
-          <div class="border-t border-gray-700 mt-2 pt-2 space-y-1 text-xs">
+          <div class="border-t border-gray-100 mt-2 pt-2 space-y-1 text-xs">
             <div class="flex justify-between gap-6">
               <span class="text-gray-400">Days to crit.</span>
               <span class="font-bold" :class="getDaysToCritClass(getShortage(hoverTank))">
@@ -122,7 +122,7 @@
             <div v-if="getShortage(hoverTank).last_order_date" class="flex justify-between gap-6">
               <span class="text-gray-400">Order by</span>
               <span class="font-bold"
-                :class="isOrderUrgent(getShortage(hoverTank).last_order_date) ? 'text-red-400' : 'text-white'">
+                :class="isOrderUrgent(getShortage(hoverTank).last_order_date) ? 'text-red-500' : 'text-gray-700'">
                 {{ fmtShortDate(getShortage(hoverTank).last_order_date) }}
               </span>
             </div>
@@ -134,10 +134,6 @@
             </div>
           </div>
         </template>
-
-        <!-- Arrow -->
-        <div class="absolute top-full left-1/2 -translate-x-1/2
-                    border-4 border-transparent border-t-gray-900"></div>
       </div>
     </div>
   </Teleport>
@@ -169,14 +165,14 @@ const shortageMap = computed(() => {
 const getShortage = (tank) =>
   shortageMap.value[`${tank.station_id}_${tank.fuel_type_id}`] || null
 
-// Color class for "days to critical" text
+// Color class for "days to critical" text (light background — use dark readable shades)
 const getDaysToCritClass = (shortage) => {
   const u = shortage?.urgency
   return {
-    CATASTROPHE: 'text-red-700',
-    CRITICAL:    'text-red-600',
-    MUST_ORDER:  'text-orange-600',
-    WARNING:     'text-yellow-600',
+    CATASTROPHE: 'text-red-600',
+    CRITICAL:    'text-red-500',
+    MUST_ORDER:  'text-orange-500',
+    WARNING:     'text-amber-600',
     PLANNED:     'text-blue-500',
   }[u] || 'text-gray-500'
 }
