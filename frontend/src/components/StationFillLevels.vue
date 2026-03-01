@@ -109,9 +109,28 @@
         </div>
 
         <!-- Procurement data -->
-        <div class="border-t border-gray-100 mt-2 pt-2 space-y-1 text-xs">
+        <div class="border-t border-gray-100 mt-2 pt-2 space-y-1.5 text-xs">
           <template v-if="getShortage(hoverTank)">
+            <!-- Daily consumption -->
             <div class="flex justify-between gap-6">
+              <span class="text-gray-400">Daily cons.</span>
+              <span class="font-semibold text-gray-700">
+                {{ getDailyCons(getShortage(hoverTank), hoverTank) != null
+                    ? getDailyCons(getShortage(hoverTank), hoverTank) + ' t/day'
+                    : '—' }}
+              </span>
+            </div>
+            <!-- Days until empty -->
+            <div class="flex justify-between gap-6">
+              <span class="text-gray-400">Until empty</span>
+              <span class="font-semibold text-gray-700">
+                {{ getShortage(hoverTank).days_left != null
+                    ? Math.round(getShortage(hoverTank).days_left) + 'd'
+                    : '∞' }}
+              </span>
+            </div>
+            <!-- Days to critical -->
+            <div class="flex justify-between gap-6 border-t border-gray-100 pt-1.5">
               <span class="text-gray-400">Days to crit.</span>
               <span class="font-bold" :class="getDaysToCritClass(getShortage(hoverTank))">
                 {{ getShortage(hoverTank).days_until_critical_level != null
@@ -119,6 +138,7 @@
                     : '∞' }}
               </span>
             </div>
+            <!-- Last order date -->
             <div v-if="getShortage(hoverTank).last_order_date" class="flex justify-between gap-6">
               <span class="text-gray-400">Order by</span>
               <span class="font-bold"
@@ -126,6 +146,7 @@
                 {{ fmtShortDate(getShortage(hoverTank).last_order_date) }}
               </span>
             </div>
+            <!-- Urgency -->
             <div class="flex justify-between gap-6">
               <span class="text-gray-400">Urgency</span>
               <span class="font-bold" :class="getDaysToCritClass(getShortage(hoverTank))">
@@ -133,11 +154,11 @@
               </span>
             </div>
           </template>
-          <!-- No shortage entry → stock is healthy beyond 365-day horizon -->
+          <!-- No entry at all → truly zero consumption -->
           <template v-else>
             <div class="flex items-center gap-1.5 text-green-600 font-semibold">
               <i class="fas fa-check-circle text-green-500"></i>
-              Stock level OK — no action needed
+              No consumption data
             </div>
           </template>
         </div>
@@ -158,19 +179,32 @@ const scrollContainer = ref(null);
 const currentScrollPage = ref(0);
 const scrollPages = ref(1);
 
-// Procurement data for days-to-critical + last_order_date
+// Procurement data for days-to-critical + last_order_date + days_left
 const shortages = ref([]);
-// Map keyed by "stationId_fuelTypeId" → shortage item
+// Map keyed by "stationId_fuelTypeId" → most urgent shortage item for that combo
+const urgencyOrder = { CATASTROPHE: 0, CRITICAL: 1, MUST_ORDER: 2, WARNING: 3, PLANNED: 4 }
 const shortageMap = computed(() => {
   const map = {}
   for (const s of shortages.value) {
-    map[`${s.station_id}_${s.fuel_type_id}`] = s
+    const key = `${s.station_id}_${s.fuel_type_id}`
+    // Keep the most urgent entry (lowest urgencyOrder value) per station+fuel
+    if (!map[key] || (urgencyOrder[s.urgency] ?? 5) < (urgencyOrder[map[key].urgency] ?? 5)) {
+      map[key] = s
+    }
   }
   return map
 })
 // Look up shortage for a grouped tank
 const getShortage = (tank) =>
   shortageMap.value[`${tank.station_id}_${tank.fuel_type_id}`] || null
+
+// Daily consumption in tons — derived from current stock and days_left
+// days_left = current_stock / daily_cons → daily_cons = current_stock / days_left
+const getDailyCons = (shortage, tank) => {
+  const dl = shortage?.days_left
+  if (!dl || dl <= 0 || !tank?.current_stock_tons) return null
+  return (tank.current_stock_tons / dl).toFixed(1)
+}
 
 // Color class for "days to critical" text (light background — use dark readable shades)
 const getDaysToCritClass = (shortage) => {
@@ -410,10 +444,10 @@ const loadData = async () => {
     loading.value = true;
 
     // Load stations + procurement shortages in parallel
-    // Use 365-day horizon to capture all tanks, not just those needing action soon
+    // Use 9999-day horizon to capture ALL depots regardless of urgency timeline
     const [stationsRes, shortagesRes] = await Promise.all([
       stationsApi.getAll(),
-      procurementApi.getUpcomingShortages(365).catch(() => null), // non-fatal
+      procurementApi.getUpcomingShortages(9999).catch(() => null), // non-fatal
     ]);
 
     // Store shortages for days-to-critical / last_order_date overlays
